@@ -1,0 +1,4 @@
+/* Design tokens. Light is default. Add class "dark" on <html> for dark. Reference pages use these via var(--name). */
+:root{--bg:#F2F6F5;--card:#FFFFFF;--tx:#0E1F1E;--mu:#566C6A;--pr:#0F9D8A;--prt:#0B7A6B;--ln:#E3ECEA;--tint:#E2F3F0;--ind:#5B5BD6;--tr:#CFDDDB;--on:#FFFFFF;--co:#E8624A;--fl:#D97706;--font:'Plus Jakarta Sans',sans-serif;--num:'Space Grotesk',sans-serif}
+html.dark{--bg:#0B1112;--card:#121B1C;--tx:#EAF4F2;--mu:#93ABA8;--pr:#2DD4BF;--prt:#2DD4BF;--ln:#1F2D2E;--tint:#133634;--ind:#9A9AF5;--tr:#2B3E3F;--on:#062B27;--co:#FF8A70;--fl:#FBBF24}
+/* Semantic: --pr habits/primary, --ind sleep, --co mood/mind, --fl amber = streak flame and "missed" sand tint only. */

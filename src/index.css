@@ -1,0 +1,206 @@
+@import "tailwindcss";
+
+/* -------------------------------------------------------------------------
+   LOCAL OFFLINE FONTS (Zero external CDN font requests)
+   ------------------------------------------------------------------------- */
+@import '@fontsource/plus-jakarta-sans/500.css';
+@import '@fontsource/plus-jakarta-sans/600.css';
+@import '@fontsource/plus-jakarta-sans/700.css';
+@import '@fontsource/plus-jakarta-sans/800.css';
+@import '@fontsource/space-grotesk/600.css';
+@import '@fontsource/space-grotesk/700.css';
+
+/* -------------------------------------------------------------------------
+   DESIGN TOKENS
+   Light is default on :root. Dark mode is applied via html.dark
+   ------------------------------------------------------------------------- */
+:root {
+  --bg: #F2F6F5;
+  --card: #FFFFFF;
+  --tx: #0E1F1E;
+  --mu: #566C6A;
+  --pr: #0F9D8A;
+  --prt: #0B7A6B;
+  --ln: #E3ECEA;
+  --tint: #E2F3F0;
+  --ind: #5B5BD6;
+  --tr: #CFDDDB;
+  --on: #FFFFFF;
+  --co: #E8624A;
+  --fl: #D97706;
+  --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --num: 'Space Grotesk', ui-monospace, monospace;
+}
+
+html.dark {
+  --bg: #0B1112;
+  --card: #121B1C;
+  --tx: #EAF4F2;
+  --mu: #93ABA8;
+  --pr: #2DD4BF;
+  --prt: #2DD4BF;
+  --ln: #1F2D2E;
+  --tint: #133634;
+  --ind: #9A9AF5;
+  --tr: #2B3E3F;
+  --on: #062B27;
+  --co: #FF8A70;
+  --fl: #FBBF24;
+}
+
+@theme {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-tx: var(--tx);
+  --color-mu: var(--mu);
+  --color-pr: var(--pr);
+  --color-prt: var(--prt);
+  --color-ln: var(--ln);
+  --color-tint: var(--tint);
+  --color-ind: var(--ind);
+  --color-tr: var(--tr);
+  --color-on: var(--on);
+  --color-co: var(--co);
+  --color-fl: var(--fl);
+  --font-sans: var(--font);
+  --font-num: var(--num);
+}
+
+/* -------------------------------------------------------------------------
+   BASE STYLES & RESET
+   ------------------------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tr) transparent;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+html, body {
+  background-color: var(--bg);
+  color: var(--tx);
+  font-family: var(--font);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100dvh;
+  background-color: var(--bg);
+  color: var(--tx);
+}
+
+.scrollbar-none,
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+*:focus,
+*:focus-visible,
+svg:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Tabular numbers for Space Grotesk */
+.font-num,
+.tabular-nums {
+  font-family: var(--num);
+  font-variant-numeric: tabular-nums;
+}
+
+.font-sans {
+  font-family: var(--font);
+}
+
+/* -------------------------------------------------------------------------
+   SURFACE PRIMITIVES & TOKENS MAPPING
+   ------------------------------------------------------------------------- */
+.daily-card {
+  background: var(--card);
+  border: 1px solid var(--ln);
+  border-radius: 24px;
+  box-shadow: 0 8px 24px rgba(15, 60, 55, 0.06);
+  color: var(--tx);
+}
+
+html.dark .daily-card {
+  box-shadow: none;
+}
+
+.glass-panel {
+  background: var(--card);
+  border: 1px solid var(--ln);
+  border-radius: 24px;
+  color: var(--tx);
+}
+
+.daily-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 2px 0;
+  color: var(--mu);
+  font: 700 11px/1 var(--font);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.daily-section-heading i {
+  display: block;
+  height: 1px;
+  flex: 1;
+  background: var(--ln);
+}
+
+/* Map legacy arbitrary hex backgrounds to semantic tokens */
+[class*="bg-[#07070a]"],
+[class*="bg-[#09090d]"],
+[class*="bg-[#0c0c14]"],
+[class*="bg-[#0c0d12]"] {
+  background-color: var(--bg) !important;
+}
+
+[class*="bg-[#0e0e15]"],
+[class*="bg-[#0f0f16]"],
+[class*="bg-[#101017]"],
+[class*="bg-[#121218]"],
+[class*="bg-[#12121a]"],
+[class*="bg-[#111118]"],
+[class*="bg-[#181822]"],
+[class*="bg-[#14141d]"],
+[class*="bg-[#0e0e14]"],
+[class*="bg-[#0f0f15]"] {
+  background-color: var(--card) !important;
+  border-color: var(--ln) !important;
+  color: var(--tx) !important;
+}
+
+/* Habit Buttons legacy compatibility */
+button[data-state="2"] {
+  background: var(--pr) !important;
+  color: var(--on) !important;
+  border-color: var(--pr) !important;
+}
+
+button[data-state="1"] {
+  background: linear-gradient(90deg, var(--tint) 50%, var(--card) 50%) !important;
+  color: var(--prt) !important;
+  border-color: var(--pr) !important;
+}
+
+button[data-state="0"] {
+  background: var(--card) !important;
+  color: var(--tx) !important;
+  border-color: var(--ln) !important;
+}

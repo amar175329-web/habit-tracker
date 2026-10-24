@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="116" fill="#101014"/>
+  <rect width="512" height="512" rx="116" fill="none" stroke="#2a2a30" stroke-width="6"/>
+  <!-- D ring -->
+  <circle cx="256" cy="256" r="128" fill="none" stroke="#34d399" stroke-width="26"/>
+  <path d="M256 128 L256 256 L256 384 L320 384 Q384 384 384 256 Q384 128 256 128 Z" fill="none" stroke="#a7f3d0" stroke-width="22" stroke-linejoin="round"/>
+  <!-- orbit -->
+  <circle cx="256" cy="256" r="176" fill="none" stroke="#34d399" stroke-width="10" opacity="0.55" stroke-dasharray="260 80 40 80"/>
+  <!-- sun (day) -->
+  <circle cx="392" cy="140" r="26" fill="none" stroke="#a7f3d0" stroke-width="14"/>
+  <g stroke="#a7f3d0" stroke-width="10" stroke-linecap="round">
+    <line x1="392" y1="88" x2="392" y2="70"/>
+    <line x1="430" y1="102" x2="443" y2="89"/>
+    <line x1="444" y1="140" x2="462" y2="140"/>
+  </g>
+  <!-- moon (night) -->
+  <path d="M356 356 a30 30 0 1 0 18 54 a24 24 0 1 1 -18 -54 Z" fill="none" stroke="#6ee7b7" stroke-width="11" stroke-linejoin="round"/>
+</svg>

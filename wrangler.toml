@@ -1,0 +1,23 @@
+name = "daily-os"
+main = "worker/index.ts"
+compatibility_date = "2026-09-02"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "daily-os-db"
+database_id = "550e8400-e29b-41d4-a716-446655440001"
+migrations_dir = "drizzle/migrations"
+
+[vars]
+APP_TZ = "Asia/Kolkata"
+# Secrets (set via wrangler secret put, also in .dev.vars for local):
+# APP_PASSWORD_HASH - bcrypt hash of your password
+# APP_JWT_SECRET - random 32+ char string (openssl rand -base64 32)
+
+[observability]
+enabled = true

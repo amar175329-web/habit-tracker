@@ -1,0 +1,11 @@
+# Exclude heavy local-only dirs from Vercel CLI uploads.
+# Keeps `vercel --prod` uploads small (~MBs, not ~1GB) so builds start fast.
+.wrangler/
+node_modules/
+dist/
+dist-ssr/
+playwright-report/
+test-results/
+*.log
+npm-debug.log*
+.vercel/
