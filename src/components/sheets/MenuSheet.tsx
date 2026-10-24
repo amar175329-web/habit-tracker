@@ -150,16 +150,6 @@ export function MenuSheet({ isOpen, onClose }: MenuSheetProps) {
           <span style={{ color: "var(--mu)", fontSize: "12px", fontWeight: 700 }}>Switch</span>
         </button>
 
-        {/* Design Check */}
-        <button type="button" onClick={() => handleNav("/design-check")} style={itemStyle}>
-          <span style={iconBoxStyle}>
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-            </svg>
-          </span>
-          <span style={{ flex: 1 }}>Design System Check</span>
-          <span style={{ color: "var(--mu)", fontSize: "16px" }}>›</span>
-        </button>
 
         <button
           type="button"
