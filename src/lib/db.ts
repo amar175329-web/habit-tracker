@@ -32,6 +32,7 @@ export interface MoodLog {
   score: number; // 1: Rough, 2: Low, 3: Okay, 4: Good, 5: Energized
   emotions: string[];
   updatedAt: string;
+  isLocked?: boolean;
 }
 
 export interface Reflection {
@@ -146,6 +147,24 @@ export async function initDatabase(seedZero = true): Promise<void> {
   if (count === 0 && !seedZero) {
     await db.habits.bulkAdd(DEFAULT_HABITS);
   }
+}
+
+/**
+ * Wipe all user-recorded log entries (habits logs, sleep logs, mood logs, reflections),
+ * preserving habit definitions.
+ */
+export async function clearAllEntries(): Promise<void> {
+  await db.transaction(
+    "rw",
+    [db.habit_logs, db.sleep_logs, db.mood_logs, db.reflections, db.outbox],
+    async () => {
+      await db.habit_logs.clear();
+      await db.sleep_logs.clear();
+      await db.mood_logs.clear();
+      await db.reflections.clear();
+      await db.outbox.clear();
+    }
+  );
 }
 
 /**
@@ -289,14 +308,45 @@ export async function saveSleep(
   });
 }
 
+export async function initTodayMood(todayStr: string): Promise<MoodLog> {
+  const existing = await db.mood_logs.get(todayStr);
+  if (existing) {
+    return existing;
+  }
+  const now = new Date().toISOString();
+  const row: MoodLog = {
+    date: todayStr,
+    score: 4, // Default Good
+    emotions: [],
+    updatedAt: now,
+    isLocked: false, // User can change it once
+  };
+  await db.transaction("rw", db.mood_logs, db.outbox, async () => {
+    await db.mood_logs.put(row);
+    await db.outbox.add({
+      table: "mood_logs",
+      op: "update",
+      row,
+      ts: Date.now(),
+    });
+  });
+  return row;
+}
+
 export async function saveMood(
   date: string,
   score: number,
   emotions: string[],
-  today: string
+  today: string,
+  lock = true
 ): Promise<void> {
   if (!isSleepOrMoodEditable(date, today)) {
     throw new Error(`Mood for ${date} is locked.`);
+  }
+
+  const existing = await db.mood_logs.get(date);
+  if (existing?.isLocked) {
+    throw new Error(`Feeling has already been set for today and cannot be changed.`);
   }
 
   const now = new Date().toISOString();
@@ -305,6 +355,7 @@ export async function saveMood(
     score,
     emotions,
     updatedAt: now,
+    isLocked: lock,
   };
 
   await db.transaction("rw", db.mood_logs, db.outbox, async () => {

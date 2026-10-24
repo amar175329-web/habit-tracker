@@ -8,6 +8,7 @@ export interface FeelingsSheetProps {
   today: string;
   initialScore?: number;
   initialEmotions?: string[];
+  isLocked?: boolean;
   onSaved?: () => void;
 }
 
@@ -41,6 +42,7 @@ export function FeelingsSheet({
   today,
   initialScore = 4,
   initialEmotions = [],
+  isLocked = false,
   onSaved,
 }: FeelingsSheetProps) {
   const [score, setScore] = useState<number>(initialScore);
@@ -65,8 +67,12 @@ export function FeelingsSheet({
   };
 
   const handleSave = async () => {
+    if (isLocked) {
+      alert("Feeling has already been locked for today.");
+      return;
+    }
     try {
-      await saveMood(date, score, selectedEmotions, today);
+      await saveMood(date, score, selectedEmotions, today, true);
       if (onSaved) onSaved();
       onClose();
     } catch (err: any) {

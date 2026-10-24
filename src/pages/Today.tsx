@@ -6,6 +6,7 @@ import {
   toggleHabit,
   saveMood,
   initDatabase,
+  initTodayMood,
 } from "../lib/db";
 import {
   weekStart,
@@ -52,6 +53,11 @@ export default function Today() {
   useMemo(() => {
     initDatabase(true);
   }, []);
+
+  // Ensure Today has default Good mood seeded so Mind reflects it immediately
+  useEffect(() => {
+    initTodayMood(todayStr).catch(() => {});
+  }, [todayStr]);
 
   // Reactive Dexie Queries
   const habits = useLiveQuery(() => db.habits.filter((h) => h.isActive).sortBy("sort"), []) ?? [];
@@ -519,55 +525,93 @@ export default function Today() {
         </div>
 
         {/* Mood Card */}
-        <div
-          style={{
-            background: "var(--card)",
-            border: "1px solid var(--ln)",
-            borderRadius: "26px",
-            padding: "18px",
-            marginTop: "16px",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontWeight: 800, fontSize: "16px" }}>How are you feeling?</div>
-            <div style={{ fontSize: "12px", fontWeight: 800, color: "var(--co)" }}>
-              {currentMood?.score === 1
-                ? "Rough"
-                : currentMood?.score === 2
-                ? "Low"
-                : currentMood?.score === 3
-                ? "Okay"
-                : currentMood?.score === 5
-                ? "Energized"
-                : "Good"}
+        {(() => {
+          const isMoodLocked = Boolean(currentMood?.isLocked) || (!isViewingToday && !isYesterday);
+          return (
+            <div
+              style={{
+                background: "var(--card)",
+                border: "1px solid var(--ln)",
+                borderRadius: "26px",
+                padding: "18px",
+                marginTop: "16px",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontWeight: 800, fontSize: "16px" }}>How are you feeling?</div>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--co)" }}>
+                    {currentMood?.score === 1
+                      ? "Rough"
+                      : currentMood?.score === 2
+                      ? "Low"
+                      : currentMood?.score === 3
+                      ? "Okay"
+                      : currentMood?.score === 5
+                      ? "Energized"
+                      : "Good"}
+                  </span>
+                  {isMoodLocked && (
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        color: "var(--pr)",
+                        background: "var(--tint)",
+                        padding: "2px 7px",
+                        borderRadius: "99px",
+                      }}
+                    >
+                      🔒 Locked
+                    </span>
+                  )}
+                </div>
+              </div>
+              <MoodOrbs
+                value={(currentMood?.score as MoodScore) || 4}
+                showHeader={false}
+                showFeelingsLink={false}
+                isLocked={isMoodLocked}
+                onChange={async (score) => {
+                  if (!isMoodLocked && isHabitEditable(date, todayStr)) {
+                    await saveMood(date, score, currentMood?.emotions || [], todayStr, true);
+                  }
+                }}
+              />
+              {!isMoodLocked ? (
+                <div
+                  onClick={() => setFeelingsOpen(true)}
+                  style={{
+                    fontSize: "12.5px",
+                    fontWeight: 700,
+                    color: "var(--prt)",
+                    marginTop: "10px",
+                    textAlign: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  {currentMood?.emotions?.length
+                    ? `Feelings: ${currentMood.emotions.join(", ")} ›`
+                    : "Add feelings ›"}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    color: "var(--mu)",
+                    marginTop: "8px",
+                    textAlign: "center",
+                  }}
+                >
+                  {currentMood?.emotions?.length
+                    ? `Feelings: ${currentMood.emotions.join(", ")}`
+                    : "Set for today"}
+                </div>
+              )}
             </div>
-          </div>
-          <MoodOrbs
-            value={(currentMood?.score as MoodScore) || 4}
-            showHeader={false}
-            showFeelingsLink={false}
-            onChange={async (score) => {
-              if (isHabitEditable(date, todayStr)) {
-                await saveMood(date, score, currentMood?.emotions || [], todayStr);
-              }
-            }}
-          />
-          <div
-            onClick={() => setFeelingsOpen(true)}
-            style={{
-              fontSize: "12.5px",
-              fontWeight: 700,
-              color: "var(--prt)",
-              marginTop: "12px",
-              textAlign: "center",
-              cursor: "pointer",
-            }}
-          >
-            {currentMood?.emotions?.length
-              ? `Feelings: ${currentMood.emotions.join(", ")} ›`
-              : "Add feelings ›"}
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Today's Reflection Card */}
         <div
@@ -621,6 +665,7 @@ export default function Today() {
         today={todayStr}
         initialScore={currentMood?.score || 4}
         initialEmotions={currentMood?.emotions || []}
+        isLocked={Boolean(currentMood?.isLocked) || (!isViewingToday && !isYesterday)}
       />
     </div>
   );

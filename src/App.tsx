@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { App as CapApp } from "@capacitor/app";
 import { ThemeProvider } from "./lib/theme";
 import { queryClient as qc } from "./lib/queryClient";
-import { initDatabase, purgeLegacyStorage } from "./lib/db";
+import { initDatabase, purgeLegacyStorage, clearAllEntries } from "./lib/db";
 import { BottomNav as BottomNavPrimitive } from "./components/primitives/BottomNav";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
@@ -78,6 +78,14 @@ function AppNavigation() {
 
 export default function App() {
   useEffect(() => {
+    // One-time client purge: wipe any lingering past entries
+    const PURGE_KEY = "habittracker_entries_purged_v5";
+    if (typeof window !== "undefined" && window.localStorage && !window.localStorage.getItem(PURGE_KEY)) {
+      clearAllEntries().then(() => {
+        window.localStorage.setItem(PURGE_KEY, "true");
+      });
+    }
+
     // Purge stale local storage and initialize Dexie store on startup
     purgeLegacyStorage();
     initDatabase();

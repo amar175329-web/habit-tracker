@@ -8,6 +8,7 @@ export interface MoodOrbsProps {
   className?: string;
   showHeader?: boolean;
   showFeelingsLink?: boolean;
+  isLocked?: boolean;
 }
 
 interface OrbDef {
@@ -32,6 +33,7 @@ export function MoodOrbs({
   className = "",
   showHeader = true,
   showFeelingsLink = true,
+  isLocked = false,
 }: MoodOrbsProps) {
   const currentOrb = ORBS.find((o) => o.score === value) ?? ORBS[3];
 
@@ -50,24 +52,45 @@ export function MoodOrbs({
       {showHeader && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontWeight: 800, fontSize: "16px" }}>How are you feeling?</div>
-          <div style={{ fontSize: "12px", fontWeight: 800, color: "var(--co)" }}>
-            {currentOrb.label}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--co)" }}>
+              {currentOrb.label}
+            </span>
+            {isLocked && (
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  color: "var(--pr)",
+                  background: "var(--tint)",
+                  padding: "2px 7px",
+                  borderRadius: "99px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "3px",
+                }}
+              >
+                🔒 Locked
+              </span>
+            )}
           </div>
         </div>
       )}
 
       {/* Orbs Row */}
-      <div style={{ display: "flex", marginTop: "14px" }}>
+      <div style={{ display: "flex", marginTop: "14px", opacity: isLocked ? 0.9 : 1 }}>
         {ORBS.map((orb) => {
           const isSelected = orb.score === value;
           return (
             <div
               key={orb.score}
-              onClick={() => onChange?.(orb.score)}
+              onClick={() => {
+                if (!isLocked) onChange?.(orb.score);
+              }}
               style={{
                 flex: 1,
                 textAlign: "center",
-                cursor: onChange ? "pointer" : "default",
+                cursor: !isLocked && onChange ? "pointer" : "default",
               }}
             >
               <div
@@ -108,14 +131,18 @@ export function MoodOrbs({
         })}
       </div>
 
-      {showFeelingsLink && (
+      <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--mu)", marginTop: "10px", textAlign: "center" }}>
+        {isLocked ? "Feeling is set for today (locked)." : "Default: Good · You can change it once today"}
+      </div>
+
+      {showFeelingsLink && !isLocked && (
         <div
           onClick={onAddFeelings}
           style={{
             fontSize: "12.5px",
             fontWeight: 700,
             color: "var(--prt)",
-            marginTop: "12px",
+            marginTop: "10px",
             textAlign: "center",
             cursor: onAddFeelings ? "pointer" : "default",
           }}
