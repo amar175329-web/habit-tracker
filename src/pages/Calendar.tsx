@@ -17,8 +17,11 @@ export default function Calendar() {
     return `${y}-${m}-${d}`;
   }, []);
 
-  // Fetch all habit logs from Dexie
+  // Fetch all habits and habit logs from Dexie
+  const habits = useLiveQuery(() => db.habits.filter((h) => h.isActive).toArray(), []) ?? [];
   const allLogs = useLiveQuery(() => db.habit_logs.toArray(), []) ?? [];
+
+  const maxHabits = habits.length || 5;
 
   // Compute day scores for each date
   const dayScores = useMemo(() => {
@@ -46,8 +49,8 @@ export default function Calendar() {
     });
 
     const avg = loggedDays > 0 ? (totalScore / loggedDays).toFixed(1) : "0.0";
-    return { loggedDays, avg };
-  }, [dayScores, currentYear, currentMonth]);
+    return { loggedDays, avg, maxHabits };
+  }, [dayScores, currentYear, currentMonth, maxHabits]);
 
   const monthName = useMemo(() => {
     const d = new Date(currentYear, currentMonth - 1, 1);
@@ -194,7 +197,7 @@ export default function Calendar() {
             <div style={{ background: "var(--bg)", borderRadius: "18px", padding: "14px" }}>
               <div style={{ fontSize: "12px", color: "var(--mu)", fontWeight: 600 }}>Avg Score</div>
               <div style={{ fontFamily: "var(--num)", fontWeight: 700, fontSize: "22px", marginTop: "4px" }}>
-                {monthStats.avg} <span style={{ fontSize: "14px", color: "var(--mu)" }}>/ 5</span>
+                {monthStats.avg} <span style={{ fontSize: "14px", color: "var(--mu)" }}>/ {monthStats.maxHabits}</span>
               </div>
             </div>
           </div>

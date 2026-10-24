@@ -12,10 +12,10 @@ export interface CalendarGridProps {
 }
 
 export function CalendarGrid({
-  year = 2026,
-  month = 10,
+  year = new Date().getFullYear(),
+  month = new Date().getMonth() + 1,
   dayScores = {},
-  todayKey = "2026-10-23",
+  todayKey = new Date().toISOString().slice(0, 10),
   selectedDate,
   onSelectDate,
   className = "",
@@ -101,22 +101,9 @@ export function CalendarGrid({
             cellStyle.boxShadow = "0 0 0 2px var(--card), 0 0 0 4px var(--tx)";
           }
 
-          if (score === undefined) {
-            // Future unlogged day
-            cellStyle = {
-              ...cellStyle,
-              background: "transparent",
-              color: "var(--tr)",
-            };
-          } else if (score === 0) {
-            // Past day with 0 score
-            cellStyle = {
-              ...cellStyle,
-              background: "transparent",
-              color: "var(--mu)",
-              border: "1px dashed var(--tr)",
-            };
-          } else {
+          const isPast = dateStr < todayKey;
+
+          if (score !== undefined && score > 0) {
             // Scored day: intensity color-mix
             const pct = Math.min(100, Math.max(15, Math.round((score / 5) * 100)));
             const isHigh = pct >= 60;
@@ -124,6 +111,21 @@ export function CalendarGrid({
               ...cellStyle,
               background: `color-mix(in srgb, var(--pr) ${pct}%, var(--card))`,
               color: isHigh ? "var(--on)" : "var(--tx)",
+            };
+          } else if (isPast || (isToday && (score === undefined || score === 0))) {
+            // Past or today with 0 score: dashed outline
+            cellStyle = {
+              ...cellStyle,
+              background: "transparent",
+              color: isToday ? "var(--tx)" : "var(--mu)",
+              border: "1px dashed var(--tr)",
+            };
+          } else {
+            // Future unlogged day
+            cellStyle = {
+              ...cellStyle,
+              background: "transparent",
+              color: "var(--tr)",
             };
           }
 
