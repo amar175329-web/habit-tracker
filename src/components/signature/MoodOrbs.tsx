@@ -8,6 +8,8 @@ export interface MoodOrbsProps {
   className?: string;
   showHeader?: boolean;
   showFeelingsLink?: boolean;
+  changeCount?: number;
+  maxChanges?: number;
   isLocked?: boolean;
 }
 
@@ -33,9 +35,13 @@ export function MoodOrbs({
   className = "",
   showHeader = true,
   showFeelingsLink = true,
+  changeCount = 0,
+  maxChanges = 3,
   isLocked = false,
 }: MoodOrbsProps) {
   const currentOrb = ORBS.find((o) => o.score === value) ?? ORBS[3];
+  const effectiveLocked = isLocked || changeCount >= maxChanges;
+  const remaining = Math.max(0, maxChanges - changeCount);
 
   return (
     <div
@@ -56,7 +62,7 @@ export function MoodOrbs({
             <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--co)" }}>
               {currentOrb.label}
             </span>
-            {isLocked && (
+            {effectiveLocked ? (
               <span
                 style={{
                   fontSize: "10px",
@@ -70,27 +76,43 @@ export function MoodOrbs({
                   gap: "3px",
                 }}
               >
-                🔒 Locked
+                🔒 Locked ({maxChanges}/{maxChanges})
               </span>
-            )}
+            ) : changeCount > 0 ? (
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  color: "var(--co)",
+                  background: "var(--tint)",
+                  padding: "2px 7px",
+                  borderRadius: "99px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "3px",
+                }}
+              >
+                {remaining} left
+              </span>
+            ) : null}
           </div>
         </div>
       )}
 
       {/* Orbs Row */}
-      <div style={{ display: "flex", marginTop: "14px", opacity: isLocked ? 0.9 : 1 }}>
+      <div style={{ display: "flex", marginTop: "14px", opacity: effectiveLocked ? 0.9 : 1 }}>
         {ORBS.map((orb) => {
           const isSelected = orb.score === value;
           return (
             <div
               key={orb.score}
               onClick={() => {
-                if (!isLocked) onChange?.(orb.score);
+                if (!effectiveLocked) onChange?.(orb.score);
               }}
               style={{
                 flex: 1,
                 textAlign: "center",
-                cursor: !isLocked && onChange ? "pointer" : "default",
+                cursor: !effectiveLocked && onChange ? "pointer" : "default",
               }}
             >
               <div
@@ -132,10 +154,14 @@ export function MoodOrbs({
       </div>
 
       <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--mu)", marginTop: "10px", textAlign: "center" }}>
-        {isLocked ? "Feeling is set for today (locked)." : "Default: Good · You can change it once today"}
+        {effectiveLocked
+          ? `Feeling locked for today (${maxChanges}/${maxChanges} changes used).`
+          : changeCount === 0
+          ? `Default: Good · You can change it up to ${maxChanges} times today`
+          : `Changed ${changeCount}/${maxChanges} · ${remaining} change${remaining > 1 ? "s" : ""} left today`}
       </div>
 
-      {showFeelingsLink && !isLocked && (
+      {showFeelingsLink && !effectiveLocked && (
         <div
           onClick={onAddFeelings}
           style={{

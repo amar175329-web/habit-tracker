@@ -526,7 +526,10 @@ export default function Today() {
 
         {/* Mood Card */}
         {(() => {
-          const isMoodLocked = Boolean(currentMood?.isLocked) || (!isViewingToday && !isYesterday);
+          const changeCount = currentMood?.changeCount ?? (currentMood?.isLocked ? 3 : 0);
+          const isMoodLocked = Boolean(currentMood?.isLocked) || changeCount >= 3 || (!isViewingToday && !isYesterday);
+          const remaining = Math.max(0, 3 - changeCount);
+
           return (
             <div
               style={{
@@ -551,7 +554,7 @@ export default function Today() {
                       ? "Energized"
                       : "Good"}
                   </span>
-                  {isMoodLocked && (
+                  {isMoodLocked ? (
                     <span
                       style={{
                         fontSize: "10px",
@@ -562,19 +565,34 @@ export default function Today() {
                         borderRadius: "99px",
                       }}
                     >
-                      🔒 Locked
+                      🔒 Locked (3/3)
                     </span>
-                  )}
+                  ) : changeCount > 0 ? (
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        color: "var(--co)",
+                        background: "var(--tint)",
+                        padding: "2px 7px",
+                        borderRadius: "99px",
+                      }}
+                    >
+                      {remaining} left
+                    </span>
+                  ) : null}
                 </div>
               </div>
               <MoodOrbs
                 value={(currentMood?.score as MoodScore) || 4}
                 showHeader={false}
                 showFeelingsLink={false}
+                changeCount={changeCount}
+                maxChanges={3}
                 isLocked={isMoodLocked}
                 onChange={async (score) => {
                   if (!isMoodLocked && isHabitEditable(date, todayStr)) {
-                    await saveMood(date, score, currentMood?.emotions || [], todayStr, true);
+                    await saveMood(date, score, currentMood?.emotions || [], todayStr);
                   }
                 }}
               />
@@ -606,7 +624,7 @@ export default function Today() {
                 >
                   {currentMood?.emotions?.length
                     ? `Feelings: ${currentMood.emotions.join(", ")}`
-                    : "Set for today"}
+                    : "Locked for today (3/3 changes used)"}
                 </div>
               )}
             </div>
@@ -665,6 +683,8 @@ export default function Today() {
         today={todayStr}
         initialScore={currentMood?.score || 4}
         initialEmotions={currentMood?.emotions || []}
+        changeCount={currentMood?.changeCount ?? (currentMood?.isLocked ? 3 : 0)}
+        maxChanges={3}
         isLocked={Boolean(currentMood?.isLocked) || (!isViewingToday && !isYesterday)}
       />
     </div>

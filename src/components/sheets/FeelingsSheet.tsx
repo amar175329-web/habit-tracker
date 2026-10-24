@@ -8,6 +8,8 @@ export interface FeelingsSheetProps {
   today: string;
   initialScore?: number;
   initialEmotions?: string[];
+  changeCount?: number;
+  maxChanges?: number;
   isLocked?: boolean;
   onSaved?: () => void;
 }
@@ -42,12 +44,17 @@ export function FeelingsSheet({
   today,
   initialScore = 4,
   initialEmotions = [],
+  changeCount = 0,
+  maxChanges = 3,
   isLocked = false,
   onSaved,
 }: FeelingsSheetProps) {
   const [score, setScore] = useState<number>(initialScore);
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>(initialEmotions);
   const [customTag, setCustomTag] = useState("");
+
+  const effectiveLocked = isLocked || changeCount >= maxChanges;
+  const remaining = Math.max(0, maxChanges - changeCount);
 
   if (!isOpen) return null;
 
@@ -67,12 +74,12 @@ export function FeelingsSheet({
   };
 
   const handleSave = async () => {
-    if (isLocked) {
-      alert("Feeling has already been locked for today.");
+    if (effectiveLocked) {
+      alert(`Feeling changes limit reached (${maxChanges}/${maxChanges} used for today).`);
       return;
     }
     try {
-      await saveMood(date, score, selectedEmotions, today, true);
+      await saveMood(date, score, selectedEmotions, today);
       if (onSaved) onSaved();
       onClose();
     } catch (err: any) {
@@ -279,20 +286,26 @@ export function FeelingsSheet({
           <button
             type="button"
             onClick={handleSave}
+            disabled={effectiveLocked}
             style={{
               width: "100%",
               height: "50px",
               borderRadius: "25px",
-              background: "var(--pr)",
-              color: "var(--on)",
+              background: effectiveLocked ? "var(--ln)" : "var(--pr)",
+              color: effectiveLocked ? "var(--mu)" : "var(--on)",
               border: "none",
               fontWeight: 800,
               fontSize: "15px",
-              cursor: "pointer",
-              boxShadow: "0 8px 24px rgba(15, 60, 55, 0.2)",
+              cursor: effectiveLocked ? "not-allowed" : "pointer",
+              boxShadow: effectiveLocked ? "none" : "0 8px 24px rgba(15, 60, 55, 0.2)",
+              transition: "all 0.15s ease",
             }}
           >
-            Save Feelings
+            {effectiveLocked
+              ? `Limit Reached (${maxChanges}/${maxChanges} used)`
+              : changeCount === 0
+              ? `Save Feelings (${maxChanges} changes left)`
+              : `Save Feelings (${remaining} change${remaining > 1 ? "s" : ""} left)`}
           </button>
         </div>
       </div>

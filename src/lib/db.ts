@@ -32,6 +32,7 @@ export interface MoodLog {
   score: number; // 1: Rough, 2: Low, 3: Okay, 4: Good, 5: Energized
   emotions: string[];
   updatedAt: string;
+  changeCount?: number;
   isLocked?: boolean;
 }
 
@@ -308,6 +309,8 @@ export async function saveSleep(
   });
 }
 
+export const MAX_MOOD_CHANGES = 3;
+
 export async function initTodayMood(todayStr: string): Promise<MoodLog> {
   const existing = await db.mood_logs.get(todayStr);
   if (existing) {
@@ -319,7 +322,8 @@ export async function initTodayMood(todayStr: string): Promise<MoodLog> {
     score: 4, // Default Good
     emotions: [],
     updatedAt: now,
-    isLocked: false, // User can change it once
+    changeCount: 0,
+    isLocked: false,
   };
   await db.transaction("rw", db.mood_logs, db.outbox, async () => {
     await db.mood_logs.put(row);
@@ -337,25 +341,30 @@ export async function saveMood(
   date: string,
   score: number,
   emotions: string[],
-  today: string,
-  lock = true
-): Promise<void> {
+  today: string
+): Promise<MoodLog> {
   if (!isSleepOrMoodEditable(date, today)) {
     throw new Error(`Mood for ${date} is locked.`);
   }
 
   const existing = await db.mood_logs.get(date);
-  if (existing?.isLocked) {
-    throw new Error(`Feeling has already been set for today and cannot be changed.`);
+  const currentCount = existing?.changeCount ?? (existing?.isLocked ? MAX_MOOD_CHANGES : 0);
+
+  if (existing?.isLocked || currentCount >= MAX_MOOD_CHANGES) {
+    throw new Error(`Feeling changes limit reached (${MAX_MOOD_CHANGES}/${MAX_MOOD_CHANGES} used for today).`);
   }
 
+  const nextCount = currentCount + 1;
+  const isLocked = nextCount >= MAX_MOOD_CHANGES;
   const now = new Date().toISOString();
+
   const row: MoodLog = {
     date,
     score,
     emotions,
     updatedAt: now,
-    isLocked: lock,
+    changeCount: nextCount,
+    isLocked,
   };
 
   await db.transaction("rw", db.mood_logs, db.outbox, async () => {
@@ -367,6 +376,7 @@ export async function saveMood(
       ts: Date.now(),
     });
   });
+  return row;
 }
 
 export async function saveReflection(
