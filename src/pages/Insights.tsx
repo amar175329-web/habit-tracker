@@ -64,6 +64,19 @@ export default function Insights() {
     let runningPoints = 0;
     let runningPrevPeriodPoints = 0;
 
+    // Precompute which indices get an X-axis label to guarantee zero overlap (min ~60px separation)
+    const labelIndices = new Set<number>();
+    if (numDays <= 7) {
+      for (let idx = 0; idx < numDays; idx++) labelIndices.add(idx);
+    } else {
+      // Pick 5 evenly distributed indices including first (0) and last (numDays - 1)
+      const targetCount = 5;
+      const step = (numDays - 1) / (targetCount - 1);
+      for (let k = 0; k < targetCount; k++) {
+        labelIndices.add(Math.round(k * step));
+      }
+    }
+
     for (let i = 0; i < numDays; i++) {
       const d = fromMs(toMs(startDate) + i * 86400000);
       const prevPeriodDate = fromMs(toMs(d) - numDays * 86400000);
@@ -86,16 +99,12 @@ export default function Insights() {
 
       const isToday = d === todayStr;
 
-      // X-Axis tick label formatting
+      // X-Axis tick label formatting (only at spaced labelIndices)
       let label = "";
-      if (numDays === 7) {
-        label = dayLabels[dayOfWeekIdx];
-      } else if (numDays === 14) {
-        if (i % 2 === 0 || i === numDays - 1) {
-          label = `${dObj.getDate()} ${dObj.toLocaleDateString("en-US", { month: "short" })}`;
-        }
-      } else {
-        if (i % 6 === 0 || i === numDays - 1) {
+      if (labelIndices.has(i)) {
+        if (numDays <= 7) {
+          label = dayLabels[dayOfWeekIdx];
+        } else {
           label = `${dObj.getDate()} ${dObj.toLocaleDateString("en-US", { month: "short" })}`;
         }
       }
