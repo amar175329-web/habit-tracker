@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { App as CapApp } from "@capacitor/app";
 import { ThemeProvider } from "./lib/theme";
 import { queryClient as qc } from "./lib/queryClient";
-import { initDatabase, purgeLegacyStorage, clearAllEntries } from "./lib/db";
+import { initDatabase, purgeLegacyStorage, clearAllEntries, db, type MoodLog } from "./lib/db";
 import { BottomNav as BottomNavPrimitive } from "./components/primitives/BottomNav";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
@@ -88,6 +88,8 @@ export default function App() {
 
     // Purge stale local storage and initialize Dexie store on startup
     purgeLegacyStorage();
+    // Clean up any legacy unconfirmed auto-seeded default mood logs
+    db.mood_logs.filter((m: MoodLog) => !m.changeCount || m.changeCount === 0).delete().catch(() => {});
     initDatabase();
 
     // Hardware back-button listener for Android

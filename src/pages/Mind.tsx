@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, initTodayMood } from "../lib/db";
+import { db } from "../lib/db";
 import { fromMs, toMs } from "../lib/habitRules";
 import { ReflectionsList } from "./ReflectionsList";
 
@@ -14,10 +14,6 @@ export default function Mind() {
     const d = String(now.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   }, []);
-
-  useEffect(() => {
-    initTodayMood(todayStr).catch(() => {});
-  }, [todayStr]);
 
   const allMoods = useLiveQuery(() => db.mood_logs.toArray(), []) ?? [];
   const allSleep = useLiveQuery(() => db.sleep_logs.toArray(), []) ?? [];

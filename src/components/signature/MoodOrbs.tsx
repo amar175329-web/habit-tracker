@@ -29,7 +29,7 @@ const ORBS: OrbDef[] = [
 ];
 
 export function MoodOrbs({
-  value = 4,
+  value,
   onChange,
   onAddFeelings,
   className = "",
@@ -39,7 +39,7 @@ export function MoodOrbs({
   maxChanges = 3,
   isLocked = false,
 }: MoodOrbsProps) {
-  const currentOrb = ORBS.find((o) => o.score === value) ?? ORBS[3];
+  const currentOrb = ORBS.find((o) => o.score === value);
   const effectiveLocked = isLocked || changeCount >= maxChanges;
   const remaining = Math.max(0, maxChanges - changeCount);
 
@@ -59,9 +59,11 @@ export function MoodOrbs({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontWeight: 800, fontSize: "16px" }}>How are you feeling?</div>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--co)" }}>
-              {currentOrb.label}
-            </span>
+            {currentOrb && (
+              <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--co)" }}>
+                {currentOrb.label}
+              </span>
+            )}
             {effectiveLocked ? (
               <span
                 style={{
@@ -156,8 +158,8 @@ export function MoodOrbs({
       <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--mu)", marginTop: "10px", textAlign: "center" }}>
         {effectiveLocked
           ? `Feeling locked for today (${maxChanges}/${maxChanges} changes used).`
-          : changeCount === 0
-          ? `Default: Good · You can change it up to ${maxChanges} times today`
+          : changeCount === 0 && !value
+          ? `Tap an orb to log your feeling (up to ${maxChanges} changes per day)`
           : `Changed ${changeCount}/${maxChanges} · ${remaining} change${remaining > 1 ? "s" : ""} left today`}
       </div>
 

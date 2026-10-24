@@ -311,32 +311,6 @@ export async function saveSleep(
 
 export const MAX_MOOD_CHANGES = 3;
 
-export async function initTodayMood(todayStr: string): Promise<MoodLog> {
-  const existing = await db.mood_logs.get(todayStr);
-  if (existing) {
-    return existing;
-  }
-  const now = new Date().toISOString();
-  const row: MoodLog = {
-    date: todayStr,
-    score: 4, // Default Good
-    emotions: [],
-    updatedAt: now,
-    changeCount: 0,
-    isLocked: false,
-  };
-  await db.transaction("rw", db.mood_logs, db.outbox, async () => {
-    await db.mood_logs.put(row);
-    await db.outbox.add({
-      table: "mood_logs",
-      op: "update",
-      row,
-      ts: Date.now(),
-    });
-  });
-  return row;
-}
-
 export async function saveMood(
   date: string,
   score: number,

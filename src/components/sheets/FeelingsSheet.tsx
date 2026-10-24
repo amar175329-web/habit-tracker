@@ -42,14 +42,14 @@ export function FeelingsSheet({
   onClose,
   date,
   today,
-  initialScore = 4,
+  initialScore,
   initialEmotions = [],
   changeCount = 0,
   maxChanges = 3,
   isLocked = false,
   onSaved,
 }: FeelingsSheetProps) {
-  const [score, setScore] = useState<number>(initialScore);
+  const [score, setScore] = useState<number | undefined>(initialScore);
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>(initialEmotions);
   const [customTag, setCustomTag] = useState("");
 
@@ -76,6 +76,10 @@ export function FeelingsSheet({
   const handleSave = async () => {
     if (effectiveLocked) {
       alert(`Feeling changes limit reached (${maxChanges}/${maxChanges} used for today).`);
+      return;
+    }
+    if (!score) {
+      alert("Please select a feeling first.");
       return;
     }
     try {
@@ -286,23 +290,25 @@ export function FeelingsSheet({
           <button
             type="button"
             onClick={handleSave}
-            disabled={effectiveLocked}
+            disabled={effectiveLocked || !score}
             style={{
               width: "100%",
               height: "50px",
               borderRadius: "25px",
-              background: effectiveLocked ? "var(--ln)" : "var(--pr)",
-              color: effectiveLocked ? "var(--mu)" : "var(--on)",
+              background: effectiveLocked || !score ? "var(--ln)" : "var(--pr)",
+              color: effectiveLocked || !score ? "var(--mu)" : "var(--on)",
               border: "none",
               fontWeight: 800,
               fontSize: "15px",
-              cursor: effectiveLocked ? "not-allowed" : "pointer",
-              boxShadow: effectiveLocked ? "none" : "0 8px 24px rgba(15, 60, 55, 0.2)",
+              cursor: effectiveLocked || !score ? "not-allowed" : "pointer",
+              boxShadow: effectiveLocked || !score ? "none" : "0 8px 24px rgba(15, 60, 55, 0.2)",
               transition: "all 0.15s ease",
             }}
           >
             {effectiveLocked
               ? `Limit Reached (${maxChanges}/${maxChanges} used)`
+              : !score
+              ? "Select a feeling above"
               : changeCount === 0
               ? `Save Feelings (${maxChanges} changes left)`
               : `Save Feelings (${remaining} change${remaining > 1 ? "s" : ""} left)`}

@@ -6,7 +6,6 @@ import {
   toggleHabit,
   saveMood,
   initDatabase,
-  initTodayMood,
 } from "../lib/db";
 import {
   weekStart,
@@ -53,11 +52,6 @@ export default function Today() {
   useMemo(() => {
     initDatabase(true);
   }, []);
-
-  // Ensure Today has default Good mood seeded so Mind reflects it immediately
-  useEffect(() => {
-    initTodayMood(todayStr).catch(() => {});
-  }, [todayStr]);
 
   // Reactive Dexie Queries
   const habits = useLiveQuery(() => db.habits.filter((h) => h.isActive).sortBy("sort"), []) ?? [];
@@ -543,17 +537,19 @@ export default function Today() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontWeight: 800, fontSize: "16px" }}>How are you feeling?</div>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--co)" }}>
-                    {currentMood?.score === 1
-                      ? "Rough"
-                      : currentMood?.score === 2
-                      ? "Low"
-                      : currentMood?.score === 3
-                      ? "Okay"
-                      : currentMood?.score === 5
-                      ? "Energized"
-                      : "Good"}
-                  </span>
+                  {currentMood?.score ? (
+                    <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--co)" }}>
+                      {currentMood.score === 1
+                        ? "Rough"
+                        : currentMood.score === 2
+                        ? "Low"
+                        : currentMood.score === 3
+                        ? "Okay"
+                        : currentMood.score === 4
+                        ? "Good"
+                        : "Energized"}
+                    </span>
+                  ) : null}
                   {isMoodLocked ? (
                     <span
                       style={{
@@ -584,7 +580,7 @@ export default function Today() {
                 </div>
               </div>
               <MoodOrbs
-                value={(currentMood?.score as MoodScore) || 4}
+                value={currentMood?.score as MoodScore | undefined}
                 showHeader={false}
                 showFeelingsLink={false}
                 changeCount={changeCount}
@@ -681,7 +677,7 @@ export default function Today() {
         onClose={() => setFeelingsOpen(false)}
         date={date}
         today={todayStr}
-        initialScore={currentMood?.score || 4}
+        initialScore={currentMood?.score}
         initialEmotions={currentMood?.emotions || []}
         changeCount={currentMood?.changeCount ?? (currentMood?.isLocked ? 3 : 0)}
         maxChanges={3}
