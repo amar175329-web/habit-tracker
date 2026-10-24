@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
@@ -63,12 +63,32 @@ export default function Today() {
   const allSleepLogs = useLiveQuery(() => db.sleep_logs.toArray(), []) ?? [];
   const allReflections = useLiveQuery(() => db.reflections.toArray(), []) ?? [];
 
-  // Logs indexed by habitId for the selected date
+  // Optimistic overrides for 0ms buttery-smooth UI feedback
+  const [optimisticOverrides, setOptimisticOverrides] = useState<Map<string, number>>(new Map());
+
+  // Clear optimistic override once Dexie commits and emits the matching state
+  useEffect(() => {
+    if (optimisticOverrides.size === 0) return;
+    setOptimisticOverrides((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      currentDayLogs.forEach((l) => {
+        if (next.has(l.habitId) && next.get(l.habitId) === l.state) {
+          next.delete(l.habitId);
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [currentDayLogs, optimisticOverrides.size]);
+
+  // Logs indexed by habitId for the selected date (optimistic overrides take instant precedence)
   const habitStateMap = useMemo(() => {
     const map = new Map<string, number>();
     currentDayLogs.forEach((l) => map.set(l.habitId, l.state));
+    optimisticOverrides.forEach((val, key) => map.set(key, val));
     return map;
-  }, [currentDayLogs]);
+  }, [currentDayLogs, optimisticOverrides]);
 
   // Overall logs map for streak and weekly scoring
   const logsByHabit = useMemo(() => {
@@ -77,8 +97,12 @@ export default function Today() {
       if (!map.has(l.habitId)) map.set(l.habitId, new Map());
       map.get(l.habitId)!.set(l.date, l.state);
     });
+    optimisticOverrides.forEach((val, key) => {
+      if (!map.has(key)) map.set(key, new Map());
+      map.get(key)!.set(date, val);
+    });
     return map;
-  }, [allLogs]);
+  }, [allLogs, optimisticOverrides, date]);
 
   // Weekly scoring calculations
   const totalWeeklyMax = useMemo(() => weeklyMax(habits), [habits]);
@@ -180,9 +204,23 @@ export default function Today() {
   }, [date]);
 
   const handleToggleHabit = async (habitId: string) => {
+    const current = habitStateMap.get(habitId) ?? 0;
+    let next = 0;
+    if (current === 0) next = 2;
+    else if (current === 2) next = 1;
+    else next = 0;
+
+    // Instant optimistic update (0ms UI latency!)
+    setOptimisticOverrides((prev) => new Map(prev).set(habitId, next));
+
     try {
       await toggleHabit(habitId, date, todayStr);
     } catch (err: any) {
+      setOptimisticOverrides((prev) => {
+        const rollback = new Map(prev);
+        rollback.delete(habitId);
+        return rollback;
+      });
       alert(err.message || "Failed to update habit");
     }
   };

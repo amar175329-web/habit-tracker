@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, toggleHabit } from "../lib/db";
@@ -32,11 +32,29 @@ export default function DayDetail() {
   const moodLog = useLiveQuery(() => db.mood_logs.get(date), [date]);
   const reflection = useLiveQuery(() => db.reflections.get(date), [date]);
 
+  const [optimisticOverrides, setOptimisticOverrides] = useState<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    if (optimisticOverrides.size === 0) return;
+    setOptimisticOverrides((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      dayLogs.forEach((l) => {
+        if (next.has(l.habitId) && next.get(l.habitId) === l.state) {
+          next.delete(l.habitId);
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [dayLogs, optimisticOverrides.size]);
+
   const logMap = useMemo(() => {
     const map = new Map<string, number>();
     dayLogs.forEach((l) => map.set(l.habitId, l.state));
+    optimisticOverrides.forEach((val, key) => map.set(key, val));
     return map;
-  }, [dayLogs]);
+  }, [dayLogs, optimisticOverrides]);
 
   const formattedDate = useMemo(() => {
     try {
@@ -53,9 +71,23 @@ export default function DayDetail() {
 
   const handleToggle = async (habitId: string) => {
     if (!editable) return;
+    const current = logMap.get(habitId) ?? 0;
+    let next = 0;
+    if (current === 0) next = 2;
+    else if (current === 2) next = 1;
+    else next = 0;
+
+    // Instant optimistic update (0ms UI latency!)
+    setOptimisticOverrides((prev) => new Map(prev).set(habitId, next));
+
     try {
       await toggleHabit(habitId, date, todayStr);
     } catch (err: any) {
+      setOptimisticOverrides((prev) => {
+        const rollback = new Map(prev);
+        rollback.delete(habitId);
+        return rollback;
+      });
       alert(err.message || "Failed to update");
     }
   };

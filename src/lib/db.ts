@@ -164,6 +164,9 @@ export function purgeLegacyStorage(): void {
   }
 }
 
+// In-flight state tracker to prevent click races before Dexie transaction finishes
+const inFlightToggles = new Map<string, number>();
+
 // -----------------------------------------------------------------------------
 // MUTATIONS (All mutations update Dexie first, then push to outbox)
 // -----------------------------------------------------------------------------
@@ -178,14 +181,21 @@ export async function toggleHabit(
   }
 
   const logId = `${habitId}_${date}`;
-  const existing = await db.habit_logs.get(logId);
-  const currentState = existing ? existing.state : 0;
+  let currentState = 0;
+  if (inFlightToggles.has(logId)) {
+    currentState = inFlightToggles.get(logId)!;
+  } else {
+    const existing = await db.habit_logs.get(logId);
+    currentState = existing ? existing.state : 0;
+  }
 
   // Cycle: Pending (0) -> Full (2) -> Half (1) -> Pending (0)
   let nextState = 0;
   if (currentState === 0) nextState = 2;
   else if (currentState === 2) nextState = 1;
   else nextState = 0;
+
+  inFlightToggles.set(logId, nextState);
 
   const now = new Date().toISOString();
   const row: HabitLog = {
@@ -196,15 +206,23 @@ export async function toggleHabit(
     updatedAt: now,
   };
 
-  await db.transaction("rw", db.habit_logs, db.outbox, async () => {
-    await db.habit_logs.put(row);
-    await db.outbox.add({
-      table: "habit_logs",
-      op: "update",
-      row,
-      ts: Date.now(),
+  try {
+    await db.transaction("rw", db.habit_logs, db.outbox, async () => {
+      await db.habit_logs.put(row);
+      await db.outbox.add({
+        table: "habit_logs",
+        op: "update",
+        row,
+        ts: Date.now(),
+      });
     });
-  });
+  } finally {
+    setTimeout(() => {
+      if (inFlightToggles.get(logId) === nextState) {
+        inFlightToggles.delete(logId);
+      }
+    }, 300);
+  }
 
   return nextState;
 }

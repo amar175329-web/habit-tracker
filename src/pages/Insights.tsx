@@ -4,7 +4,6 @@ import { db } from "../lib/db";
 import {
   fromMs,
   toMs,
-  weekStart,
   goalDaysDone,
   streakDays,
 } from "../lib/habitRules";
@@ -36,58 +35,106 @@ export default function Insights() {
     return map;
   }, [allLogs]);
 
-  // Generate terrain chart data
-  const { terrainPoints, currentTotalPoints } = useMemo(() => {
-    const startOfWeek = weekStart(todayStr);
+  // Generate terrain chart data based on active range
+  const {
+    terrainPoints,
+    currentTotalPoints,
+    milestone,
+    dateRangeLabel,
+    rangeSubtitle,
+    currentLabel,
+  } = useMemo(() => {
+    let numDays = 7;
+    if (range === "7D") numDays = 7;
+    else if (range === "14D") numDays = 14;
+    else if (range === "30D") numDays = 30;
+    else if (range === "ALL") {
+      let earliestDate = todayStr;
+      allLogs.forEach((l) => {
+        if (l.date && l.date < earliestDate) earliestDate = l.date;
+      });
+      const diff = Math.max(30, Math.min(90, Math.round((toMs(todayStr) - toMs(earliestDate)) / 86400000) + 1));
+      numDays = diff;
+    }
+
+    const startDate = fromMs(toMs(todayStr) - (numDays - 1) * 86400000);
     const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const points: TerrainPoint[] = [];
 
-    let runningThisWeek = 0;
-    let runningLastWeek = 0;
+    let runningPoints = 0;
+    let runningPrevPeriodPoints = 0;
 
-    // Build 7 days of the week starting from Monday
-    for (let i = 0; i < 7; i++) {
-      const d = fromMs(toMs(startOfWeek) + i * 86400000);
-      const lastWeekDate = fromMs(toMs(d) - 7 * 86400000);
+    for (let i = 0; i < numDays; i++) {
+      const d = fromMs(toMs(startDate) + i * 86400000);
+      const prevPeriodDate = fromMs(toMs(d) - numDays * 86400000);
+      const dObj = new Date(`${d}T12:00:00`);
+      const dayOfWeekIdx = dObj.getDay();
 
-      const dayOfWeekIdx = new Date(`${d}T12:00:00`).getDay();
-      const label = dayLabels[dayOfWeekIdx];
-
-      // Points earned this day
       let dayScore = 0;
-      let lastWeekDayScore = 0;
+      let prevPeriodScore = 0;
 
       habits.forEach((h) => {
         const st = logsByHabit.get(h.id)?.get(d) ?? 0;
         dayScore += st === 2 ? 1 : st === 1 ? 0.5 : 0;
 
-        const stPrev = logsByHabit.get(h.id)?.get(lastWeekDate) ?? 0;
-        lastWeekDayScore += stPrev === 2 ? 1 : stPrev === 1 ? 0.5 : 0;
+        const stPrev = logsByHabit.get(h.id)?.get(prevPeriodDate) ?? 0;
+        prevPeriodScore += stPrev === 2 ? 1 : stPrev === 1 ? 0.5 : 0;
       });
 
-      if (d <= todayStr) {
-        runningThisWeek += dayScore;
+      runningPoints += dayScore;
+      runningPrevPeriodPoints += prevPeriodScore;
+
+      const isToday = d === todayStr;
+
+      // X-Axis tick label formatting
+      let label = "";
+      if (numDays === 7) {
+        label = dayLabels[dayOfWeekIdx];
+      } else if (numDays === 14) {
+        if (i % 2 === 0 || i === numDays - 1) {
+          label = `${dObj.getDate()} ${dObj.toLocaleDateString("en-US", { month: "short" })}`;
+        }
+      } else {
+        if (i % 6 === 0 || i === numDays - 1) {
+          label = `${dObj.getDate()} ${dObj.toLocaleDateString("en-US", { month: "short" })}`;
+        }
       }
-      runningLastWeek += lastWeekDayScore;
 
       points.push({
         dayLabel: label,
-        pointsEarned: d <= todayStr ? runningThisWeek : runningThisWeek,
-        lastWeekPoints: runningLastWeek,
+        pointsEarned: runningPoints,
+        lastWeekPoints: runningPrevPeriodPoints,
+        isToday,
       });
     }
 
-    return { terrainPoints: points, currentTotalPoints: runningThisWeek };
-  }, [todayStr, habits, logsByHabit]);
+    const milestone = range === "7D" ? 10 : range === "14D" ? 20 : range === "30D" ? 50 : 100;
 
-  // Date range label
-  const dateRangeLabel = useMemo(() => {
-    const start = weekStart(todayStr);
-    const end = fromMs(toMs(start) + 6 * 86400000);
-    const sDate = new Date(`${start}T12:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "short" });
-    const eDate = new Date(`${end}T12:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "short" });
-    return `${sDate} – ${eDate}`;
-  }, [todayStr]);
+    const sDateObj = new Date(`${startDate}T12:00:00`);
+    const eDateObj = new Date(`${todayStr}T12:00:00`);
+    const sFormatted = sDateObj.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+    const eFormatted = eDateObj.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+    const rangeLabel = `${sFormatted} – ${eFormatted}`;
+
+    let sub = "pts this week · all-time high";
+    if (range === "7D") sub = "pts in 7 days · all-time high";
+    else if (range === "14D") sub = "pts in 14 days · all-time high";
+    else if (range === "30D") sub = "pts in 30 days · all-time high";
+    else if (range === "ALL") sub = "pts all time · all-time high";
+
+    const todayName = eDateObj.toLocaleDateString("en-US", { weekday: "short" });
+    const todayNum = eDateObj.getDate();
+    const curLabel = `${todayName} ${todayNum} · ${runningPoints.toFixed(0)} pts`;
+
+    return {
+      terrainPoints: points,
+      currentTotalPoints: runningPoints,
+      milestone,
+      dateRangeLabel: rangeLabel,
+      rangeSubtitle: sub,
+      currentLabel: curLabel,
+    };
+  }, [range, todayStr, habits, logsByHabit, allLogs]);
 
   // Habit consistency stats
   const habitConsistency = useMemo(() => {
@@ -200,7 +247,7 @@ export default function Insights() {
               MOMENTUM TERRAIN
             </div>
             <div style={{ display: "flex", gap: "4px" }}>
-              {(["7D", "14D", "30D"] as const).map((r) => (
+              {(["7D", "14D", "30D", "ALL"] as const).map((r) => (
                 <button
                   key={r}
                   type="button"
@@ -222,12 +269,29 @@ export default function Insights() {
             </div>
           </div>
 
+          <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "10px" }}>
+            <span
+              style={{
+                fontFamily: "Space Grotesk, sans-serif",
+                fontWeight: 700,
+                fontSize: "34px",
+              }}
+            >
+              +{currentTotalPoints.toFixed(0)}
+            </span>
+            <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--prt)" }}>
+              {rangeSubtitle}
+            </span>
+          </div>
+
           <TerrainChart
             days={terrainPoints}
             currentScore={currentTotalPoints}
-            currentLabel={`${currentTotalPoints.toFixed(0)} pts`}
-            showHeader={false}
+            currentLabel={currentLabel}
+            milestone={milestone}
             range={range}
+            rangeSubtitle={rangeSubtitle}
+            showHeader={false}
           />
         </div>
 

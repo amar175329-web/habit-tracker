@@ -1,7 +1,10 @@
+import { useMemo } from "react";
+
 export interface TerrainPoint {
   dayLabel: string;
   pointsEarned: number;
   lastWeekPoints?: number;
+  isToday?: boolean;
 }
 
 export interface TerrainChartProps {
@@ -10,6 +13,7 @@ export interface TerrainChartProps {
   currentLabel?: string;
   milestone?: number;
   range?: "7D" | "14D" | "30D" | "ALL";
+  rangeSubtitle?: string;
   onRangeChange?: (range: "7D" | "14D" | "30D" | "ALL") => void;
   className?: string;
   showHeader?: boolean;
@@ -21,7 +25,7 @@ const DEFAULT_DAYS: TerrainPoint[] = [
   { dayLabel: "Wed", pointsEarned: 0, lastWeekPoints: 0 },
   { dayLabel: "Thu", pointsEarned: 0, lastWeekPoints: 0 },
   { dayLabel: "Fri", pointsEarned: 0, lastWeekPoints: 0 },
-  { dayLabel: "Sat", pointsEarned: 0, lastWeekPoints: 0 },
+  { dayLabel: "Sat", pointsEarned: 0, lastWeekPoints: 0, isToday: true },
   { dayLabel: "Sun", pointsEarned: 0, lastWeekPoints: 0 },
 ];
 
@@ -31,16 +35,26 @@ export function TerrainChart({
   currentLabel = "0 pts",
   milestone = 10,
   range = "7D",
+  rangeSubtitle = "pts this week · all-time high",
   onRangeChange,
   className = "",
   showHeader = true,
 }: TerrainChartProps) {
   // SVG coordinates: X from 20 to 310 (width 290)
-  // Y from 170 (baseline, 0 pts) to 20 (top, 20 pts) -> scale: 150px for 20 pts -> 7.5px per point
   const xStart = 20;
   const xEnd = 310;
   const yBaseline = 170;
-  const pxPerPt = 7.5;
+
+  // Dynamic Y scaling: fits any range (7D, 14D, 30D, ALL) and any score without clipping
+  const allValues = [
+    ...days.map((d) => d.pointsEarned),
+    ...days.map((d) => d.lastWeekPoints ?? 0),
+    milestone || 10,
+    currentScore || 0,
+  ];
+  const maxPts = Math.max(10, ...allValues);
+  // Y baseline is 170, headroom top is 24px (146px height)
+  const pxPerPt = 146 / (maxPts * 1.15);
 
   const numPoints = Math.max(1, days.length - 1);
   const xStep = (xEnd - xStart) / numPoints;
@@ -48,7 +62,7 @@ export function TerrainChart({
   const pointsCoords = days.map((d, i) => {
     const x = xStart + i * xStep;
     const y = Math.max(20, yBaseline - d.pointsEarned * pxPerPt);
-    return { x, y, day: d.dayLabel };
+    return { x, y, day: d.dayLabel, isToday: d.isToday };
   });
 
   const lastWeekCoords = days.map((d, i) => {
@@ -73,10 +87,23 @@ export function TerrainChart({
 
   const linePath = makeCubicPath(pointsCoords);
   const lastWeekPath = makeCubicPath(lastWeekCoords);
-  const areaPath = `${linePath} L${xEnd} ${yBaseline} L${xStart} ${yBaseline}Z`;
+  const areaPath = pointsCoords.length > 0
+    ? `${linePath} L${pointsCoords[pointsCoords.length - 1].x} ${yBaseline} L${pointsCoords[0].x} ${yBaseline}Z`
+    : "";
 
-  const lastCoord = pointsCoords[pointsCoords.length - 1] ?? { x: xEnd, y: 42.5 };
-  const milestoneY = yBaseline - milestone * pxPerPt;
+  // Active point index (pops on Today!)
+  const activeIdx = useMemo(() => {
+    const todayIndex = days.findIndex((d) => d.isToday);
+    if (todayIndex !== -1) return todayIndex;
+    return Math.max(0, days.length - 1);
+  }, [days]);
+
+  const activeCoord = pointsCoords[activeIdx] ?? { x: xEnd, y: yBaseline };
+  const milestoneY = Math.max(25, yBaseline - milestone * pxPerPt);
+
+  // Tooltip X coordinate clamped inside [20, 212] so it stays within viewBox
+  const tooltipX = Math.min(212, Math.max(20, activeCoord.x - 49));
+  const tooltipY = Math.max(5, activeCoord.y - 36);
 
   return (
     <div
@@ -108,21 +135,23 @@ export function TerrainChart({
               {(["7D", "14D", "30D", "ALL"] as const).map((r) => {
                 const isSelected = range === r;
                 return (
-                  <span
+                  <button
                     key={r}
+                    type="button"
                     onClick={() => onRangeChange?.(r)}
                     style={{
                       fontSize: "12px",
                       fontWeight: 700,
                       padding: "6px 12px",
                       borderRadius: "99px",
+                      border: "none",
                       background: isSelected ? "var(--pr)" : "var(--bg)",
                       color: isSelected ? "var(--on)" : "var(--mu)",
                       cursor: onRangeChange ? "pointer" : "default",
                     }}
                   >
                     {r}
-                  </span>
+                  </button>
                 );
               })}
             </div>
@@ -136,10 +165,10 @@ export function TerrainChart({
                 fontSize: "34px",
               }}
             >
-              +{currentScore}
+              +{currentScore.toFixed(0)}
             </span>
             <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--prt)" }}>
-              pts this week · all-time high
+              {rangeSubtitle}
             </span>
           </div>
         </>
@@ -174,7 +203,7 @@ export function TerrainChart({
           />
         ))}
 
-        {/* Last Week Dashed Curve (Indigo) */}
+        {/* Last Week / Previous Period Dashed Curve (Indigo) */}
         <path
           d={lastWeekPath}
           fill="none"
@@ -217,55 +246,68 @@ export function TerrainChart({
           {milestone} pts milestone
         </text>
 
-        {/* Endpoint Highlight Glow */}
-        <circle
-          cx={lastCoord.x}
-          cy={lastCoord.y}
-          r="12"
-          style={{ fill: "var(--pr)", opacity: 0.2 }}
-        />
-        <circle
-          cx={lastCoord.x}
-          cy={lastCoord.y}
-          r="6"
-          strokeWidth="3"
-          style={{ fill: "var(--card)", stroke: "var(--pr)" }}
-        />
+        {/* Endpoint Highlight Glow — pops on Today! */}
+        {currentScore > 0 && (
+          <>
+            <circle
+              cx={activeCoord.x}
+              cy={activeCoord.y}
+              r="12"
+              style={{ fill: "var(--pr)", opacity: 0.25 }}
+            />
+            <circle
+              cx={activeCoord.x}
+              cy={activeCoord.y}
+              r="6"
+              strokeWidth="3"
+              style={{ fill: "var(--card)", stroke: "var(--pr)" }}
+            />
+          </>
+        )}
 
         {/* Tooltip Badge */}
-        <rect
-          x="212"
-          y="2.5"
-          width="98"
-          height="28"
-          rx="10"
-          style={{ fill: "var(--tx)" }}
-        />
-        <text
-          x="261"
-          y="20.5"
-          textAnchor="middle"
-          fontSize="11"
-          fontWeight="700"
-          style={{ fill: "var(--bg)" }}
-        >
-          {currentLabel}
-        </text>
+        {currentScore > 0 && (
+          <g transform={`translate(${tooltipX}, ${tooltipY})`}>
+            <rect
+              x="0"
+              y="0"
+              width="98"
+              height="26"
+              rx="10"
+              style={{ fill: "var(--tx)" }}
+            />
+            <text
+              x="49"
+              y="17"
+              textAnchor="middle"
+              fontSize="11"
+              fontWeight="700"
+              style={{ fill: "var(--bg)" }}
+            >
+              {currentLabel}
+            </text>
+          </g>
+        )}
 
         {/* X-Axis Labels */}
-        {pointsCoords.map((pt, i) => (
-          <text
-            key={`lbl-${i}`}
-            x={pt.x}
-            y="192"
-            textAnchor="middle"
-            fontSize="10"
-            fontWeight="700"
-            style={{ fill: "var(--mu)" }}
-          >
-            {pt.day}
-          </text>
-        ))}
+        {pointsCoords.map((pt, i) => {
+          if (!pt.day) return null;
+          return (
+            <text
+              key={`lbl-${i}`}
+              x={pt.x}
+              y="192"
+              textAnchor="middle"
+              fontSize={days.length > 14 ? "9" : "10"}
+              fontWeight={pt.isToday ? "800" : "700"}
+              style={{
+                fill: pt.isToday ? "var(--pr)" : "var(--mu)",
+              }}
+            >
+              {pt.day}
+            </text>
+          );
+        })}
       </svg>
 
       <div
@@ -276,7 +318,7 @@ export function TerrainChart({
           marginTop: "6px",
         }}
       >
-        Teal = your total points climbing. Dashed purple = last week. Dotted line = milestone every 10 pts.
+        Teal = your total points climbing. Dashed purple = last week. Dotted line = milestone every {milestone} pts.
       </div>
     </div>
   );
