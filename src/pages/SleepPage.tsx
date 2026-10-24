@@ -94,7 +94,7 @@ export default function SleepPage() {
     for (let i = 0; i < 7; i++) {
       const d = fromMs(toMs(start) + i * 86400000);
       const log = allSleep.find((s) => s.date === d);
-      const mins = log ? log.durationMin : (i === 4 ? 450 : i === 0 ? 360 : i === 1 ? 450 : i === 2 ? 480 : i === 3 ? 390 : 0);
+      const mins = log ? log.durationMin : 0;
       const hours = mins / 60;
       const inTarget = hours >= 7 && hours <= 9;
       bars.push({

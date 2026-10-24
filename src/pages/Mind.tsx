@@ -22,7 +22,7 @@ export default function Mind() {
   // Mood statistics
   const moodStats = useMemo(() => {
     if (allMoods.length === 0) {
-      return { avg: "3.5", highDays: 2, lowDays: 1 };
+      return { avg: "—", highDays: 0, lowDays: 0 };
     }
     const sum = allMoods.reduce((acc, m) => acc + m.score, 0);
     const avg = (sum / allMoods.length).toFixed(1);
@@ -68,8 +68,18 @@ export default function Mind() {
       }
     });
 
-    const highAvg = highSleepCount > 0 ? Math.round(highSleepTotal / highSleepCount) : 460;
-    const lowAvg = lowSleepCount > 0 ? Math.round(lowSleepTotal / lowSleepCount) : 370;
+    if (highSleepCount === 0 && lowSleepCount === 0) {
+      return {
+        hasData: false,
+        highCount: 0,
+        lowCount: 0,
+        highStr: "",
+        lowStr: "",
+      };
+    }
+
+    const highAvg = highSleepCount > 0 ? Math.round(highSleepTotal / highSleepCount) : 0;
+    const lowAvg = lowSleepCount > 0 ? Math.round(lowSleepTotal / lowSleepCount) : 0;
 
     const highH = Math.floor(highAvg / 60);
     const highM = highAvg % 60;
@@ -77,6 +87,9 @@ export default function Mind() {
     const lowM = lowAvg % 60;
 
     return {
+      hasData: true,
+      highCount: highSleepCount,
+      lowCount: lowSleepCount,
       highStr: `${highH}h ${highM}m`,
       lowStr: `${lowH}h ${lowM}m`,
     };
@@ -213,8 +226,19 @@ export default function Mind() {
             {/* Mood and Sleep Card */}
             <div style={{ background: "var(--card)", border: "1px solid var(--ln)", borderRadius: "24px", padding: "16px", marginTop: "12px" }}>
               <div style={{ fontSize: "11px", letterSpacing: ".14em", fontWeight: 700, color: "var(--mu)" }}>MOOD AND SLEEP</div>
-              <div style={{ fontSize: "14px", lineHeight: 1.55, marginTop: "8px" }}>
-                On your best days you slept <b>{sleepCorrelation.highStr}</b> on average. On low days: <b>{sleepCorrelation.lowStr}</b>.
+              <div style={{ fontSize: "14px", lineHeight: 1.55, marginTop: "8px", color: sleepCorrelation.hasData ? "var(--tx)" : "var(--mu)" }}>
+                {sleepCorrelation.hasData ? (
+                  <>
+                    {sleepCorrelation.highCount > 0 && (
+                      <span>On your best days you slept <b>{sleepCorrelation.highStr}</b> on average. </span>
+                    )}
+                    {sleepCorrelation.lowCount > 0 && (
+                      <span>On low days: <b>{sleepCorrelation.lowStr}</b>.</span>
+                    )}
+                  </>
+                ) : (
+                  <span>Log mood and sleep for a few days to see how your sleep affects your mood.</span>
+                )}
               </div>
             </div>
 

@@ -16,18 +16,19 @@ export interface TerrainChartProps {
 }
 
 const DEFAULT_DAYS: TerrainPoint[] = [
+  { dayLabel: "Mon", pointsEarned: 0, lastWeekPoints: 0 },
+  { dayLabel: "Tue", pointsEarned: 0, lastWeekPoints: 0 },
+  { dayLabel: "Wed", pointsEarned: 0, lastWeekPoints: 0 },
+  { dayLabel: "Thu", pointsEarned: 0, lastWeekPoints: 0 },
+  { dayLabel: "Fri", pointsEarned: 0, lastWeekPoints: 0 },
+  { dayLabel: "Sat", pointsEarned: 0, lastWeekPoints: 0 },
   { dayLabel: "Sun", pointsEarned: 0, lastWeekPoints: 0 },
-  { dayLabel: "Mon", pointsEarned: 4.0, lastWeekPoints: 2.7 },
-  { dayLabel: "Tue", pointsEarned: 7.5, lastWeekPoints: 5.6 },
-  { dayLabel: "Wed", pointsEarned: 11.5, lastWeekPoints: 8.3 },
-  { dayLabel: "Thu", pointsEarned: 14.5, lastWeekPoints: 10.7 },
-  { dayLabel: "Fri", pointsEarned: 17.0, lastWeekPoints: 12.7 },
 ];
 
 export function TerrainChart({
   days = DEFAULT_DAYS,
-  currentScore = 17,
-  currentLabel = "Fri 23 · 17 pts",
+  currentScore = 0,
+  currentLabel = "0 pts",
   milestone = 10,
   range = "7D",
   onRangeChange,

@@ -153,7 +153,7 @@ export default function Today() {
       const s = streakDays(logs, h.goalDays, date, h.createdAt?.slice(0, 10) || "2026-10-01");
       if (s > maxS) maxS = s;
     });
-    return maxS || (habits.length === 0 ? 0 : 12);
+    return maxS;
   }, [habits, logsByHabit, date]);
 
   // Status pace label

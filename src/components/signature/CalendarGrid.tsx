@@ -30,22 +30,9 @@ export function CalendarGrid({
 
   const weekdays = ["M", "T", "W", "T", "F", "S", "S"];
 
-  // Default sample scores if dayScores is empty (for DesignCheck preview matching October 2026)
-  const getScoreForDay = (dateStr: string, dayNum: number): number | undefined => {
-    if (dayScores[dateStr] !== undefined) {
-      return dayScores[dateStr];
-    }
-    // Fallback sample data matching reference/calendar.html (Oct 19: 4, Oct 20: 3.5, Oct 21: 4, Oct 22: 3, Oct 23: 2.5)
-    if (year === 2026 && month === 10) {
-      if (dayNum === 19) return 4.0;
-      if (dayNum === 20) return 3.5;
-      if (dayNum === 21) return 4.0;
-      if (dayNum === 22) return 3.0;
-      if (dayNum === 23) return 2.5;
-      if (dayNum < 19) return 0; // Past days with 0 score (dashed ring)
-      return undefined; // Future days
-    }
-    return undefined;
+  // Actual day score from database
+  const getScoreForDay = (dateStr: string, _dayNum: number): number | undefined => {
+    return dayScores[dateStr];
   };
 
   return (

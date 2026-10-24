@@ -77,20 +77,6 @@ export default function Insights() {
       });
     }
 
-    // Default sample values if empty to match insights.html
-    if (runningThisWeek === 0 && points.every((p) => p.pointsEarned === 0)) {
-      return {
-        terrainPoints: [
-          { dayLabel: "Mon", pointsEarned: 4.0, lastWeekPoints: 2.7 },
-          { dayLabel: "Tue", pointsEarned: 7.5, lastWeekPoints: 5.6 },
-          { dayLabel: "Wed", pointsEarned: 11.5, lastWeekPoints: 8.3 },
-          { dayLabel: "Thu", pointsEarned: 14.5, lastWeekPoints: 10.7 },
-          { dayLabel: "Fri", pointsEarned: 17.0, lastWeekPoints: 12.7 },
-        ],
-        currentTotalPoints: 17.0,
-      };
-    }
-
     return { terrainPoints: points, currentTotalPoints: runningThisWeek };
   }, [todayStr, habits, logsByHabit]);
 
@@ -125,11 +111,41 @@ export default function Insights() {
 
   // Correlation insight: sleep vs habits
   const sleepCorrelationText = useMemo(() => {
-    if (allSleep.length >= 3) {
-      return "You complete 34% more habits on days following 7+ hours of sleep.";
+    if (allSleep.length >= 3 && habits.length > 0) {
+      let goodSleepDays = 0;
+      let goodSleepHabits = 0;
+      let shortSleepDays = 0;
+      let shortSleepHabits = 0;
+
+      allSleep.forEach((s) => {
+        let habitsOnDay = 0;
+        habits.forEach((h) => {
+          const st = logsByHabit.get(h.id)?.get(s.date) ?? 0;
+          if (st === 2) habitsOnDay += 1;
+          else if (st === 1) habitsOnDay += 0.5;
+        });
+
+        if (s.durationMin >= 420) {
+          goodSleepDays++;
+          goodSleepHabits += habitsOnDay;
+        } else {
+          shortSleepDays++;
+          shortSleepHabits += habitsOnDay;
+        }
+      });
+
+      if (goodSleepDays > 0 && shortSleepDays > 0) {
+        const avgGood = goodSleepHabits / goodSleepDays;
+        const avgShort = shortSleepHabits / shortSleepDays;
+        if (avgShort > 0 && avgGood > avgShort) {
+          const diffPct = Math.round(((avgGood - avgShort) / avgShort) * 100);
+          return `You complete ${diffPct}% more habits on days following 7+ hours of sleep.`;
+        }
+      }
+      return `Tracking ${allSleep.length} nights of sleep. Keep logging habits to reveal your performance correlation.`;
     }
-    return "Complete 7+ hours of sleep to unlock deeper habit correlation insights.";
-  }, [allSleep]);
+    return "Log 7+ hours of sleep across multiple nights to unlock habit correlation insights.";
+  }, [allSleep, habits, logsByHabit]);
 
   return (
     <div
@@ -230,8 +246,13 @@ export default function Insights() {
             CONSISTENCY BY HABIT
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {habitConsistency.map((h) => {
+          {habitConsistency.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "16px 0", color: "var(--mu)", fontSize: "13px", fontWeight: 600 }}>
+              No habits created yet. Add habits on Today to track consistency.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {habitConsistency.map((h) => {
               const iconPath = getIconPath(h.icon);
               return (
                 <div key={h.id}>
@@ -275,7 +296,8 @@ export default function Insights() {
                 </div>
               );
             })}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Sleep-Habit Link Card */}
