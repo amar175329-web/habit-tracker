@@ -56,7 +56,7 @@ describe("MomentumGauge Stress & Boundary Harness", () => {
 
     checkSvgAttributesForNaN(container);
 
-    const mainText = container.querySelector("text[font-size='42']");
+    const mainText = container.querySelector("text[font-size='44']");
     expect(mainText?.textContent).toBe("0%");
 
     const subtitleText = container.querySelector("text[font-size='12']");
@@ -70,16 +70,16 @@ describe("MomentumGauge Stress & Boundary Harness", () => {
 
     checkSvgAttributesForNaN(container);
 
-    const mainText = container.querySelector("text[font-size='42']");
+    const mainText = container.querySelector("text[font-size='44']");
     expect(mainText?.textContent).toBe("0%");
 
-    // All concentric dots should be unlit (opacity 0.65)
+    // All concentric dots should be unlit (opacity 0.6)
     const circles = container.querySelectorAll("circle");
-    // Outer: 70, Middle: 57, Inner: 44 => 171 dots
-    expect(circles.length).toBe(171);
+    // Outer: 36, Middle: 30, Inner: 24 => 90 dots
+    expect(circles.length).toBe(90);
 
     circles.forEach((circle) => {
-      expect(circle.getAttribute("opacity")).toBe("0.65");
+      expect(circle.getAttribute("opacity")).toBe("0.6");
     });
   });
 
@@ -90,12 +90,12 @@ describe("MomentumGauge Stress & Boundary Harness", () => {
 
     checkSvgAttributesForNaN(container);
 
-    const mainText = container.querySelector("text[font-size='42']");
+    const mainText = container.querySelector("text[font-size='44']");
     expect(mainText?.textContent).toBe("100%");
 
     // All concentric dots should be lit (opacity 1)
     const circles = container.querySelectorAll("circle");
-    expect(circles.length).toBe(171);
+    expect(circles.length).toBe(90);
 
     circles.forEach((circle) => {
       expect(circle.getAttribute("opacity")).toBe("1");
@@ -109,12 +109,12 @@ describe("MomentumGauge Stress & Boundary Harness", () => {
 
     checkSvgAttributesForNaN(container);
 
-    const mainText = container.querySelector("text[font-size='42']");
+    const mainText = container.querySelector("text[font-size='44']");
     expect(mainText?.textContent).toBe("200%");
 
-    // Lit dots must clamp gracefully to total dots (70, 57, 44), not overflow or error
+    // Lit dots must clamp gracefully to total dots (36, 30, 24), not overflow or error
     const circles = container.querySelectorAll("circle");
-    expect(circles.length).toBe(171);
+    expect(circles.length).toBe(90);
 
     circles.forEach((circle) => {
       expect(circle.getAttribute("opacity")).toBe("1");
@@ -130,10 +130,10 @@ describe("MomentumGauge Stress & Boundary Harness", () => {
 
     // Negative fraction should clamp to 0 lit dots
     const circles = container.querySelectorAll("circle");
-    expect(circles.length).toBe(171);
+    expect(circles.length).toBe(90);
 
     circles.forEach((circle) => {
-      expect(circle.getAttribute("opacity")).toBe("0.65");
+      expect(circle.getAttribute("opacity")).toBe("0.6");
     });
   });
 
@@ -144,7 +144,7 @@ describe("MomentumGauge Stress & Boundary Harness", () => {
 
     checkSvgAttributesForNaN(container);
 
-    const mainText = container.querySelector("text[font-size='42']");
+    const mainText = container.querySelector("text[font-size='44']");
     expect(mainText?.textContent).toBe("0%");
   });
 
@@ -159,7 +159,7 @@ describe("MomentumGauge Stress & Boundary Harness", () => {
     );
 
     const circles = container.querySelectorAll("circle");
-    expect(circles.length).toBe(171);
+    expect(circles.length).toBe(90);
 
     circles.forEach((circle) => {
       const cx = circle.getAttribute("cx");
@@ -186,36 +186,36 @@ describe("MomentumGauge Stress & Boundary Harness", () => {
     });
   });
 
-  it("verifies exact concentric dot distribution: 70 outer, 57 middle, 44 inner", () => {
+  it("verifies exact concentric dot distribution: 36 outer, 30 middle, 24 inner", () => {
     const { container } = render(
       <MomentumGauge habitScore={17} weeklyMax={35} sleepFraction={0.5} mindFraction={0.5} />
     );
 
     const circles = container.querySelectorAll("svg circle");
-    expect(circles.length).toBe(171);
+    expect(circles.length).toBe(90);
 
-    // Outer: 70 dots
-    const outerDots = Array.from(circles).slice(0, 70);
-    // Middle: 57 dots
-    const middleDots = Array.from(circles).slice(70, 70 + 57);
-    // Inner: 44 dots
-    const innerDots = Array.from(circles).slice(70 + 57);
+    // Outer: 36 dots
+    const outerDots = Array.from(circles).slice(0, 36);
+    // Middle: 30 dots
+    const middleDots = Array.from(circles).slice(36, 36 + 30);
+    // Inner: 24 dots
+    const innerDots = Array.from(circles).slice(36 + 30);
 
-    expect(outerDots.length).toBe(70);
-    expect(middleDots.length).toBe(57);
-    expect(innerDots.length).toBe(44);
+    expect(outerDots.length).toBe(36);
+    expect(middleDots.length).toBe(30);
+    expect(innerDots.length).toBe(24);
 
     // Habit fraction = 17 / 35 = 0.4857...
-    // Outer lit dots = Math.round(70 * 0.4857...) = 34 lit dots
+    // Outer lit dots = Math.round(36 * 0.4857...) = 17 lit dots
     const outerLit = outerDots.filter((d) => d.getAttribute("opacity") === "1");
-    expect(outerLit.length).toBe(34);
+    expect(outerLit.length).toBe(17);
 
-    // Sleep fraction = 0.5 -> Math.round(57 * 0.5) = 29 lit dots
+    // Sleep fraction = 0.5 -> Math.round(30 * 0.5) = 15 lit dots
     const middleLit = middleDots.filter((d) => d.getAttribute("opacity") === "1");
-    expect(middleLit.length).toBe(29);
+    expect(middleLit.length).toBe(15);
 
-    // Mind fraction = 0.5 -> Math.round(44 * 0.5) = 22 lit dots
+    // Mind fraction = 0.5 -> Math.round(24 * 0.5) = 12 lit dots
     const innerLit = innerDots.filter((d) => d.getAttribute("opacity") === "1");
-    expect(innerLit.length).toBe(22);
+    expect(innerLit.length).toBe(12);
   });
 });

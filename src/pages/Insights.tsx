@@ -111,6 +111,8 @@ export default function Insights() {
 
       points.push({
         dayLabel: label,
+        dayScore,
+        runningTotal: runningPoints,
         pointsEarned: runningPoints,
         lastWeekPoints: runningPrevPeriodPoints,
         isToday,
@@ -123,13 +125,25 @@ export default function Insights() {
     const eDateObj = new Date(`${todayStr}T12:00:00`);
     const sFormatted = sDateObj.toLocaleDateString("en-US", { day: "numeric", month: "short" });
     const eFormatted = eDateObj.toLocaleDateString("en-US", { day: "numeric", month: "short" });
-    const rangeLabel = `${sFormatted} – ${eFormatted}`;
+    const rangeLabel =
+      sDateObj.getMonth() === eDateObj.getMonth()
+        ? `${sDateObj.getDate()} – ${eDateObj.getDate()} ${eDateObj.toLocaleDateString("en-US", { month: "short" })}`
+        : `${sFormatted} – ${eFormatted}`;
 
-    let sub = "pts this week · all-time high";
-    if (range === "7D") sub = "pts in 7 days · all-time high";
-    else if (range === "14D") sub = "pts in 14 days · all-time high";
-    else if (range === "30D") sub = "pts in 30 days · all-time high";
-    else if (range === "ALL") sub = "pts all time · all-time high";
+    // Count distinct days with recorded activity/points across range
+    let daysWithData = 0;
+    points.forEach((p) => {
+      if ((p.dayScore ?? 0) > 0) daysWithData++;
+    });
+    // Also consider total historical days logged if available
+    const totalLoggedDays = new Set(allLogs.filter((l) => l.state > 0).map((l) => l.date)).size;
+    const hasThreeDaysData = Math.max(daysWithData, totalLoggedDays) >= 3;
+
+    let sub = "pts in 7 days";
+    if (range === "7D") sub = hasThreeDaysData ? "pts in 7 days · all-time high" : "pts in 7 days";
+    else if (range === "14D") sub = hasThreeDaysData ? "pts in 14 days · all-time high" : "pts in 14 days";
+    else if (range === "30D") sub = hasThreeDaysData ? "pts in 30 days · all-time high" : "pts in 30 days";
+    else if (range === "ALL") sub = hasThreeDaysData ? "pts all time · all-time high" : "pts all time";
 
     const todayName = eDateObj.toLocaleDateString("en-US", { weekday: "short" });
     const todayNum = eDateObj.getDate();

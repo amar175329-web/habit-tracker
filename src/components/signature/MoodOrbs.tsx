@@ -21,9 +21,9 @@ interface OrbDef {
 }
 
 const ORBS: OrbDef[] = [
-  { score: 1, label: "Rough", size: 22, mixPct: 22 },
-  { score: 2, label: "Low", size: 28, mixPct: 40 },
-  { score: 3, label: "Okay", size: 34, mixPct: 60 },
+  { score: 1, label: "Rough", size: 22, mixPct: 30 },
+  { score: 2, label: "Low", size: 28, mixPct: 45 },
+  { score: 3, label: "Okay", size: 34, mixPct: 62 },
   { score: 4, label: "Good", size: 40, mixPct: 80 },
   { score: 5, label: "Energized", size: 46, mixPct: 100 },
 ];

@@ -5,6 +5,8 @@ export interface MomentumGaugeProps {
   weeklyMax?: number;
   sleepFraction?: number; // 0 to 1
   mindFraction?: number;  // 0 to 1
+  sleepCount?: number;
+  mindCount?: number;
   statusLabel?: string;
   subtitle?: string;
   className?: string;
@@ -34,7 +36,7 @@ function calculateRingDots(
     const cx = (165 - radius * Math.cos(angle)).toFixed(1);
     const cy = (160 - radius * Math.sin(angle)).toFixed(1);
     const cosVal = Math.cos(angle);
-    const r = (1.9 + 1.7 * (cosVal * cosVal)).toFixed(2);
+    const r = (2.4 + 1.8 * (cosVal * cosVal)).toFixed(2);
     const isLit = i < litCount;
 
     dots.push({
@@ -52,35 +54,47 @@ function calculateRingDots(
 export function MomentumGauge({
   habitScore = 17,
   weeklyMax = 35,
-  sleepFraction = 0.57,
-  mindFraction = 0.57,
-  statusLabel = "Consistent Pace",
+  sleepFraction = 4 / 7,
+  mindFraction = 4 / 7,
+  sleepCount,
+  mindCount,
+  statusLabel = "Consistent pace",
   subtitle,
   className = "",
   showHeader = true,
 }: MomentumGaugeProps) {
   const habitFraction = weeklyMax > 0 ? habitScore / weeklyMax : 0;
   const habitPct = Math.round(habitFraction * 100);
-  const sleepPct = Math.round(sleepFraction * 100);
-  const mindPct = Math.round(mindFraction * 100);
 
+  // 3 concentric dotted rings with FEWER, LARGER dots:
+  // outer r120 / 36 dots (Habits, teal), middle r98 / 30 dots (Sleep, indigo), inner r76 / 24 dots (Mind, coral)
   const dotsOuter = useMemo(
-    () => calculateRingDots(120, 70, habitFraction, "var(--pr)"),
+    () => calculateRingDots(120, 36, habitFraction, "var(--pr)"),
     [habitFraction]
   );
 
   const dotsMiddle = useMemo(
-    () => calculateRingDots(98, 57, sleepFraction, "var(--ind)"),
+    () => calculateRingDots(98, 30, sleepFraction, "var(--ind)"),
     [sleepFraction]
   );
 
   const dotsInner = useMemo(
-    () => calculateRingDots(76, 44, mindFraction, "var(--co)"),
+    () => calculateRingDots(76, 24, mindFraction, "var(--co)"),
     [mindFraction]
   );
 
-  const displaySubtitle =
-    subtitle ?? (weeklyMax > 0 ? `${habitScore} of ${weeklyMax} pts` : "Your week starts here");
+  const isZeroState = weeklyMax === 0;
+
+  const centerSubtitle =
+    subtitle ?? (isZeroState ? "Your week starts here" : statusLabel);
+
+  const habitsLegend = isZeroState ? "0" : `${habitScore}/${weeklyMax}`;
+  const sleepLegend = isZeroState
+    ? "0"
+    : `${sleepCount !== undefined ? sleepCount : Math.round(sleepFraction * 7)}/7`;
+  const mindLegend = isZeroState
+    ? "0"
+    : `${mindCount !== undefined ? mindCount : Math.round(mindFraction * 7)}/7`;
 
   return (
     <div
@@ -108,18 +122,6 @@ export function MomentumGauge({
           >
             WEEKLY MOMENTUM
           </div>
-          <span
-            style={{
-              fontSize: "12px",
-              fontWeight: 700,
-              color: "var(--prt)",
-              background: "var(--tint)",
-              padding: "5px 11px",
-              borderRadius: "99px",
-            }}
-          >
-            {statusLabel}
-          </span>
         </div>
       )}
 
@@ -129,9 +131,9 @@ export function MomentumGauge({
         width="100%"
         style={{ display: "block", marginTop: showHeader ? "8px" : "0" }}
         role="img"
-        aria-label={`Weekly momentum ${habitPct}%, ${displaySubtitle}`}
+        aria-label={`Weekly momentum ${habitPct}%, ${centerSubtitle}`}
       >
-        {/* Outer Habits Ring (70 dots) */}
+        {/* Outer Habits Ring (36 dots) */}
         {dotsOuter.map((dot, idx) => (
           <circle
             key={`out-${idx}`}
@@ -139,11 +141,11 @@ export function MomentumGauge({
             cy={dot.cy}
             r={dot.r}
             style={{ fill: dot.isLit ? dot.color : "var(--tr)" }}
-            opacity={dot.isLit ? 1 : 0.65}
+            opacity={dot.isLit ? 1 : 0.6}
           />
         ))}
 
-        {/* Middle Sleep Ring (57 dots) */}
+        {/* Middle Sleep Ring (30 dots) */}
         {dotsMiddle.map((dot, idx) => (
           <circle
             key={`mid-${idx}`}
@@ -151,11 +153,11 @@ export function MomentumGauge({
             cy={dot.cy}
             r={dot.r}
             style={{ fill: dot.isLit ? dot.color : "var(--tr)" }}
-            opacity={dot.isLit ? 1 : 0.65}
+            opacity={dot.isLit ? 1 : 0.6}
           />
         ))}
 
-        {/* Inner Mind Ring (44 dots) */}
+        {/* Inner Mind Ring (24 dots) */}
         {dotsInner.map((dot, idx) => (
           <circle
             key={`in-${idx}`}
@@ -163,16 +165,16 @@ export function MomentumGauge({
             cy={dot.cy}
             r={dot.r}
             style={{ fill: dot.isLit ? dot.color : "var(--tr)" }}
-            opacity={dot.isLit ? 1 : 0.65}
+            opacity={dot.isLit ? 1 : 0.6}
           />
         ))}
 
         {/* Center Readout */}
         <text
           x="165"
-          y="136"
+          y="138"
           textAnchor="middle"
-          fontSize="42"
+          fontSize="44"
           fontWeight="700"
           fontFamily="Space Grotesk, sans-serif"
           style={{ fill: "var(--tx)" }}
@@ -181,13 +183,13 @@ export function MomentumGauge({
         </text>
         <text
           x="165"
-          y="155"
+          y="157"
           textAnchor="middle"
           fontSize="12"
           fontWeight="600"
           style={{ fill: "var(--mu)" }}
         >
-          {displaySubtitle}
+          {centerSubtitle}
         </text>
       </svg>
 
@@ -219,7 +221,7 @@ export function MomentumGauge({
               display: "block",
             }}
           />
-          Habits <b style={{ color: "var(--tx)" }}>{habitPct}%</b>
+          Habits <b style={{ color: "var(--tx)" }}>{habitsLegend}</b>
         </span>
 
         <span
@@ -241,7 +243,7 @@ export function MomentumGauge({
               display: "block",
             }}
           />
-          Sleep <b style={{ color: "var(--tx)" }}>{sleepPct}%</b>
+          Sleep <b style={{ color: "var(--tx)" }}>{sleepLegend}</b>
         </span>
 
         <span
@@ -263,7 +265,7 @@ export function MomentumGauge({
               display: "block",
             }}
           />
-          Mind <b style={{ color: "var(--tx)" }}>{mindPct}%</b>
+          Mind <b style={{ color: "var(--tx)" }}>{mindLegend}</b>
         </span>
       </div>
     </div>

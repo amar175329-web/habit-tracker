@@ -40,9 +40,8 @@ export function HabitTile({
   if (isWeekDone) {
     tileStyles = {
       background: "var(--tint)",
-      border: "1px dashed var(--pr)",
+      border: "1.5px dashed var(--pr)",
       color: "var(--prt)",
-      opacity: 0.6,
     };
     iconChipState = "rest";
     defaultSubtitle = "Week done · rest today";
@@ -150,7 +149,7 @@ export function HabitTile({
             <span style={{ fontSize: "11px", opacity: 0.7 }}> · {streak}d</span>
           )}
         </div>
-        <div style={{ fontSize: "12px", fontWeight: 600, opacity: 0.85, marginTop: "2px" }}>
+        <div style={{ fontSize: "12px", fontWeight: 600, opacity: isWeekDone ? 1 : 0.85, marginTop: "2px" }}>
           {finalSubtitle}
         </div>
       </div>

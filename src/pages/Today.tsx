@@ -61,6 +61,7 @@ export default function Today() {
   const currentMood = useLiveQuery(() => db.mood_logs.get(date), [date]);
   const currentReflection = useLiveQuery(() => db.reflections.get(date), [date]);
   const allSleepLogs = useLiveQuery(() => db.sleep_logs.toArray(), []) ?? [];
+  const allMoodLogs = useLiveQuery(() => db.mood_logs.toArray(), []) ?? [];
   const allReflections = useLiveQuery(() => db.reflections.toArray(), []) ?? [];
 
   // Optimistic overrides for 0ms buttery-smooth UI feedback
@@ -116,27 +117,28 @@ export default function Today() {
     return sum;
   }, [habits, logsByHabit, date]);
 
-  // Sleep fraction (nights with 7-9h this week out of 7)
-  const sleepFraction = useMemo(() => {
+  // Sleep fraction & count (nights with 7-9h this week out of 7)
+  const { sleepFraction, sleepCount } = useMemo(() => {
     const start = weekStart(date);
     let count = 0;
     for (let d = start; d <= date; d = fromMs(toMs(d) + 86400000)) {
       const s = allSleepLogs.find((log) => log.date === d);
       if (s && s.durationMin >= 420 && s.durationMin <= 540) count++;
     }
-    return Math.min(1, count / 7);
+    return { sleepFraction: Math.min(1, count / 7), sleepCount: count };
   }, [allSleepLogs, date]);
 
-  // Mind fraction (days with reflection or mood logged this week out of 7)
-  const mindFraction = useMemo(() => {
+  // Mind fraction & count (days with reflection or mood logged this week out of 7)
+  const { mindFraction, mindCount } = useMemo(() => {
     const start = weekStart(date);
     let count = 0;
     for (let d = start; d <= date; d = fromMs(toMs(d) + 86400000)) {
+      const hasMood = allMoodLogs.some((m) => m.date === d && m.score > 0);
       const hasRef = allReflections.some((r) => r.date === d && r.content?.trim());
-      if (hasRef) count++;
+      if (hasMood || hasRef) count++;
     }
-    return Math.min(1, count / 7);
-  }, [allReflections, date]);
+    return { mindFraction: Math.min(1, count / 7), mindCount: count };
+  }, [allMoodLogs, allReflections, date]);
 
   // Day rings for Mon..Sun
   const dayRings = useMemo((): DayRingItem[] => {
@@ -370,9 +372,13 @@ export default function Today() {
             weeklyMax={totalWeeklyMax}
             sleepFraction={sleepFraction}
             mindFraction={mindFraction}
+            sleepCount={sleepCount}
+            mindCount={mindCount}
             statusLabel={statusLabel}
           />
-          <DayRings days={dayRings} onSelectDay={handleSelectRingDay} className="mt-3" />
+          {habits.length > 0 && (
+            <DayRings days={dayRings} onSelectDay={handleSelectRingDay} className="mt-3" />
+          )}
         </div>
 
         {/* Habits Grid / First-Run Zero Habits Empty State */}

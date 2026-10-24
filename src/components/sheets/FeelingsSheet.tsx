@@ -15,9 +15,9 @@ export interface FeelingsSheetProps {
 }
 
 const MOODS = [
-  { score: 1, label: "Rough", size: 22, mix: 22 },
-  { score: 2, label: "Low", size: 28, mix: 40 },
-  { score: 3, label: "Okay", size: 34, mix: 60 },
+  { score: 1, label: "Rough", size: 22, mix: 30 },
+  { score: 2, label: "Low", size: 28, mix: 45 },
+  { score: 3, label: "Okay", size: 34, mix: 62 },
   { score: 4, label: "Good", size: 40, mix: 80 },
   { score: 5, label: "Energized", size: 46, mix: 100 },
 ];
