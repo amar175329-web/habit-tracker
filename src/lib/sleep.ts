@@ -63,3 +63,24 @@ function addDaysSimple(key: string, delta: number): string {
 export function safeSleepMinutes(bedISO: string, wakeISO: string): number {
   return sleepMinutes(bedISO, wakeISO);
 }
+
+/**
+ * Converts 24-hour time or ISO string to standard 12-hour format with AM/PM
+ * Example: "23:00" -> "11:00 PM", "07:00" -> "7:00 AM", "00:15" -> "12:15 AM"
+ */
+export function formatTime12h(timeStr?: string | null): string {
+  if (!timeStr) return "";
+  let cleanTime = timeStr.trim();
+  if (cleanTime.includes("T")) {
+    cleanTime = cleanTime.split("T")[1]?.slice(0, 5) || cleanTime;
+  }
+  const parts = cleanTime.split(":");
+  if (parts.length < 2) return timeStr;
+  let h = parseInt(parts[0], 10);
+  const m = parts[1].slice(0, 2);
+  if (isNaN(h)) return timeStr;
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${m} ${ampm}`;
+}

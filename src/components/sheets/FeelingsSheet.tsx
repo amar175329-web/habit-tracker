@@ -1,5 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { saveMood } from "../../lib/db";
+import {
+  classifyEmotion,
+  PRESET_EMOTIONS,
+  getStoredCustomEmotions,
+  saveCustomEmotion,
+} from "../../lib/emotions";
 
 export interface FeelingsSheetProps {
   isOpen: boolean;
@@ -14,12 +20,6 @@ export interface FeelingsSheetProps {
   onSaved?: () => void;
 }
 
-export interface PresetEmotion {
-  name: string;
-  symbol: string;
-  defaultScore: number;
-}
-
 export const MOODS = [
   { score: 1, label: "Rough", emoji: "⛈️", size: 22, mix: 30 },
   { score: 2, label: "Low", emoji: "🌧️", size: 28, mix: 45 },
@@ -27,98 +27,6 @@ export const MOODS = [
   { score: 4, label: "Good", emoji: "😊", size: 40, mix: 80 },
   { score: 5, label: "Energized", emoji: "⚡", size: 46, mix: 100 },
 ];
-
-export const PRESET_EMOTIONS: PresetEmotion[] = [
-  { name: "Grateful", symbol: "🙏", defaultScore: 4 },
-  { name: "Calm", symbol: "🧘", defaultScore: 4 },
-  { name: "Focused", symbol: "🎯", defaultScore: 4 },
-  { name: "Content", symbol: "😌", defaultScore: 4 },
-  { name: "Peaceful", symbol: "✨", defaultScore: 4 },
-  { name: "Energetic", symbol: "⚡", defaultScore: 5 },
-  { name: "Proud", symbol: "🏆", defaultScore: 5 },
-  { name: "Happy", symbol: "😊", defaultScore: 5 },
-  { name: "Motivated", symbol: "🔥", defaultScore: 5 },
-  { name: "Tired", symbol: "😴", defaultScore: 2 },
-  { name: "Distracted", symbol: "🌀", defaultScore: 2 },
-  { name: "Anxious", symbol: "😰", defaultScore: 1 },
-  { name: "Overwhelmed", symbol: "🤯", defaultScore: 1 },
-  { name: "Stressed", symbol: "💥", defaultScore: 1 },
-  { name: "Sad", symbol: "😢", defaultScore: 1 },
-];
-
-/**
- * Intelligent Emotion Metadata Inferrer:
- * Detects appropriate emoji symbol & mood score for any English/Hinglish feeling input.
- */
-export function inferEmotionMeta(text: string): { symbol: string; score: number } {
-  const lower = text.trim().toLowerCase();
-
-  // High energy / Positive (Score 5)
-  if (/energ|super|fire|power|excit|masti|party|unstoppable|beast|hyper/.test(lower)) {
-    return { symbol: "⚡", score: 5 };
-  }
-  if (/proud|win|victory|champion|achiev|success/.test(lower)) {
-    return { symbol: "🏆", score: 5 };
-  }
-  if (/happ|khush|joy|smile|glad|cheerful|delight/.test(lower)) {
-    return { symbol: "😊", score: 5 };
-  }
-  if (/motivat|inspire|driven|ambitio/.test(lower)) {
-    return { symbol: "🔥", score: 5 };
-  }
-
-  // Good / Calm / Grateful (Score 4)
-  if (/grate|dhanyawad|blessed|thank/.test(lower)) {
-    return { symbol: "🙏", score: 4 };
-  }
-  if (/calm|shant|peace|relax|chill|serene|zen/.test(lower)) {
-    return { symbol: "🧘", score: 4 };
-  }
-  if (/focus|dhyan|work|study|sharp/.test(lower)) {
-    return { symbol: "🎯", score: 4 };
-  }
-  if (/good|accha|nice|pleasant|cool|fine/.test(lower)) {
-    return { symbol: "✨", score: 4 };
-  }
-  if (/content|santusht|satisfied|at ease/.test(lower)) {
-    return { symbol: "😌", score: 4 };
-  }
-
-  // Neutral / Okay (Score 3)
-  if (/okay|thik|theek|normal|neutral|so-so|avg|average|meh/.test(lower)) {
-    return { symbol: "🟡", score: 3 };
-  }
-
-  // Low / Tired (Score 2)
-  if (/tired|thaka|sleep|drowsy|exhaust|fatigue/.test(lower)) {
-    return { symbol: "😴", score: 2 };
-  }
-  if (/distract|confus|wander|lost|bored|boring/.test(lower)) {
-    return { symbol: "🌀", score: 2 };
-  }
-  if (/low|lazy|dull|slow|sluggish/.test(lower)) {
-    return { symbol: "🌧️", score: 2 };
-  }
-
-  // Rough / Stressed / Sad (Score 1)
-  if (/stress|tension|pressur|overload/.test(lower)) {
-    return { symbol: "💥", score: 1 };
-  }
-  if (/anxious|anxiety|dar|panic|fear|nervous|worry/.test(lower)) {
-    return { symbol: "😰", score: 1 };
-  }
-  if (/overwhelm|frustrat|chidh|irritat/.test(lower)) {
-    return { symbol: "🤯", score: 1 };
-  }
-  if (/sad|cry|dukh|pain|hurt|depress|heartbroken|alone|down/.test(lower)) {
-    return { symbol: "😢", score: 1 };
-  }
-  if (/rough|bad|bura|horrible|terrible|sick|ill|angry|gussa/.test(lower)) {
-    return { symbol: "⛈️", score: 1 };
-  }
-
-  return { symbol: "💭", score: 4 };
-}
 
 export function FeelingsSheet({
   isOpen,
@@ -137,24 +45,34 @@ export function FeelingsSheet({
   const [customTag, setCustomTag] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const storedCustoms = useMemo(() => getStoredCustomEmotions(), [isOpen]);
+
   const effectiveLocked = isLocked || changeCount >= maxChanges;
   const remaining = Math.max(0, maxChanges - changeCount);
 
   if (!isOpen) return null;
 
-  const isEmotionSelected = (item: PresetEmotion) => {
+  const isEmotionSelected = (item: { name: string; symbol: string }) => {
     return selectedEmotions.some(
-      (e) => e === item.name || e === `${item.symbol} ${item.name}` || e.includes(item.name)
+      (e) =>
+        e === item.name ||
+        e === `${item.symbol} ${item.name}` ||
+        e.toLowerCase().includes(item.name.toLowerCase())
     );
   };
 
-  const toggleEmotion = (item: PresetEmotion) => {
+  const toggleEmotion = (item: { name: string; symbol: string; defaultScore: 1 | 2 | 3 | 4 | 5 }) => {
     const formatted = `${item.symbol} ${item.name}`;
     const exists = isEmotionSelected(item);
 
     if (exists) {
       setSelectedEmotions((prev) =>
-        prev.filter((e) => e !== item.name && e !== formatted && !e.includes(item.name))
+        prev.filter(
+          (e) =>
+            e !== item.name &&
+            e !== formatted &&
+            !e.toLowerCase().includes(item.name.toLowerCase())
+        )
       );
     } else {
       setSelectedEmotions((prev) => [...prev, formatted]);
@@ -170,13 +88,21 @@ export function FeelingsSheet({
     const clean = customTag.trim();
     if (!clean) return;
 
-    const meta = inferEmotionMeta(clean);
+    // Multilingual AI Emotion Classifier (Hindi, Hinglish, English)
+    const meta = classifyEmotion(clean);
     const startsWithEmoji = /\p{Extended_Pictographic}/u.test(clean);
     const formatted = startsWithEmoji ? clean : `${meta.symbol} ${clean}`;
 
+    // Auto-save to dynamic custom emotion library
+    saveCustomEmotion({
+      name: clean,
+      symbol: meta.symbol,
+      defaultScore: meta.score,
+      keywords: [clean],
+    });
+
     if (!selectedEmotions.includes(formatted) && !selectedEmotions.includes(clean)) {
       setSelectedEmotions((prev) => [...prev, formatted]);
-      // Auto-set mood score if not yet set
       if (!score) {
         setScore(meta.score);
       }
@@ -194,7 +120,7 @@ export function FeelingsSheet({
     let finalScore = score;
     if (!finalScore) {
       if (selectedEmotions.length > 0) {
-        const meta = inferEmotionMeta(selectedEmotions[0]);
+        const meta = classifyEmotion(selectedEmotions[0]);
         finalScore = meta.score;
         setScore(meta.score);
       } else {
@@ -263,7 +189,7 @@ export function FeelingsSheet({
             <div style={{ fontSize: "12px", color: "var(--mu)", fontWeight: 600, marginTop: "2px" }}>
               {effectiveLocked
                 ? `Limit reached (3/3 used)`
-                : `Pick your mood & emotions · ${remaining} change${remaining > 1 ? "s" : ""} left`}
+                : `English · Hindi · Hinglish auto-detected · ${remaining} left`}
             </div>
           </div>
           <button
@@ -367,7 +293,34 @@ export function FeelingsSheet({
                     fontSize: "13px",
                     fontWeight: 700,
                     cursor: "pointer",
-                    border: active ? "1px solid var(--co)" : "1px solid var(--ln)",
+                    border: active ? "1.5px solid var(--co)" : "1px solid var(--ln)",
+                    background: active ? "color-mix(in srgb, var(--co) 15%, var(--card))" : "var(--bg)",
+                    color: active ? "var(--co)" : "var(--tx)",
+                    transition: "all 0.15s ease",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span style={{ fontSize: "14px" }}>{item.symbol}</span>
+                  <span>{item.name}</span>
+                </button>
+              );
+            })}
+            {storedCustoms.map((item) => {
+              const active = isEmotionSelected(item);
+              return (
+                <button
+                  key={item.name}
+                  type="button"
+                  onClick={() => toggleEmotion(item)}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: "99px",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    border: active ? "1.5px solid var(--co)" : "1px dashed var(--ln)",
                     background: active ? "color-mix(in srgb, var(--co) 15%, var(--card))" : "var(--bg)",
                     color: active ? "var(--co)" : "var(--tx)",
                     transition: "all 0.15s ease",
@@ -383,11 +336,11 @@ export function FeelingsSheet({
             })}
           </div>
 
-          {/* Custom Tag Input with Auto-detection */}
+          {/* Multilingual Custom Tag Input with Instant Detection */}
           <form onSubmit={handleAddCustom} style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
             <input
               type="text"
-              placeholder="Type any feeling (e.g. happy, masti, tired)..."
+              placeholder="English, Hindi (उदास/मस्त), ya Hinglish (sukoon)..."
               value={customTag}
               onChange={(e) => setCustomTag(e.target.value)}
               style={{

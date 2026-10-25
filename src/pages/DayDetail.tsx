@@ -4,6 +4,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db, toggleHabit, useHabits } from "../lib/db";
 import { weekStart } from "../lib/habitRules";
 import { getIconPath } from "../lib/icons";
+import { formatTime12h } from "../lib/sleep";
+import { classifyEmotion } from "../lib/emotions";
 
 export default function DayDetail() {
   const { date = "" } = useParams();
@@ -273,7 +275,7 @@ export default function DayDetail() {
           </div>
           {sleepLog?.bedAt && sleepLog?.wakeAt && (
             <div style={{ fontSize: "12.5px", color: "var(--mu)", marginTop: "4px" }}>
-              {sleepLog.bedAt} to {sleepLog.wakeAt}
+              {formatTime12h(sleepLog.bedAt)} to {formatTime12h(sleepLog.wakeAt)}
             </div>
           )}
         </div>
@@ -306,21 +308,28 @@ export default function DayDetail() {
           </div>
           {moodLog?.emotions?.length ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "10px" }}>
-              {moodLog.emotions.map((em) => (
-                <span
-                  key={em}
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: "99px",
-                    background: "var(--bg)",
-                    border: "1px solid var(--ln)",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                  }}
-                >
-                  {em}
-                </span>
-              ))}
+              {moodLog.emotions.map((em) => {
+                const detected = classifyEmotion(em);
+                return (
+                  <span
+                    key={em}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "99px",
+                      background: "var(--bg)",
+                      border: "1px solid var(--ln)",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <span>{detected.symbol}</span>
+                    <span>{em}</span>
+                  </span>
+                );
+              })}
             </div>
           ) : null}
         </div>

@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
-import { STREAK_BADGES, toMs, fromMs, weekStart } from "../../lib/habitRules";
+import { STREAK_BADGES, toMs, fromMs } from "../../lib/habitRules";
 import { getIconPath } from "../../lib/icons";
+import { formatTime12h } from "../../lib/sleep";
+import { classifyEmotion } from "../../lib/emotions";
 
 export interface HabitStreakItem {
   id: string;
@@ -65,7 +67,7 @@ export function StreakSheet({
   );
   const daysToGo = Math.max(0, nextBadge - streak);
 
-  // Generate single 7-day strip based on timelineOffset (0 = this week, 1 = previous week, etc.)
+  // Generate single 7-day strip based on timelineOffset (0 = this week with Today anchored at 3rd slot, 1 = previous week, etc.)
   const timelineDays = useMemo(() => {
     const list: {
       date: string;
@@ -80,12 +82,13 @@ export function StreakSheet({
     const DAY_MS = 86400000;
     const freezeSet = new Set(usedFreezeDates);
 
-    // Current week start (Monday)
-    const curWeekStartMs = toMs(weekStart(todayStr));
-    const targetWeekStartMs = curWeekStartMs - timelineOffset * 7 * DAY_MS;
+    // Anchor: Today is placed at index 2 (the 3rd slot of the 7-day strip)
+    // Index 0 is Today - 2 days, Index 1 is Today - 1 day, Index 2 is TODAY!
+    const curBaseMs = toMs(todayStr) - 2 * DAY_MS;
+    const targetBaseMs = curBaseMs - timelineOffset * 7 * DAY_MS;
 
     for (let i = 0; i < 7; i++) {
-      const d = fromMs(targetWeekStartMs + i * DAY_MS);
+      const d = fromMs(targetBaseMs + i * DAY_MS);
       const dt = new Date(`${d}T00:00:00Z`);
       const dayName = dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
       const dayNum = d.slice(8);
@@ -114,7 +117,7 @@ export function StreakSheet({
 
   const timelineHeaderLabel = useMemo(() => {
     if (timelineOffset === 0) {
-      return "TIMELINE · THIS WEEK";
+      return "TIMELINE · 7-DAY VIEW";
     }
     if (timelineDays.length === 7) {
       const first = timelineDays[0].date;
@@ -154,19 +157,37 @@ export function StreakSheet({
     const hasCompletedHabits = completedHabits.length > 0;
     const isMissed = targetDate < todayStr && !hasCompletedHabits && !isFrozen;
 
-    let sleepStr = "No sleep logged";
+    let sleepDurationStr = "No sleep logged";
+    let sleepIntervalStr = "";
     if (sleep && sleep.durationMin > 0) {
       const h = Math.floor(sleep.durationMin / 60);
       const m = sleep.durationMin % 60;
-      const dur = m > 0 ? `${h}h ${m}m` : `${h}h`;
-      sleepStr = sleep.bedAt && sleep.wakeAt ? `${dur} (${sleep.bedAt} – ${sleep.wakeAt})` : dur;
+      sleepDurationStr = m > 0 ? `${h}h ${m}m` : `${h}h`;
+      if (sleep.bedAt && sleep.wakeAt) {
+        sleepIntervalStr = `${formatTime12h(sleep.bedAt)} → ${formatTime12h(sleep.wakeAt)}`;
+      }
     }
 
-    const MOOD_LABELS = ["", "Rough", "Low", "Okay", "Good", "Energized"];
-    const MOOD_COLORS = ["", "#94a3b8", "#f59e0b", "#10b981", "#ff6b35", "#e11d48"];
+    const MOOD_META: Record<number, { label: string; emoji: string; color: string; bg: string }> = {
+      1: { label: "Rough", emoji: "🌪️", color: "#64748b", bg: "rgba(100, 116, 139, 0.12)" },
+      2: { label: "Low", emoji: "🌧️", color: "#f59e0b", bg: "rgba(245, 158, 11, 0.12)" },
+      3: { label: "Okay", emoji: "😌", color: "#10b981", bg: "rgba(16, 185, 129, 0.12)" },
+      4: { label: "Good", emoji: "🌱", color: "#ff6b35", bg: "rgba(255, 107, 53, 0.12)" },
+      5: { label: "Energized", emoji: "⚡", color: "#e11d48", bg: "rgba(225, 29, 72, 0.12)" },
+    };
+
     const moodScore = mood?.score || 0;
-    const moodLabel = moodScore > 0 ? MOOD_LABELS[moodScore] || `Score ${moodScore}` : "No feeling logged";
-    const moodColor = moodScore > 0 ? MOOD_COLORS[moodScore] || "var(--pr)" : "var(--mu)";
+    const moodMeta = MOOD_META[moodScore] || { label: "No feeling logged", emoji: "—", color: "var(--mu)", bg: "var(--bg)" };
+
+    // Emotion tags enriched with icons
+    const emotionsList: { tag: string; symbol: string }[] = (mood?.emotions || []).map((t: string) => ({
+      tag: t,
+      symbol: classifyEmotion(t).symbol,
+    }));
+
+    const completionPct = allHabits.length > 0
+      ? Math.round((completedHabits.length / allHabits.length) * 100)
+      : 0;
 
     return {
       date: targetDate,
@@ -178,10 +199,12 @@ export function StreakSheet({
       hasCompletedHabits,
       completedHabits,
       totalHabits: allHabits.length,
-      sleepStr,
-      moodLabel,
+      completionPct,
+      sleepDurationStr,
+      sleepIntervalStr,
+      moodMeta,
       moodScore,
-      moodColor,
+      emotionsList,
       reflectionContent: reflection?.content?.trim() || "",
     };
   }, [selectedDate, todayStr, allHabits, allHabitLogs, allSleepLogs, allMoodLogs, allReflections, usedFreezeDates]);
@@ -447,10 +470,10 @@ export function StreakSheet({
                 onClick={() => {
                   const newOffset = timelineOffset + 1;
                   setTimelineOffset(newOffset);
-                  // Select Sunday of that past week
-                  const curWeekStartMs = toMs(weekStart(todayStr));
-                  const pastSunday = fromMs(curWeekStartMs - newOffset * 7 * 86400000 + 6 * 86400000);
-                  setSelectedDate(pastSunday);
+                  // Anchor to index 2 (3rd slot) of that past window
+                  const curBaseMs = toMs(todayStr) - 2 * 86400000;
+                  const pastCenter = fromMs(curBaseMs - newOffset * 7 * 86400000 + 2 * 86400000);
+                  setSelectedDate(pastCenter);
                 }}
                 style={{
                   width: "32px",
@@ -469,7 +492,7 @@ export function StreakSheet({
                   padding: 0,
                   lineHeight: 1,
                 }}
-                aria-label="Previous week"
+                aria-label="Previous days"
                 title="Previous days (‹)"
               >
                 ‹
@@ -482,9 +505,9 @@ export function StreakSheet({
                   if (newOffset === 0) {
                     setSelectedDate(todayStr);
                   } else {
-                    const curWeekStartMs = toMs(weekStart(todayStr));
-                    const pastSunday = fromMs(curWeekStartMs - newOffset * 7 * 86400000 + 6 * 86400000);
-                    setSelectedDate(pastSunday);
+                    const curBaseMs = toMs(todayStr) - 2 * 86400000;
+                    const pastCenter = fromMs(curBaseMs - newOffset * 7 * 86400000 + 2 * 86400000);
+                    setSelectedDate(pastCenter);
                   }
                 }}
                 disabled={timelineOffset === 0}
@@ -636,12 +659,15 @@ export function StreakSheet({
           }}
         >
           {/* Card Header & Status Badge */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
             <div>
-              <div style={{ fontSize: "11px", letterSpacing: ".12em", fontWeight: 800, color: "var(--mu)", textTransform: "uppercase" }}>
-                DAY REPORT
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--pr)" }} />
+                <span style={{ fontSize: "11px", letterSpacing: ".12em", fontWeight: 800, color: "var(--mu)", textTransform: "uppercase" }}>
+                  DAY REPORT
+                </span>
               </div>
-              <div style={{ fontSize: "18px", fontWeight: 800, marginTop: "3px", letterSpacing: "-0.01em" }}>
+              <div style={{ fontSize: "19px", fontWeight: 800, marginTop: "4px", letterSpacing: "-0.01em" }}>
                 {reportCard.dateFormatted}
               </div>
             </div>
@@ -684,7 +710,7 @@ export function StreakSheet({
               ) : reportCard.isMissed ? (
                 <>⚠️ Missed Day</>
               ) : (
-                <>⏳ Today (In progress)</>
+                <>⏳ Active Today</>
               )}
             </div>
           </div>
@@ -806,11 +832,25 @@ export function StreakSheet({
           {/* Habit Progress Breakdown */}
           <div style={{ marginTop: "18px", paddingTop: "14px", borderTop: "1px solid var(--ln)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-              <div style={{ fontSize: "12.5px", fontWeight: 800, letterSpacing: "0.04em", color: "var(--mu)", textTransform: "uppercase" }}>
-                Habits Completed
+              <div style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", color: "var(--mu)", textTransform: "uppercase" }}>
+                HABITS PERFORMANCE
               </div>
-              <div style={{ fontSize: "13px", fontWeight: 800, color: "var(--prt)" }}>
-                {reportCard.completedHabits.length} of {reportCard.totalHabits}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--tx)" }}>
+                  {reportCard.completedHabits.length}/{reportCard.totalHabits}
+                </span>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 800,
+                    padding: "2px 7px",
+                    borderRadius: "99px",
+                    background: reportCard.completionPct === 100 ? "rgba(16, 185, 129, 0.15)" : "var(--tint)",
+                    color: reportCard.completionPct === 100 ? "#10b981" : "var(--prt)",
+                  }}
+                >
+                  {reportCard.completionPct}%
+                </span>
               </div>
             </div>
 
@@ -828,8 +868,12 @@ export function StreakSheet({
               <div
                 style={{
                   height: "100%",
-                  width: `${reportCard.totalHabits > 0 ? (reportCard.completedHabits.length / reportCard.totalHabits) * 100 : 0}%`,
-                  background: reportCard.isFrozen ? "#0284c7" : "var(--pr)",
+                  width: `${reportCard.completionPct}%`,
+                  background: reportCard.isFrozen
+                    ? "linear-gradient(90deg, #0284c7, #38bdf8)"
+                    : reportCard.completionPct === 100
+                    ? "linear-gradient(90deg, #10b981, #059669)"
+                    : "linear-gradient(90deg, var(--pr), var(--fl, #f97316))",
                   borderRadius: "99px",
                   transition: "width 0.3s ease",
                 }}
@@ -857,7 +901,7 @@ export function StreakSheet({
                       <path d={getIconPath(h.icon || "star")} />
                     </svg>
                     {h.name}
-                    <span style={{ color: "var(--pr)", fontSize: "11px", fontWeight: 900 }}>✓</span>
+                    <span style={{ color: "#10b981", fontSize: "11px", fontWeight: 900 }}>✓</span>
                   </span>
                 ))}
               </div>
@@ -894,39 +938,60 @@ export function StreakSheet({
           {/* Health Dual Metric Cards (Sleep & Mind) */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "14px" }}>
             {/* Sleep Card */}
-            <div style={{ background: "var(--bg)", borderRadius: "16px", padding: "12px 14px", border: "1px solid var(--ln)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ind)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ background: "var(--bg)", borderRadius: "16px", padding: "14px", border: "1px solid var(--ln)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ind, #6366f1)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg>
-                <span style={{ fontSize: "11px", fontWeight: 800, color: "var(--mu)", textTransform: "uppercase" }}>
+                <span style={{ fontSize: "11px", fontWeight: 800, color: "var(--mu)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   SLEEP
                 </span>
               </div>
-              <div style={{ fontSize: "14px", fontWeight: 800, color: "var(--ind)", fontFamily: "var(--num)" }}>
-                {reportCard.sleepStr}
+              <div style={{ fontSize: "15px", fontWeight: 800, color: "var(--tx)", fontFamily: "var(--num)" }}>
+                {reportCard.sleepDurationStr}
               </div>
+              {reportCard.sleepIntervalStr ? (
+                <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--mu)", marginTop: "4px" }}>
+                  {reportCard.sleepIntervalStr}
+                </div>
+              ) : null}
             </div>
 
             {/* Mind / Feeling Card */}
-            <div style={{ background: "var(--bg)", borderRadius: "16px", padding: "12px 14px", border: "1px solid var(--ln)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
-                <span
-                  style={{
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    background: reportCard.moodColor,
-                    boxShadow: reportCard.moodScore > 0 ? `0 0 6px ${reportCard.moodColor}` : "none",
-                  }}
-                />
-                <span style={{ fontSize: "11px", fontWeight: 800, color: "var(--mu)", textTransform: "uppercase" }}>
+            <div style={{ background: "var(--bg)", borderRadius: "16px", padding: "14px", border: "1px solid var(--ln)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                <span style={{ fontSize: "13px" }}>{reportCard.moodMeta.emoji}</span>
+                <span style={{ fontSize: "11px", fontWeight: 800, color: "var(--mu)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   FEELING
                 </span>
               </div>
-              <div style={{ fontSize: "14px", fontWeight: 800, color: reportCard.moodColor }}>
-                {reportCard.moodLabel}
+              <div style={{ display: "inline-block", fontSize: "12.5px", fontWeight: 800, color: reportCard.moodMeta.color, background: reportCard.moodMeta.bg, padding: "2px 8px", borderRadius: "99px" }}>
+                {reportCard.moodMeta.label}
               </div>
+              {reportCard.emotionsList.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "8px" }}>
+                  {reportCard.emotionsList.map((em, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        padding: "2px 7px",
+                        borderRadius: "99px",
+                        background: "var(--card)",
+                        border: "1px solid var(--ln)",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        color: "var(--tx)",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "3px",
+                      }}
+                    >
+                      <span>{em.symbol}</span>
+                      <span>{em.tag}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
