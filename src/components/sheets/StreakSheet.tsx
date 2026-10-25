@@ -116,15 +116,21 @@ export function StreakSheet({
   // Center/scroll Today into view on open
   useEffect(() => {
     if (isOpen) {
-      const t = setTimeout(() => {
+      setSelectedDate(todayStr);
+      const scrollToCenter = () => {
         const el = dayRefs.current[todayStr];
         const container = timelineContainerRef.current;
         if (el && container) {
-          const scrollPos = el.offsetLeft - container.offsetWidth + el.offsetWidth + 24;
+          const scrollPos = el.offsetLeft - (container.offsetWidth - el.offsetWidth) / 2;
           container.scrollTo({ left: Math.max(0, scrollPos), behavior: "smooth" });
         }
-      }, 60);
-      return () => clearTimeout(t);
+      };
+      const t1 = setTimeout(scrollToCenter, 50);
+      const t2 = setTimeout(scrollToCenter, 180);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }
   }, [isOpen, todayStr]);
 
@@ -133,36 +139,24 @@ export function StreakSheet({
     const el = dayRefs.current[todayStr];
     const container = timelineContainerRef.current;
     if (el && container) {
-      const scrollPos = el.offsetLeft - container.offsetWidth + el.offsetWidth + 24;
+      const scrollPos = el.offsetLeft - (container.offsetWidth - el.offsetWidth) / 2;
       container.scrollTo({ left: Math.max(0, scrollPos), behavior: "smooth" });
     }
   };
 
   const handleScrollLeft = () => {
     if (timelineContainerRef.current) {
-      timelineContainerRef.current.scrollBy({ left: -260, behavior: "smooth" });
+      timelineContainerRef.current.scrollBy({ left: -220, behavior: "smooth" });
     }
   };
 
   const handleScrollRight = () => {
     if (timelineContainerRef.current) {
-      timelineContainerRef.current.scrollBy({ left: 260, behavior: "smooth" });
+      timelineContainerRef.current.scrollBy({ left: 220, behavior: "smooth" });
     }
   };
 
-  const timelineHeaderLabel = useMemo(() => {
-    if (selectedDate === todayStr) {
-      return "TIMELINE · TODAY";
-    }
-    const dt = new Date(`${selectedDate}T00:00:00Z`);
-    const formatted = dt.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      timeZone: "UTC",
-    });
-    return `TIMELINE · ${formatted.toUpperCase()}`;
-  }, [selectedDate, todayStr]);
+  const timelineHeaderLabel = "STREAK TIMELINE";
 
   // Selected Day Report Card details
   const reportCard = useMemo(() => {
@@ -218,9 +212,13 @@ export function StreakSheet({
       symbol: classifyEmotion(t).symbol,
     }));
 
-    const completionPct = allHabits.length > 0
-      ? Math.round((completedHabits.length / allHabits.length) * 100)
-      : 0;
+    const relevantHabits = allHabits.filter((h) => {
+      if (completedHabits.some((c) => c.id === h.id)) return true;
+      if (h.archivedAt && h.archivedAt < targetDate) return false;
+      return true;
+    });
+
+    const totalHabitsCount = relevantHabits.length > 0 ? relevantHabits.length : allHabits.length;
 
     return {
       date: targetDate,
@@ -231,8 +229,9 @@ export function StreakSheet({
       isFrozen,
       hasCompletedHabits,
       completedHabits,
-      totalHabits: allHabits.length,
-      completionPct,
+      relevantHabits,
+      totalHabits: totalHabitsCount,
+      completionPct: totalHabitsCount > 0 ? Math.round((completedHabits.length / totalHabitsCount) * 100) : 0,
       sleepDurationStr,
       sleepIntervalStr,
       moodMeta,
@@ -474,27 +473,37 @@ export function StreakSheet({
               {timelineHeaderLabel}
             </div>
 
-            {/* Navigation Controls: Piche Jaane Wala (‹), Today Jump, & Aage Jaane Wala (›) Action Buttons */}
+            {/* Navigation Controls: Today Jump, & Scroll Buttons (‹ and ›) */}
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              {selectedDate !== todayStr && (
-                <button
-                  type="button"
-                  onClick={handleJumpToToday}
-                  style={{
-                    padding: "4px 9px",
-                    borderRadius: "99px",
-                    border: "1px solid var(--ln)",
-                    background: "var(--card)",
-                    color: "var(--prt)",
-                    fontSize: "11px",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  Today
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleJumpToToday}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: "99px",
+                  border: selectedDate === todayStr ? "1px solid var(--pr)" : "none",
+                  background: selectedDate === todayStr ? "var(--tint)" : "var(--pr)",
+                  color: selectedDate === todayStr ? "var(--prt)" : "var(--on)",
+                  fontSize: "11.5px",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  transition: "all 0.15s ease",
+                  boxShadow: selectedDate !== todayStr ? "0 2px 8px rgba(15, 60, 55, 0.2)" : "none",
+                }}
+                title="Scroll to Today"
+              >
+                {selectedDate === todayStr ? (
+                  <>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--pr)" }} />
+                    Today
+                  </>
+                ) : (
+                  <>Today ↺</>
+                )}
+              </button>
               <button
                 type="button"
                 onClick={handleScrollLeft}
@@ -573,7 +582,15 @@ export function StreakSheet({
                   type="button"
                   disabled={d.isLocked}
                   onClick={() => {
-                    if (!d.isLocked) setSelectedDate(d.date);
+                    if (!d.isLocked) {
+                      setSelectedDate(d.date);
+                      const el = dayRefs.current[d.date];
+                      const container = timelineContainerRef.current;
+                      if (el && container) {
+                        const scrollPos = el.offsetLeft - (container.offsetWidth - el.offsetWidth) / 2;
+                        container.scrollTo({ left: Math.max(0, scrollPos), behavior: "smooth" });
+                      }
+                    }
                   }}
                   style={{
                     flex: "0 0 50px",
@@ -853,22 +870,23 @@ export function StreakSheet({
 
           {/* Habit Progress Breakdown */}
           <div style={{ marginTop: "18px", paddingTop: "14px", borderTop: "1px solid var(--ln)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
               <div style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", color: "var(--mu)", textTransform: "uppercase" }}>
                 HABITS PERFORMANCE
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--tx)" }}>
-                  {reportCard.completedHabits.length}/{reportCard.totalHabits}
+                <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--tx)", fontFamily: "var(--num)" }}>
+                  {reportCard.completedHabits.length} of {reportCard.totalHabits}
                 </span>
                 <span
                   style={{
                     fontSize: "11px",
                     fontWeight: 800,
-                    padding: "2px 7px",
+                    padding: "2px 8px",
                     borderRadius: "99px",
-                    background: reportCard.completionPct === 100 ? "rgba(16, 185, 129, 0.15)" : "var(--tint)",
-                    color: reportCard.completionPct === 100 ? "#10b981" : "var(--prt)",
+                    background: "var(--tint)",
+                    color: "var(--prt)",
+                    border: "1px solid color-mix(in srgb, var(--pr) 20%, transparent)",
                   }}
                 >
                   {reportCard.completionPct}%
@@ -876,13 +894,14 @@ export function StreakSheet({
               </div>
             </div>
 
-            {/* Progress Bar */}
+            {/* Clean, Elegant Progress Bar - Solid var(--pr), no weird clashing gradients */}
             <div
               style={{
                 width: "100%",
                 height: "6px",
                 borderRadius: "99px",
-                background: "var(--ln)",
+                background: "var(--bg)",
+                border: "1px solid var(--ln)",
                 overflow: "hidden",
                 marginBottom: "12px",
               }}
@@ -891,41 +910,110 @@ export function StreakSheet({
                 style={{
                   height: "100%",
                   width: `${reportCard.completionPct}%`,
-                  background: reportCard.isFrozen
-                    ? "linear-gradient(90deg, #0284c7, #38bdf8)"
-                    : reportCard.completionPct === 100
-                    ? "linear-gradient(90deg, #10b981, #059669)"
-                    : "linear-gradient(90deg, var(--pr), var(--fl, #f97316))",
+                  background: reportCard.isFrozen ? "#0284c7" : "var(--pr)",
                   borderRadius: "99px",
-                  transition: "width 0.3s ease",
+                  transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                 }}
               />
             </div>
 
-            {reportCard.completedHabits.length > 0 ? (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                {reportCard.completedHabits.map((h: any) => (
-                  <span
-                    key={h.id}
-                    style={{
-                      background: "var(--bg)",
-                      border: "1px solid var(--ln)",
-                      padding: "6px 11px",
-                      borderRadius: "12px",
-                      fontSize: "12.5px",
-                      fontWeight: 700,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                      <path d={getIconPath(h.icon || "star")} />
-                    </svg>
-                    {h.name}
-                    <span style={{ color: "#10b981", fontSize: "11px", fontWeight: 900 }}>✓</span>
-                  </span>
-                ))}
+            {/* Refined Habits Breakdown with clear status and no duplicate checkmarks */}
+            {reportCard.relevantHabits && reportCard.relevantHabits.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {reportCard.relevantHabits.map((h: any) => {
+                  const isDone = reportCard.completedHabits.some((c: any) => c.id === h.id);
+                  return (
+                    <div
+                      key={h.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 12px",
+                        borderRadius: "14px",
+                        background: isDone
+                          ? "color-mix(in srgb, var(--pr) 7%, var(--card))"
+                          : "var(--bg)",
+                        border: isDone
+                          ? "1px solid color-mix(in srgb, var(--pr) 25%, var(--ln))"
+                          : "1px solid var(--ln)",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+                        {/* Status Check / Pending Icon */}
+                        <div
+                          style={{
+                            width: "20px",
+                            height: "20px",
+                            borderRadius: "50%",
+                            background: isDone ? "var(--pr)" : "transparent",
+                            border: isDone ? "none" : "1.5px solid var(--mu)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {isDone ? (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--on)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          ) : (
+                            <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "var(--mu)", opacity: 0.6 }} />
+                          )}
+                        </div>
+
+                        {/* Habit Icon & Habit Name */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke={isDone ? "var(--tx)" : "var(--mu)"}
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            style={{ flexShrink: 0 }}
+                          >
+                            <path d={getIconPath(h.icon || "star")} />
+                          </svg>
+                          <span
+                            style={{
+                              fontSize: "13px",
+                              fontWeight: 700,
+                              color: isDone ? "var(--tx)" : "var(--mu)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {h.name}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Clean Status Badge */}
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 800,
+                          padding: "2px 8px",
+                          borderRadius: "99px",
+                          background: isDone ? "var(--tint)" : "var(--card)",
+                          color: isDone ? "var(--prt)" : "var(--mu)",
+                          border: isDone
+                            ? "1px solid color-mix(in srgb, var(--pr) 20%, transparent)"
+                            : "1px solid var(--ln)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {isDone ? "Done" : "Pending"}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             ) : reportCard.isToday ? (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--bg)", padding: "10px 14px", borderRadius: "14px", border: "1px solid var(--ln)" }}>
@@ -951,7 +1039,7 @@ export function StreakSheet({
                 </button>
               </div>
             ) : (
-              <div style={{ fontSize: "13px", color: "var(--mu)", fontWeight: 500 }}>
+              <div style={{ fontSize: "13px", color: "var(--mu)", fontWeight: 500, padding: "8px 0" }}>
                 No habits were completed on this date.
               </div>
             )}
