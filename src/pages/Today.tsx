@@ -51,7 +51,19 @@ export default function Today() {
   const [feelingsOpen, setFeelingsOpen] = useState(false);
 
   // Reactive Dexie Queries
-  const habits = useLiveQuery(() => db.habits.filter((h) => h.isActive).sortBy("sort"), []) ?? [];
+  const rawHabits = useLiveQuery(() => db.habits.filter((h) => h.isActive).sortBy("sort"), []) ?? [];
+  const habits = useMemo(() => {
+    try {
+      const recentRaw = sessionStorage.getItem("last_saved_habit");
+      if (recentRaw) {
+        const recent = JSON.parse(recentRaw) as Habit;
+        if (!rawHabits.some((h) => h.id === recent.id || h.name.trim().toLowerCase() === recent.name.trim().toLowerCase())) {
+          return [recent, ...rawHabits];
+        }
+      }
+    } catch {}
+    return rawHabits;
+  }, [rawHabits]);
   const currentDayLogs = useLiveQuery(() => db.habit_logs.where("date").equals(date).toArray(), [date]) ?? [];
   const allLogs = useLiveQuery(() => db.habit_logs.toArray(), []) ?? [];
   const currentSleep = useLiveQuery(() => db.sleep_logs.get(date), [date]);

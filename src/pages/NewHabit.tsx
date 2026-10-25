@@ -112,7 +112,7 @@ export default function NewHabit() {
   const [isPressed, setIsPressed] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSave = async (e?: React.FormEvent | React.MouseEvent) => {
+  const handleSave = (e?: React.FormEvent | React.MouseEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -137,60 +137,38 @@ export default function NewHabit() {
     setIsSaving(true);
     setErrorMsg("");
 
+    const targetId = editId || `h_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const newHabit: Habit = {
+      id: targetId,
+      name: trimmedName,
+      icon,
+      goalDays: isCustomDays ? goalDays : 7,
+      sort: existingHabit?.sort ?? 1,
+      isActive: true,
+      createdAt: existingHabit?.createdAt ?? new Date().toISOString(),
+    };
+
+    // 1. Instantly store in sessionStorage for 0ms optimistic render on Today page
     try {
-      // Find if habit exists by editId or by name (case-insensitive)
-      const allHabits = await db.habits.toArray();
-      const normalized = trimmedName.toLowerCase();
-      const existingMatch = allHabits.find(
-        (h) => h.id === editId || h.name.trim().toLowerCase() === normalized
-      );
+      sessionStorage.setItem("last_saved_habit", JSON.stringify(newHabit));
+      sessionStorage.removeItem(HABIT_DRAFT_KEY);
+      sessionStorage.removeItem("selected_icon");
+    } catch {}
 
-      const targetId = existingMatch?.id || editId || `h_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      const habitCount = await db.habits.count();
+    // 2. Persist to IndexedDB in parallel
+    saveHabit(newHabit).catch(() => {
+      db.habits.put(newHabit).catch(() => {});
+    });
 
-      const newHabit: Habit = {
-        id: targetId,
-        name: trimmedName,
-        icon,
-        goalDays: isCustomDays ? goalDays : 7,
-        sort: existingHabit?.sort ?? existingMatch?.sort ?? habitCount + 1,
-        isActive: true,
-        createdAt: existingHabit?.createdAt ?? existingMatch?.createdAt ?? new Date().toISOString(),
-      };
+    // 3. Instant zero-delay redirection to Today screen
+    navigate("/", { replace: true });
 
-      await saveHabit(newHabit);
-
-      try {
-        sessionStorage.removeItem(HABIT_DRAFT_KEY);
-        sessionStorage.removeItem("selected_icon");
-      } catch {}
-
-      // Instant real-time redirect to Today screen
-      navigate("/", { replace: true });
-    } catch (err: any) {
-      console.error("Failed to save habit, trying direct store put:", err);
-      try {
-        const fallbackHabit: Habit = {
-          id: editId || `h_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-          name: trimmedName,
-          icon,
-          goalDays: isCustomDays ? goalDays : 7,
-          sort: 1,
-          isActive: true,
-          createdAt: new Date().toISOString(),
-        };
-        await db.habits.put(fallbackHabit);
-        try {
-          sessionStorage.removeItem(HABIT_DRAFT_KEY);
-          sessionStorage.removeItem("selected_icon");
-        } catch {}
-        navigate("/", { replace: true });
-      } catch (fallbackErr: any) {
-        console.error("Direct fallback failed:", fallbackErr);
-        setErrorMsg("Error saving habit: " + (err?.message || String(err)));
-        setIsSaving(false);
+    // 4. Bulletproof fallback if router navigation was delayed on mobile
+    setTimeout(() => {
+      if (window.location.pathname.includes("new-habit")) {
+        window.location.replace("/");
       }
-    }
+    }, 80);
   };
 
   const handleDelete = async () => {

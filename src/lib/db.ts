@@ -434,27 +434,27 @@ export async function saveReflection(
 }
 
 export async function saveHabit(habit: Habit): Promise<void> {
-  await db.transaction("rw", db.habits, db.outbox, async () => {
-    await db.habits.put(habit);
+  await db.habits.put(habit);
+  try {
     await db.outbox.add({
       table: "habits",
       op: "update",
       row: habit,
       ts: Date.now(),
     });
-  });
+  } catch {}
 }
 
 export async function deleteHabit(id: string): Promise<void> {
-  await db.transaction("rw", db.habits, db.outbox, async () => {
-    await db.habits.delete(id);
+  await db.habits.delete(id);
+  try {
     await db.outbox.add({
       table: "habits",
       op: "delete",
       row: { id },
       ts: Date.now(),
     });
-  });
+  } catch {}
 }
 
 export async function getSetting(key: string, defaultValue = ""): Promise<string> {
