@@ -285,13 +285,13 @@ export default function Today() {
     return sum;
   }, [habits, logsByHabit, todayStr]);
 
-  // Sleep fraction & count (nights with 7-9h this week out of 7)
+  // Sleep fraction & count (nights logged this week out of 7)
   const { sleepFraction, sleepCount } = useMemo(() => {
     const start = weekStart(todayStr);
     let count = 0;
     for (let d = start; d <= todayStr; d = fromMs(toMs(d) + 86400000)) {
       const s = allSleepLogs.find((log) => log.date === d);
-      if (s && s.durationMin >= 420 && s.durationMin <= 540) count++;
+      if (s && s.durationMin > 0) count++;
     }
     return { sleepFraction: Math.min(1, count / 7), sleepCount: count };
   }, [allSleepLogs, todayStr]);
@@ -1068,6 +1068,13 @@ export default function Today() {
           await useFreezeToken(targetDate);
         }}
         onGoToToday={() => navigate("/")}
+        todayStr={todayStr}
+        allHabits={habits}
+        allHabitLogs={allLogs}
+        allSleepLogs={allSleepLogs}
+        allMoodLogs={allMoodLogs}
+        allReflections={allReflections}
+        usedFreezeDates={usedFreezeDates}
       />
     </div>
   );

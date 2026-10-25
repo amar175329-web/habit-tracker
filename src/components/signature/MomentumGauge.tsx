@@ -200,80 +200,132 @@ export function MomentumGauge({
         </text>
       </svg>
 
-      {/* Legend Row */}
+      {/* 3 Metric Summary Cards (Structured, perfectly fitted, zero wrapping) */}
       <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginTop: "6px",
-          padding: "0 4px",
+          display: "grid",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          gap: "8px",
+          marginTop: "12px",
+          padding: "0 2px",
         }}
       >
-        <span
+        <div
           style={{
-            display: "inline-flex",
+            background: "var(--bg)",
+            borderRadius: "14px",
+            padding: "8px 4px",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
             alignItems: "center",
-            gap: "6px",
-            fontSize: "12px",
-            fontWeight: 700,
-            color: "var(--mu)",
+            justifyContent: "center",
           }}
         >
-          <i
+          <div
             style={{
-              width: "9px",
-              height: "9px",
-              borderRadius: "50%",
-              background: "var(--pr)",
-              display: "block",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "5px",
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "var(--mu)",
+              whiteSpace: "nowrap",
             }}
-          />
-          Habits <b style={{ color: "var(--tx)" }}>{habitPct}%</b>
-        </span>
+          >
+            <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "var(--pr)", flexShrink: 0 }} />
+            Habits
+          </div>
+          <div
+            style={{
+              fontSize: "13.5px",
+              fontWeight: 800,
+              color: "var(--tx)",
+              marginTop: "2px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {habitPct}%
+          </div>
+        </div>
 
-        <span
+        <div
           style={{
-            display: "inline-flex",
+            background: "var(--bg)",
+            borderRadius: "14px",
+            padding: "8px 4px",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
             alignItems: "center",
-            gap: "6px",
-            fontSize: "12px",
-            fontWeight: 700,
-            color: "var(--mu)",
+            justifyContent: "center",
           }}
         >
-          <i
+          <div
             style={{
-              width: "9px",
-              height: "9px",
-              borderRadius: "50%",
-              background: "var(--ind)",
-              display: "block",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "5px",
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "var(--mu)",
+              whiteSpace: "nowrap",
             }}
-          />
-          Sleep <b style={{ color: "var(--tx)" }}>{sleepNights} nights</b>
-        </span>
+          >
+            <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "var(--ind)", flexShrink: 0 }} />
+            Sleep
+          </div>
+          <div
+            style={{
+              fontSize: "13.5px",
+              fontWeight: 800,
+              color: "var(--tx)",
+              marginTop: "2px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {sleepNights} {sleepNights === 1 ? "night" : "nights"}
+          </div>
+        </div>
 
-        <span
+        <div
           style={{
-            display: "inline-flex",
+            background: "var(--bg)",
+            borderRadius: "14px",
+            padding: "8px 4px",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
             alignItems: "center",
-            gap: "6px",
-            fontSize: "12px",
-            fontWeight: 700,
-            color: "var(--mu)",
+            justifyContent: "center",
           }}
         >
-          <i
+          <div
             style={{
-              width: "9px",
-              height: "9px",
-              borderRadius: "50%",
-              background: "var(--co)",
-              display: "block",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "5px",
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "var(--mu)",
+              whiteSpace: "nowrap",
             }}
-          />
-          Mind <b style={{ color: "var(--tx)" }}>{mindDays} days</b>
-        </span>
+          >
+            <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "var(--co)", flexShrink: 0 }} />
+            Mind
+          </div>
+          <div
+            style={{
+              fontSize: "13.5px",
+              fontWeight: 800,
+              color: "var(--tx)",
+              marginTop: "2px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {mindDays} {mindDays === 1 ? "day" : "days"}
+          </div>
+        </div>
       </div>
     </div>
   );

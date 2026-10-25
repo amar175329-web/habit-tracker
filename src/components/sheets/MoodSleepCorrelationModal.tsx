@@ -9,6 +9,15 @@ export interface MoodSleepCorrelationModalProps {
   allSleep: SleepLog[];
 }
 
+function formatDurationExact(min: number): string {
+  if (!min || isNaN(min)) return "—";
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 export function MoodSleepCorrelationModal({
   isOpen,
   onClose,
@@ -100,8 +109,8 @@ export function MoodSleepCorrelationModal({
       return {
         hasData: false,
         totalPaired: 0,
-        highAvgHours: "7.8h",
-        lowAvgHours: "5.5h",
+        highAvgHours: "7h 48m",
+        lowAvgHours: "5h 30m",
         sweetSpot: "7h 30m – 8h 15m",
         correlationText: "More data needed to reveal personal patterns.",
       };
@@ -115,15 +124,15 @@ export function MoodSleepCorrelationModal({
     const lowAvgMin =
       lowDays.length > 0 ? lowDays.reduce((a, b) => a + b.sleepMin, 0) / lowDays.length : 0;
 
-    const highAvgHours = highAvgMin ? `${(highAvgMin / 60).toFixed(1)}h` : "—";
-    const lowAvgHours = lowAvgMin ? `${(lowAvgMin / 60).toFixed(1)}h` : "—";
+    const highAvgHours = highAvgMin ? formatDurationExact(highAvgMin) : "—";
+    const lowAvgHours = lowAvgMin ? formatDurationExact(lowAvgMin) : "—";
 
     // Best mood duration
     const energised = paired.filter((p) => p.mood === 5);
     const bestPool = energised.length > 0 ? energised : highDays;
     const sweetSpotMin =
       bestPool.length > 0 ? bestPool.reduce((a, b) => a + b.sleepMin, 0) / bestPool.length : highAvgMin;
-    const sweetSpotHours = sweetSpotMin ? `${(sweetSpotMin / 60).toFixed(1)}h` : "7.5h";
+    const sweetSpotHours = sweetSpotMin ? formatDurationExact(sweetSpotMin) : "7h 30m";
 
     return {
       hasData: true,
@@ -133,7 +142,7 @@ export function MoodSleepCorrelationModal({
       sweetSpot: `Peak mood recorded around ${sweetSpotHours} of sleep`,
       correlationText:
         highAvgMin && lowAvgMin && highAvgMin > lowAvgMin
-          ? `You sleep ${( (highAvgMin - lowAvgMin) / 60 ).toFixed(1)}h longer before your best days.`
+          ? `You sleep ${formatDurationExact(highAvgMin - lowAvgMin)} longer before your best days.`
           : "Consistent sleep duration aligns with steady emotional energy.",
     };
   }, [filteredMoods, filteredSleep]);

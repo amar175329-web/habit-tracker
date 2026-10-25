@@ -77,10 +77,16 @@ export default function SleepPage() {
 
   const handleSave = async () => {
     try {
-      await saveSleep(todayStr, bedtime, wakeTime, durationMin, todayStr);
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2000);
+      await saveSleep(todayStr, bedtime, wakeTime, durationMin, todayStr);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("dailyos_sleep_updated"));
+      }
+      setTimeout(() => {
+        navigate("/", { replace: true });
+      }, 350);
     } catch (err: any) {
+      setSaveSuccess(false);
       alert(err.message || "Failed to save sleep");
     }
   };
@@ -97,10 +103,13 @@ export default function SleepPage() {
       const mins = log ? log.durationMin : 0;
       const hours = mins / 60;
       const inTarget = hours >= 7 && hours <= 9;
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      const hoursStr = mins > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : "-";
       bars.push({
         label: labels[i],
         hours,
-        hoursStr: hours > 0 ? `${hours}h` : "-",
+        hoursStr,
         inTarget,
       });
     }
