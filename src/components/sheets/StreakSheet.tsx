@@ -3,6 +3,7 @@ import { STREAK_BADGES, toMs, fromMs, isHabitActiveOnDate } from "../../lib/habi
 import { getIconPath } from "../../lib/icons";
 import { formatTime12h } from "../../lib/sleep";
 import { classifyEmotion } from "../../lib/emotions";
+import { LuxuryDatePickerModal } from "../modals/LuxuryDatePickerModal";
 
 export interface HabitStreakItem {
   id: string;
@@ -53,6 +54,7 @@ export function StreakSheet({
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [claimingFreeze, setClaimingFreeze] = useState(false);
   const [claimSuccess, setClaimSuccess] = useState<string | null>(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const isEmpty = streak <= 0;
@@ -503,14 +505,16 @@ export function StreakSheet({
 
             {/* Navigation Controls: Date Picker, Today Jump & Page Buttons (‹ and ›) */}
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              {/* Compact Year-Month-Date Picker Pill */}
-              <label
+              {/* Luxury In-App Date Picker Trigger */}
+              <button
+                type="button"
+                onClick={() => setDatePickerOpen(true)}
                 style={{
                   position: "relative",
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 8px",
+                  gap: "5px",
+                  padding: "4px 9px",
                   borderRadius: "99px",
                   border: "1px solid var(--ln)",
                   background: "var(--card)",
@@ -520,6 +524,7 @@ export function StreakSheet({
                   cursor: "pointer",
                   lineHeight: 1,
                   boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                  transition: "all 0.15s ease",
                 }}
                 title="Select date (Year, Month, Day)"
               >
@@ -530,26 +535,8 @@ export function StreakSheet({
                   <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
                 <span>{selectedDate}</span>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  max={todayStr}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleSelectDate(e.target.value);
-                    }
-                  }}
-                  style={{
-                    position: "absolute",
-                    opacity: 0,
-                    width: "100%",
-                    height: "100%",
-                    top: 0,
-                    left: 0,
-                    cursor: "pointer",
-                  }}
-                />
-              </label>
+                <span style={{ fontSize: "9px", opacity: 0.6 }}>▾</span>
+              </button>
 
               {/* Today Button - ALWAYS VISIBLE */}
               <button
@@ -1496,6 +1483,14 @@ export function StreakSheet({
             </div>
           </div>
         )}
+
+        <LuxuryDatePickerModal
+          isOpen={datePickerOpen}
+          onClose={() => setDatePickerOpen(false)}
+          selectedDate={selectedDate}
+          onSelectDate={handleSelectDate}
+          todayStr={todayStr}
+        />
       </div>
     </div>
   );
