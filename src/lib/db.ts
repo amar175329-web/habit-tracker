@@ -9,6 +9,7 @@ export interface Habit {
   sort: number;
   isActive: boolean;
   createdAt: string;
+  archivedAt?: string;
 }
 
 export interface HabitLog {
@@ -635,7 +636,7 @@ export async function saveHabit(habit: Habit): Promise<void> {
   } catch {}
 }
 
-export async function deleteHabit(id: string): Promise<void> {
+export async function deleteHabit(id: string, purgeLogs: boolean = false): Promise<void> {
   markHabitDeleted(id);
   try {
     const list = getCachedHabits().filter((h) => h.id !== id);
@@ -645,16 +646,48 @@ export async function deleteHabit(id: string): Promise<void> {
     }
   } catch {}
 
-  await db.habits.delete(id);
-
-  try {
-    await db.outbox.add({
-      table: "habits",
-      op: "delete",
-      row: { id },
-      ts: Date.now(),
+  if (purgeLogs) {
+    // Complete purge: delete habit record and all logged history for charts/calendar
+    await db.transaction("rw", [db.habits, db.habit_logs, db.outbox], async () => {
+      await db.habits.delete(id);
+      await db.habit_logs.where("habitId").equals(id).delete();
+      await db.outbox.add({
+        table: "habits",
+        op: "delete",
+        row: { id },
+        ts: Date.now(),
+      });
+      await db.outbox.add({
+        table: "habit_logs",
+        op: "delete",
+        row: { habitId: id },
+        ts: Date.now(),
+      });
     });
-  } catch {}
+  } else {
+    // Soft delete / Archive: Keep past history intact!
+    // Leaves all past habit_logs untouched for past streaks, heatmaps, charts and reports.
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const existing = await db.habits.get(id);
+    if (existing) {
+      const updated: Habit = {
+        ...existing,
+        isActive: false,
+        archivedAt: todayStr,
+      };
+      await db.habits.put(updated);
+      try {
+        await db.outbox.add({
+          table: "habits",
+          op: "update",
+          row: updated,
+          ts: Date.now(),
+        });
+      } catch {}
+    } else {
+      await db.habits.delete(id);
+    }
+  }
 }
 
 export async function getSetting(key: string, defaultValue = ""): Promise<string> {

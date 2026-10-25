@@ -46,6 +46,10 @@ export default function SleepPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, []);
+
+  useEffect(() => {
     if (currentSleep) {
       if (currentSleep.bedAt) setBedtime(currentSleep.bedAt);
       if (currentSleep.wakeAt) setWakeTime(currentSleep.wakeAt);

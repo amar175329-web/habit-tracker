@@ -25,6 +25,14 @@ import IconPicker from "./pages/IconPicker";
 import DataBackup from "./pages/DataBackup";
 import ExportPage from "./pages/Export";
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [pathname]);
+  return null;
+}
+
 function AppNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -115,6 +123,7 @@ export default function App() {
     <QueryClientProvider client={qc}>
       <ThemeProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <ErrorBoundary fallbackTitle="Application Error">
             <AppNavigation />
             <Routes>

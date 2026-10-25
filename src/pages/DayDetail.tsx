@@ -49,10 +49,23 @@ export default function DayDetail() {
   const editable = isToday || isUnlocked;
 
   const habits = useHabits();
+  const allHabits = useLiveQuery(() => db.habits.toArray(), []) ?? [];
   const dayLogs = useLiveQuery(() => db.habit_logs.where("date").equals(date).toArray(), [date]) ?? [];
   const sleepLog = useLiveQuery(() => db.sleep_logs.get(date), [date]);
   const moodLog = useLiveQuery(() => db.mood_logs.get(date), [date]);
   const reflection = useLiveQuery(() => db.reflections.get(date), [date]);
+
+  const displayHabits = useMemo(() => {
+    if (isToday) return habits;
+    const loggedHabitIds = new Set(dayLogs.map((l) => l.habitId));
+    const combined = (allHabits.length > 0 ? allHabits : habits).filter((h) => {
+      if (loggedHabitIds.has(h.id)) return true;
+      if (h.isActive) return true;
+      if (h.archivedAt && h.archivedAt >= date) return true;
+      return false;
+    });
+    return combined.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+  }, [isToday, habits, allHabits, dayLogs, date]);
 
   const [optimisticOverrides, setOptimisticOverrides] = useState<Map<string, number>>(new Map());
 
@@ -241,7 +254,7 @@ export default function DayDetail() {
             HABITS
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {habits.map((h) => {
+            {displayHabits.map((h) => {
               const state = logMap.get(h.id) ?? 0;
               const isDone = state === 2;
               const isHalf = state === 1;

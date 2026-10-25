@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { STREAK_BADGES, toMs, fromMs } from "../../lib/habitRules";
 import { getIconPath } from "../../lib/icons";
 import { formatTime12h } from "../../lib/sleep";
@@ -50,10 +50,12 @@ export function StreakSheet({
   allReflections = [],
   usedFreezeDates = [],
 }: StreakSheetProps) {
-  const [timelineOffset, setTimelineOffset] = useState<number>(0);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [claimingFreeze, setClaimingFreeze] = useState(false);
   const [claimSuccess, setClaimSuccess] = useState<string | null>(null);
+
+  const timelineContainerRef = useRef<HTMLDivElement>(null);
+  const dayRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const isEmpty = streak <= 0;
   const longest = Math.max(streak, longestStreak);
@@ -67,7 +69,7 @@ export function StreakSheet({
   );
   const daysToGo = Math.max(0, nextBadge - streak);
 
-  // Generate single 7-day strip based on timelineOffset (0 = this week with Today anchored at 3rd slot, 1 = previous week, etc.)
+  // Continuous multi-week timeline supporting smooth horizontal thumb scrolling/swiping (60 past days to +3 future days)
   const timelineDays = useMemo(() => {
     const list: {
       date: string;
@@ -81,14 +83,10 @@ export function StreakSheet({
     }[] = [];
     const DAY_MS = 86400000;
     const freezeSet = new Set(usedFreezeDates);
+    const todayBaseMs = toMs(todayStr);
 
-    // Anchor: Today is placed at index 2 (the 3rd slot of the 7-day strip)
-    // Index 0 is Today - 2 days, Index 1 is Today - 1 day, Index 2 is TODAY!
-    const curBaseMs = toMs(todayStr) - 2 * DAY_MS;
-    const targetBaseMs = curBaseMs - timelineOffset * 7 * DAY_MS;
-
-    for (let i = 0; i < 7; i++) {
-      const d = fromMs(targetBaseMs + i * DAY_MS);
+    for (let offset = -60; offset <= 3; offset++) {
+      const d = fromMs(todayBaseMs + offset * DAY_MS);
       const dt = new Date(`${d}T00:00:00Z`);
       const dayName = dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
       const dayNum = d.slice(8);
@@ -113,23 +111,58 @@ export function StreakSheet({
       });
     }
     return list;
-  }, [timelineOffset, todayStr, allHabitLogs, usedFreezeDates]);
+  }, [todayStr, allHabitLogs, usedFreezeDates]);
+
+  // Center/scroll Today into view on open
+  useEffect(() => {
+    if (isOpen) {
+      const t = setTimeout(() => {
+        const el = dayRefs.current[todayStr];
+        const container = timelineContainerRef.current;
+        if (el && container) {
+          const scrollPos = el.offsetLeft - container.offsetWidth + el.offsetWidth + 24;
+          container.scrollTo({ left: Math.max(0, scrollPos), behavior: "smooth" });
+        }
+      }, 60);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen, todayStr]);
+
+  const handleJumpToToday = () => {
+    setSelectedDate(todayStr);
+    const el = dayRefs.current[todayStr];
+    const container = timelineContainerRef.current;
+    if (el && container) {
+      const scrollPos = el.offsetLeft - container.offsetWidth + el.offsetWidth + 24;
+      container.scrollTo({ left: Math.max(0, scrollPos), behavior: "smooth" });
+    }
+  };
+
+  const handleScrollLeft = () => {
+    if (timelineContainerRef.current) {
+      timelineContainerRef.current.scrollBy({ left: -260, behavior: "smooth" });
+    }
+  };
+
+  const handleScrollRight = () => {
+    if (timelineContainerRef.current) {
+      timelineContainerRef.current.scrollBy({ left: 260, behavior: "smooth" });
+    }
+  };
 
   const timelineHeaderLabel = useMemo(() => {
-    if (timelineOffset === 0) {
-      return "TIMELINE · 7-DAY VIEW";
+    if (selectedDate === todayStr) {
+      return "TIMELINE · TODAY";
     }
-    if (timelineDays.length === 7) {
-      const first = timelineDays[0].date;
-      const last = timelineDays[6].date;
-      const fDt = new Date(`${first}T00:00:00Z`);
-      const lDt = new Date(`${last}T00:00:00Z`);
-      const fStr = fDt.toLocaleDateString("en-US", { day: "numeric", month: "short", timeZone: "UTC" });
-      const lStr = lDt.toLocaleDateString("en-US", { day: "numeric", month: "short", timeZone: "UTC" });
-      return `TIMELINE · ${fStr.toUpperCase()} – ${lStr.toUpperCase()}`;
-    }
-    return "TIMELINE";
-  }, [timelineOffset, timelineDays]);
+    const dt = new Date(`${selectedDate}T00:00:00Z`);
+    const formatted = dt.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+    return `TIMELINE · ${formatted.toUpperCase()}`;
+  }, [selectedDate, todayStr]);
 
   // Selected Day Report Card details
   const reportCard = useMemo(() => {
@@ -433,7 +466,7 @@ export function StreakSheet({
           </div>
         </div>
 
-        {/* Single Date-wise Timeline with Previous/Next Navigation */}
+        {/* Date-wise Timeline with Horizontal Swipe + Arrow Navigation */}
         <div style={{ marginTop: "22px" }}>
           {/* Header Row: Title & Action Arrow Buttons (‹ and ›) */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", padding: "0 2px" }}>
@@ -441,15 +474,12 @@ export function StreakSheet({
               {timelineHeaderLabel}
             </div>
 
-            {/* Navigation Controls: Piche Jaane Wala (‹) & Aage Jaane Wala (›) Action Buttons */}
+            {/* Navigation Controls: Piche Jaane Wala (‹), Today Jump, & Aage Jaane Wala (›) Action Buttons */}
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              {timelineOffset > 0 && (
+              {selectedDate !== todayStr && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setTimelineOffset(0);
-                    setSelectedDate(todayStr);
-                  }}
+                  onClick={handleJumpToToday}
                   style={{
                     padding: "4px 9px",
                     borderRadius: "99px",
@@ -467,14 +497,7 @@ export function StreakSheet({
               )}
               <button
                 type="button"
-                onClick={() => {
-                  const newOffset = timelineOffset + 1;
-                  setTimelineOffset(newOffset);
-                  // Anchor to index 2 (3rd slot) of that past window
-                  const curBaseMs = toMs(todayStr) - 2 * 86400000;
-                  const pastCenter = fromMs(curBaseMs - newOffset * 7 * 86400000 + 2 * 86400000);
-                  setSelectedDate(pastCenter);
-                }}
+                onClick={handleScrollLeft}
                 style={{
                   width: "32px",
                   height: "32px",
@@ -492,25 +515,14 @@ export function StreakSheet({
                   padding: 0,
                   lineHeight: 1,
                 }}
-                aria-label="Previous days"
-                title="Previous days (‹)"
+                aria-label="Scroll back"
+                title="Scroll back (‹)"
               >
                 ‹
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const newOffset = Math.max(0, timelineOffset - 1);
-                  setTimelineOffset(newOffset);
-                  if (newOffset === 0) {
-                    setSelectedDate(todayStr);
-                  } else {
-                    const curBaseMs = toMs(todayStr) - 2 * 86400000;
-                    const pastCenter = fromMs(curBaseMs - newOffset * 7 * 86400000 + 2 * 86400000);
-                    setSelectedDate(pastCenter);
-                  }
-                }}
-                disabled={timelineOffset === 0}
+                onClick={handleScrollRight}
                 style={{
                   width: "32px",
                   height: "32px",
@@ -521,29 +533,33 @@ export function StreakSheet({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  cursor: timelineOffset === 0 ? "not-allowed" : "pointer",
-                  opacity: timelineOffset === 0 ? 0.35 : 1,
+                  cursor: "pointer",
                   fontSize: "18px",
                   fontWeight: 800,
                   transition: "background 0.15s ease",
                   padding: 0,
                   lineHeight: 1,
                 }}
-                aria-label="Next week"
-                title="Next days (›)"
+                aria-label="Scroll forward"
+                title="Scroll forward (›)"
               >
                 ›
               </button>
             </div>
           </div>
 
-          {/* Days Strip: All 7 days in a single clean row */}
+          {/* Days Strip: Horizontally scrollable and swipable with touch */}
           <div
+            ref={timelineContainerRef}
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(7, 1fr)",
-              gap: "6px",
-              paddingBottom: "4px",
+              display: "flex",
+              gap: "7px",
+              overflowX: "auto",
+              scrollSnapType: "x proximity",
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+              paddingBottom: "6px",
             }}
           >
             {timelineDays.map((d) => {
@@ -551,12 +567,17 @@ export function StreakSheet({
               return (
                 <button
                   key={d.date}
+                  ref={(el) => {
+                    dayRefs.current[d.date] = el;
+                  }}
                   type="button"
                   disabled={d.isLocked}
                   onClick={() => {
                     if (!d.isLocked) setSelectedDate(d.date);
                   }}
                   style={{
+                    flex: "0 0 50px",
+                    width: "50px",
                     padding: "9px 2px",
                     borderRadius: "16px",
                     background: isSelected ? "var(--prt)" : "var(--card)",
@@ -574,6 +595,7 @@ export function StreakSheet({
                     transition: "all 0.15s ease",
                     boxShadow: isSelected ? "0 4px 14px rgba(15, 60, 55, 0.15)" : "none",
                     outline: "none",
+                    scrollSnapAlign: "center",
                   }}
                 >
                   <div style={{ fontSize: "10.5px", fontWeight: 700, opacity: isSelected ? 0.9 : 0.7 }}>

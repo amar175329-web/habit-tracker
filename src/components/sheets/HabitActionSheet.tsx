@@ -9,7 +9,7 @@ export interface HabitActionSheetProps {
   isExpanded: boolean;
   onToggleWidth: () => void;
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete: (purgeHistory: boolean) => void;
 }
 
 export function HabitActionSheet({
@@ -121,67 +121,137 @@ export function HabitActionSheet({
         {confirmDelete ? (
           <div>
             {/* Warning Icon & Confirmation Text */}
-            <div style={{ textAlign: "center", padding: "12px 6px 22px" }}>
+            <div style={{ textAlign: "center", padding: "12px 6px 18px" }}>
               <div
                 style={{
-                  width: "56px",
-                  height: "56px",
+                  width: "52px",
+                  height: "52px",
                   borderRadius: "20px",
                   background: "rgba(224, 86, 68, 0.12)",
                   color: "var(--co)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  margin: "0 auto 14px",
+                  margin: "0 auto 12px",
                 }}
               >
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
                 </svg>
               </div>
-              <div style={{ fontWeight: 800, fontSize: "19px", color: "var(--tx)", marginBottom: "6px" }}>
-                Delete “{habitName}”?
+              <div style={{ fontWeight: 800, fontSize: "18px", color: "var(--tx)", marginBottom: "4px" }}>
+                Remove “{habitName}”?
               </div>
-              <div style={{ fontSize: "13px", color: "var(--mu)", lineHeight: 1.45, maxWidth: "280px", margin: "0 auto" }}>
-                Are you sure? This habit and all its logged history will be permanently deleted.
+              <div style={{ fontSize: "12.5px", color: "var(--mu)", lineHeight: 1.45, maxWidth: "300px", margin: "0 auto" }}>
+                Choose how to remove this habit. You can preserve all past streaks and charts, or wipe everything.
               </div>
             </div>
 
-            {/* Top Button: Yes, delete */}
+            {/* Option 1 (Recommended): Keep Past History */}
             <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onDelete();
+                onDelete(false);
                 onClose();
               }}
               style={{
                 width: "100%",
-                height: "50px",
-                borderRadius: "25px",
-                background: "var(--co)",
-                color: "#ffffff",
-                border: "none",
-                fontWeight: 800,
-                fontSize: "15px",
+                padding: "12px 14px",
+                borderRadius: "18px",
+                background: "var(--tint)",
+                border: "1.5px solid var(--pr)",
+                color: "var(--tx)",
                 cursor: "pointer",
-                boxShadow: "0 6px 20px rgba(224, 86, 68, 0.3)",
                 marginBottom: "10px",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
+                gap: "12px",
+                textAlign: "left",
                 fontFamily: "inherit",
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
-              Yes, delete
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "12px",
+                  background: "var(--prt)",
+                  color: "var(--on)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: "14px", color: "var(--tx)" }}>
+                  Keep Past Streaks & History
+                </div>
+                <div style={{ fontSize: "11.5px", color: "var(--mu)", marginTop: "2px", lineHeight: 1.35 }}>
+                  Hides from Today onwards. Past streaks, calendar & charts stay intact.
+                </div>
+              </div>
             </button>
 
-            {/* Bottom Button: Cancel (Piche chala jaye) */}
+            {/* Option 2 (Danger): Purge all data & history */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete(true);
+                onClose();
+              }}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: "18px",
+                background: "rgba(224, 86, 68, 0.08)",
+                border: "1.5px solid var(--co)",
+                color: "var(--co)",
+                cursor: "pointer",
+                marginBottom: "10px",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                textAlign: "left",
+                fontFamily: "inherit",
+              }}
+            >
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "12px",
+                  background: "var(--co)",
+                  color: "#ffffff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: "14px", color: "var(--co)" }}>
+                  Delete Habit & Purge All History
+                </div>
+                <div style={{ fontSize: "11.5px", color: "var(--mu)", marginTop: "2px", lineHeight: 1.35 }}>
+                  Permanently deletes habit and all past logs from every chart & calendar.
+                </div>
+              </div>
+            </button>
+
+            {/* Cancel Button */}
             <button
               type="button"
               onClick={(e) => {
@@ -191,13 +261,13 @@ export function HabitActionSheet({
               }}
               style={{
                 width: "100%",
-                height: "46px",
-                borderRadius: "23px",
+                height: "44px",
+                borderRadius: "22px",
                 border: "1px solid var(--ln)",
                 background: "var(--bg)",
                 color: "var(--tx)",
                 fontWeight: 700,
-                fontSize: "14px",
+                fontSize: "13.5px",
                 cursor: "pointer",
                 fontFamily: "inherit",
               }}

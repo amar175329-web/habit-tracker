@@ -93,6 +93,7 @@ export default function Today() {
 
   // Reactive Dexie Queries
   const dbHabits = useLiveQuery(() => db.habits.filter((h) => h.isActive).sortBy("sort"), []);
+  const allDbHabits = useLiveQuery(() => db.habits.toArray(), []) ?? [];
 
   // Track deleted habit IDs locally for 0ms instantaneous UI feedback
   const [deletedHabitIds, setDeletedHabitIds] = useState<Set<string>>(new Set());
@@ -271,7 +272,7 @@ export default function Today() {
     description: "",
   });
 
-  const handleDeleteHabitFromMenu = (habitId: string) => {
+  const handleDeleteHabitFromMenu = (habitId: string, purgeHistory = false) => {
     // 1. Instantly hide from UI (0ms feedback)
     setDeletedHabitIds((prev) => new Set(prev).add(habitId));
     markHabitDeleted(habitId);
@@ -285,8 +286,8 @@ export default function Today() {
     // 3. Close the action sheet immediately
     setActiveMenuHabit(null);
 
-    // 4. Delete from Dexie in background
-    deleteHabit(habitId).catch((err) => {
+    // 4. Delete or archive in Dexie in background
+    deleteHabit(habitId, purgeHistory).catch((err) => {
       console.error("Delete error:", err);
     });
   };
@@ -1294,7 +1295,7 @@ export default function Today() {
           isExpanded={fullWidthHabits.has(activeMenuHabit.id)}
           onToggleWidth={() => handleToggleHabitWidth(activeMenuHabit.id)}
           onEdit={() => navigate(`/new-habit?edit=${activeMenuHabit.id}`)}
-          onDelete={() => handleDeleteHabitFromMenu(activeMenuHabit.id)}
+          onDelete={(purge) => handleDeleteHabitFromMenu(activeMenuHabit.id, purge)}
         />
       )}
 
@@ -1313,7 +1314,7 @@ export default function Today() {
         }}
         onGoToToday={() => navigate("/")}
         todayStr={todayStr}
-        allHabits={habits}
+        allHabits={allDbHabits.length > 0 ? allDbHabits : habits}
         allHabitLogs={allLogs}
         allSleepLogs={allSleepLogs}
         allMoodLogs={allMoodLogs}
