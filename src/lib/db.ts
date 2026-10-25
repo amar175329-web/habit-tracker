@@ -434,6 +434,36 @@ export async function saveReflection(
 }
 
 const HABITS_CACHE_KEY = "dailyos_habits_cache_v1";
+const DELETED_HABITS_KEY = "dailyos_deleted_habits_v1";
+
+export function getDeletedHabitIds(): Set<string> {
+  if (typeof window === "undefined" || !window.localStorage) return new Set();
+  try {
+    const raw = window.localStorage.getItem(DELETED_HABITS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function markHabitDeleted(id: string): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    const set = getDeletedHabitIds();
+    set.add(id);
+    window.localStorage.setItem(DELETED_HABITS_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
+export function clearHabitDeletedMark(id: string): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    const set = getDeletedHabitIds();
+    if (set.delete(id)) {
+      window.localStorage.setItem(DELETED_HABITS_KEY, JSON.stringify(Array.from(set)));
+    }
+  } catch {}
+}
 
 export function getCachedHabits(): Habit[] {
   if (typeof window === "undefined" || !window.localStorage) return [];
@@ -453,6 +483,7 @@ export function setCachedHabits(habits: Habit[]): void {
 }
 
 export async function saveHabit(habit: Habit): Promise<void> {
+  clearHabitDeletedMark(habit.id);
   try {
     const list = getCachedHabits();
     const idx = list.findIndex((h) => h.id === habit.id);
@@ -480,6 +511,7 @@ export async function saveHabit(habit: Habit): Promise<void> {
 }
 
 export async function deleteHabit(id: string): Promise<void> {
+  markHabitDeleted(id);
   try {
     const list = getCachedHabits().filter((h) => h.id !== id);
     setCachedHabits(list);

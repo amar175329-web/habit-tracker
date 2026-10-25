@@ -8,6 +8,8 @@ import {
   deleteHabit,
   getCachedHabits,
   setCachedHabits,
+  getDeletedHabitIds,
+  markHabitDeleted,
   type Habit,
 } from "../lib/db";
 import {
@@ -69,27 +71,50 @@ export default function Today() {
   // Synchronize localStorage cache whenever dbHabits updates from IndexedDB
   useEffect(() => {
     if (dbHabits) {
-      const activeHabits = dbHabits.filter((h) => !deletedHabitIds.has(h.id));
-      setCachedHabits(activeHabits);
+      const deleted = getDeletedHabitIds();
+      const currentCache = getCachedHabits();
+      const map = new Map<string, Habit>();
+
+      // Merge dbHabits first
+      dbHabits.forEach((h) => {
+        if (!deleted.has(h.id) && !deletedHabitIds.has(h.id)) {
+          map.set(h.id, h);
+        }
+      });
+
+      // Merge current cache so newly added habits in cache are never dropped
+      currentCache.forEach((h) => {
+        if (!deleted.has(h.id) && !deletedHabitIds.has(h.id)) {
+          map.set(h.id, h);
+        }
+      });
+
+      const merged = Array.from(map.values()).sort((a, b) => {
+        const sa = typeof a.sort === "number" && !isNaN(a.sort) ? a.sort : 0;
+        const sb = typeof b.sort === "number" && !isNaN(b.sort) ? b.sort : 0;
+        return sa - sb;
+      });
+      setCachedHabits(merged);
     }
   }, [dbHabits, deletedHabitIds]);
 
-  // Merge dbHabits and cached habits, eliminating duplicates by ID
+  // Merge dbHabits and cached habits, eliminating duplicates and deleted habits
   const habits = useMemo(() => {
-    const cached = getCachedHabits().filter((h) => h.isActive);
+    const deleted = getDeletedHabitIds();
+    const cached = getCachedHabits().filter(
+      (h) => h.isActive && !deleted.has(h.id) && !deletedHabitIds.has(h.id)
+    );
     const map = new Map<string, Habit>();
 
     // Seed with cached habits
     cached.forEach((h) => {
-      if (!deletedHabitIds.has(h.id)) {
-        map.set(h.id, h);
-      }
+      map.set(h.id, h);
     });
 
     // Merge Dexie habits
     if (dbHabits) {
       dbHabits.forEach((h) => {
-        if (!deletedHabitIds.has(h.id)) {
+        if (!deleted.has(h.id) && !deletedHabitIds.has(h.id)) {
           map.set(h.id, h);
         }
       });
@@ -144,6 +169,7 @@ export default function Today() {
   const handleDeleteHabitFromMenu = (habitId: string) => {
     // 1. Instantly hide from UI (0ms feedback)
     setDeletedHabitIds((prev) => new Set(prev).add(habitId));
+    markHabitDeleted(habitId);
     
     // 2. Instantly remove from local storage array cache
     try {

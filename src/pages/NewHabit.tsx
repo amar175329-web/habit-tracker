@@ -1,7 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, saveHabit, deleteHabit, getCachedHabits, type Habit } from "../lib/db";
+import {
+  db,
+  saveHabit,
+  deleteHabit,
+  getCachedHabits,
+  setCachedHabits,
+  markHabitDeleted,
+  clearHabitDeletedMark,
+  type Habit,
+} from "../lib/db";
 import { autoPickIcon, getIconPath } from "../lib/icons";
 
 const HABIT_DRAFT_KEY = "habit_draft_data";
@@ -15,6 +24,7 @@ export default function NewHabit() {
     () => (editId ? db.habits.get(editId) : undefined),
     [editId]
   );
+  const allDbHabits = useLiveQuery(() => db.habits.toArray(), []);
 
   const [name, setName] = useState(() => {
     try {
@@ -112,7 +122,7 @@ export default function NewHabit() {
   const [isPressed, setIsPressed] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSave = async (e?: React.FormEvent | React.MouseEvent) => {
+  const handleSave = (e?: React.FormEvent | React.MouseEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -138,10 +148,11 @@ export default function NewHabit() {
     setIsSaving(true);
     setErrorMsg("");
 
-    // Monotonically append to the end (last position)
-    const allHabits = getCachedHabits();
+    // Monotonically append to the end (last position) across both DB and cache
+    const cachedList = getCachedHabits();
+    const allKnown = [...(allDbHabits ?? []), ...cachedList];
     let maxSort = 0;
-    for (const h of allHabits) {
+    for (const h of allKnown) {
       const s = typeof h.sort === "number" && !isNaN(h.sort) ? h.sort : 0;
       if (s > maxSort) maxSort = s;
     }
@@ -165,18 +176,32 @@ export default function NewHabit() {
       sessionStorage.removeItem("last_saved_habit");
     } catch {}
 
-    // Save habit (synchronously updates cache & dispatches event immediately)
+    // 1. Clear deletion mark & synchronously update cache + broadcast event (0ms instant!)
+    clearHabitDeletedMark(newHabit.id);
     try {
-      await saveHabit(newHabit);
-    } catch (err) {
-      console.error("Save error:", err);
-    }
+      const list = getCachedHabits();
+      const idx = list.findIndex((h) => h.id === newHabit.id);
+      if (idx >= 0) {
+        list[idx] = newHabit;
+      } else {
+        list.push(newHabit);
+      }
+      setCachedHabits(list);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
+      }
+    } catch {}
 
-    // Smooth client-side SPA navigation to Today screen
+    // 2. Smooth, instantaneous client-side SPA navigation to Today screen (0ms redirect!)
     navigate("/", { replace: true });
+
+    // 3. Persist to Dexie and Outbox asynchronously in background (never blocks UI)
+    saveHabit(newHabit).catch((err) => {
+      console.error("Save error:", err);
+    });
   };
 
-  const handleDelete = async (e?: React.MouseEvent) => {
+  const handleDelete = (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -189,13 +214,23 @@ export default function NewHabit() {
       sessionStorage.removeItem("last_saved_habit");
     } catch {}
 
+    // 1. Mark deleted, update cache, and broadcast event (0ms instant!)
+    markHabitDeleted(editId);
     try {
-      await deleteHabit(editId);
-    } catch (e) {
-      console.error("Delete error:", e);
-    }
+      const list = getCachedHabits().filter((h) => h.id !== editId);
+      setCachedHabits(list);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
+      }
+    } catch {}
 
+    // 2. Instant redirect to Today screen
     navigate("/", { replace: true });
+
+    // 3. Persist deletion in background
+    deleteHabit(editId).catch((e) => {
+      console.error("Delete error:", e);
+    });
   };
 
   const handleBack = () => {
