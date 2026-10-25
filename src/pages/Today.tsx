@@ -272,6 +272,25 @@ export default function Today() {
     description: "",
   });
 
+  const [toastMsg, setToastMsg] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const msg = sessionStorage.getItem("today_toast_msg");
+        if (msg) {
+          sessionStorage.removeItem("today_toast_msg");
+          return msg;
+        }
+      } catch {}
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (!toastMsg) return;
+    const t = setTimeout(() => setToastMsg(null), 4500);
+    return () => clearTimeout(t);
+  }, [toastMsg]);
+
   const handleDeleteHabitFromMenu = (habitId: string, purgeHistory = false) => {
     // 1. Instantly hide from UI (0ms feedback)
     setDeletedHabitIds((prev) => new Set(prev).add(habitId));
@@ -285,6 +304,7 @@ export default function Today() {
 
     // 3. Close the action sheet immediately
     setActiveMenuHabit(null);
+    setToastMsg("Habit removed. Past streaks are preserved. To permanently purge past data, visit Settings.");
 
     // 4. Delete or archive in Dexie in background
     deleteHabit(habitId, purgeHistory).catch((err) => {
@@ -1321,6 +1341,53 @@ export default function Today() {
         allReflections={allReflections}
         usedFreezeDates={usedFreezeDates}
       />
+
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div
+          onClick={() => setToastMsg(null)}
+          style={{
+            position: "fixed",
+            bottom: "84px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "calc(100% - 36px)",
+            maxWidth: "394px",
+            background: "var(--card)",
+            border: "1px solid var(--ln)",
+            borderRadius: "18px",
+            padding: "12px 16px",
+            boxShadow: "0 8px 30px rgba(0, 0, 0, 0.25)",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            zIndex: 80,
+            cursor: "pointer",
+          }}
+        >
+          <span style={{ fontSize: "16px" }}>ℹ️</span>
+          <div style={{ flex: 1, fontSize: "12px", color: "var(--tx)", fontWeight: 600, lineHeight: 1.35 }}>
+            {toastMsg}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setToastMsg(null);
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--mu)",
+              fontSize: "16px",
+              cursor: "pointer",
+              padding: "4px",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* In-app Luxury Confirm / Alert Modal */}
       <ConfirmModal

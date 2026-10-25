@@ -121,7 +121,7 @@ export function HabitActionSheet({
         {confirmDelete ? (
           <div>
             {/* Warning Icon & Confirmation Text */}
-            <div style={{ textAlign: "center", padding: "12px 6px 18px" }}>
+            <div style={{ textAlign: "center", padding: "12px 6px 16px" }}>
               <div
                 style={{
                   width: "52px",
@@ -139,141 +139,93 @@ export function HabitActionSheet({
                   <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
                 </svg>
               </div>
-              <div style={{ fontWeight: 800, fontSize: "18px", color: "var(--tx)", marginBottom: "4px" }}>
-                Remove “{habitName}”?
+              <div style={{ fontWeight: 800, fontSize: "18px", color: "var(--tx)", marginBottom: "6px" }}>
+                Delete “{habitName}”?
               </div>
-              <div style={{ fontSize: "12.5px", color: "var(--mu)", lineHeight: 1.45, maxWidth: "300px", margin: "0 auto" }}>
-                Choose how to remove this habit. You can preserve all past streaks and charts, or wipe everything.
+              <div style={{ fontSize: "13px", color: "var(--mu)", lineHeight: 1.45, maxWidth: "300px", margin: "0 auto" }}>
+                Are you sure you want to remove this habit? Past streaks and calendar history will remain safely preserved.
               </div>
             </div>
 
-            {/* Option 1 (Recommended): Keep Past History */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onDelete(false);
-                onClose();
-              }}
+            {/* Helpful Tip */}
+            <div
               style={{
-                width: "100%",
-                padding: "12px 14px",
-                borderRadius: "18px",
-                background: "var(--tint)",
-                border: "1.5px solid var(--pr)",
-                color: "var(--tx)",
-                cursor: "pointer",
-                marginBottom: "10px",
+                background: "var(--bg)",
+                border: "1px solid var(--ln)",
+                borderRadius: "14px",
+                padding: "10px 14px",
+                marginBottom: "16px",
+                fontSize: "12px",
+                color: "var(--mu)",
+                lineHeight: 1.4,
                 display: "flex",
                 alignItems: "center",
-                gap: "12px",
-                textAlign: "left",
-                fontFamily: "inherit",
+                gap: "8px",
               }}
             >
-              <div
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "12px",
-                  background: "var(--prt)",
-                  color: "var(--on)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 800, fontSize: "14px", color: "var(--tx)" }}>
-                  Keep Past Streaks & History
-                </div>
-                <div style={{ fontSize: "11.5px", color: "var(--mu)", marginTop: "2px", lineHeight: 1.35 }}>
-                  Hides from Today onwards. Past streaks, calendar & charts stay intact.
-                </div>
-              </div>
-            </button>
+              <span style={{ fontSize: "15px" }}>💡</span>
+              <span>
+                Want to permanently wipe historical data? You can purge or restore archived habits anytime in <strong>Settings</strong>.
+              </span>
+            </div>
 
-            {/* Option 2 (Danger): Purge all data & history */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onDelete(true);
-                onClose();
-              }}
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                borderRadius: "18px",
-                background: "rgba(224, 86, 68, 0.08)",
-                border: "1.5px solid var(--co)",
-                color: "var(--co)",
-                cursor: "pointer",
-                marginBottom: "10px",
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                textAlign: "left",
-                fontFamily: "inherit",
-              }}
-            >
-              <div
+            {/* Action Buttons: Yes, delete & Cancel */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete(false);
+                  onClose();
+                }}
                 style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "12px",
+                  width: "100%",
+                  height: "48px",
+                  borderRadius: "24px",
+                  border: "none",
                   background: "var(--co)",
                   color: "#ffffff",
+                  fontWeight: 800,
+                  fontSize: "15px",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  flexShrink: 0,
+                  gap: "8px",
+                  boxShadow: "0 4px 14px rgba(224, 86, 68, 0.25)",
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
                 </svg>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 800, fontSize: "14px", color: "var(--co)" }}>
-                  Delete Habit & Purge All History
-                </div>
-                <div style={{ fontSize: "11.5px", color: "var(--mu)", marginTop: "2px", lineHeight: 1.35 }}>
-                  Permanently deletes habit and all past logs from every chart & calendar.
-                </div>
-              </div>
-            </button>
+                Yes, delete
+              </button>
 
-            {/* Cancel Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setConfirmDelete(false);
-              }}
-              style={{
-                width: "100%",
-                height: "44px",
-                borderRadius: "22px",
-                border: "1px solid var(--ln)",
-                background: "var(--bg)",
-                color: "var(--tx)",
-                fontWeight: 700,
-                fontSize: "13.5px",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              Cancel
-            </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setConfirmDelete(false);
+                }}
+                style={{
+                  width: "100%",
+                  height: "46px",
+                  borderRadius: "23px",
+                  border: "1px solid var(--ln)",
+                  background: "var(--bg)",
+                  color: "var(--tx)",
+                  fontWeight: 700,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         ) : (
           <>

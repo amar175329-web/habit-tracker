@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { clearAllData, useHabits } from "../lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
+import { clearAllData, useHabits, db, deleteHabit, restoreHabit } from "../lib/db";
+import { getIconPath } from "../lib/icons";
 import { useTheme } from "../lib/theme";
 import { ConfirmModal } from "../components/modals/ConfirmModal";
 
@@ -9,9 +11,80 @@ export default function Settings() {
   const { theme, setTheme } = useTheme();
 
   const habits = useHabits();
+  const allHabits = useLiveQuery(() => db.habits.toArray(), [], []) ?? [];
+  const allLogs = useLiveQuery(() => db.habit_logs.toArray(), [], []) ?? [];
 
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [wipedModalOpen, setWipedModalOpen] = useState(false);
+  const [purgeTarget, setPurgeTarget] = useState<{ id: string; name: string; logCount: number } | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Derive archived habits and any orphan logs from past deleted habits
+  const archivedHabits = useMemo(() => {
+    const inactiveHabits = allHabits.filter((h) => !h.isActive);
+
+    const logCountMap = new Map<string, number>();
+    for (const log of allLogs) {
+      if (log.state > 0) {
+        logCountMap.set(log.habitId, (logCountMap.get(log.habitId) || 0) + 1);
+      }
+    }
+
+    const result = inactiveHabits.map((h) => ({
+      id: h.id,
+      name: h.name,
+      icon: h.icon || "star",
+      goalDays: h.goalDays,
+      archivedAt: h.archivedAt,
+      logCount: logCountMap.get(h.id) || 0,
+      isOrphan: false,
+    }));
+
+    // Find any logs for habits that have no DB habit entry at all
+    const knownIds = new Set(allHabits.map((h) => h.id));
+    const orphanIds = new Set<string>();
+    for (const log of allLogs) {
+      if (!knownIds.has(log.habitId) && log.state > 0) {
+        orphanIds.add(log.habitId);
+      }
+    }
+    for (const oId of orphanIds) {
+      result.push({
+        id: oId,
+        name: `Old Habit (#${oId.slice(-4)})`,
+        icon: "activity",
+        goalDays: 7,
+        archivedAt: undefined,
+        logCount: logCountMap.get(oId) || 0,
+        isOrphan: true,
+      });
+    }
+
+    return result;
+  }, [allHabits, allLogs]);
+
+  const handleRestoreHabit = async (id: string) => {
+    try {
+      await restoreHabit(id);
+      setToastMessage("Habit restored to your active list!");
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err: any) {
+      console.error("Restore error:", err);
+    }
+  };
+
+  const handleConfirmPurge = async () => {
+    if (!purgeTarget) return;
+    try {
+      await deleteHabit(purgeTarget.id, true);
+      setToastMessage(`Purged all past data for "${purgeTarget.name}".`);
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err: any) {
+      console.error("Purge error:", err);
+    } finally {
+      setPurgeTarget(null);
+    }
+  };
 
   const handleResetData = () => {
     setResetModalOpen(true);
@@ -111,7 +184,7 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Habits Management Card */}
+      {/* Active Habits Management Card */}
       <div
         style={{
           background: "var(--card)",
@@ -163,6 +236,150 @@ export default function Settings() {
             </span>
           </div>
         ))}
+      </div>
+
+      {/* Archived Habits & Past History Card */}
+      <div
+        style={{
+          background: "var(--card)",
+          border: "1px solid var(--ln)",
+          borderRadius: "26px",
+          padding: "16px 18px",
+          marginTop: "12px",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+          <div style={{ fontSize: "11px", letterSpacing: ".14em", fontWeight: 700, color: "var(--mu)" }}>
+            ARCHIVED HABITS & PAST DATA
+          </div>
+          {archivedHabits.length > 0 && (
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 800,
+                padding: "2px 8px",
+                borderRadius: "10px",
+                background: "var(--tint)",
+                color: "var(--prt)",
+              }}
+            >
+              {archivedHabits.length} archived
+            </span>
+          )}
+        </div>
+
+        <div style={{ fontSize: "12px", color: "var(--mu)", lineHeight: 1.45, marginBottom: "14px" }}>
+          When you delete a habit from Today, its past streaks and calendar records are kept safe here. You can restore it anytime or permanently wipe its history from all charts.
+        </div>
+
+        {archivedHabits.length === 0 ? (
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: "16px",
+              background: "var(--bg)",
+              border: "1px dashed var(--ln)",
+              textAlign: "center",
+              fontSize: "12.5px",
+              color: "var(--mu)",
+            }}
+          >
+            No archived habits. Active habits keep all your past streaks intact.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {archivedHabits.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 14px",
+                  borderRadius: "18px",
+                  background: "var(--bg)",
+                  border: "1px solid var(--ln)",
+                  gap: "10px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "12px",
+                      background: "var(--card)",
+                      color: "var(--prt)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d={getIconPath(item.icon)} />
+                    </svg>
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: "14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {item.name}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "var(--mu)", marginTop: "2px" }}>
+                      {item.logCount} day{item.logCount === 1 ? "" : "s"} logged in past history
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+                  {!item.isOrphan && (
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreHabit(item.id)}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: "14px",
+                        background: "var(--tint)",
+                        border: "1px solid var(--pr)",
+                        color: "var(--prt)",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      Restore
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setPurgeTarget(item)}
+                    title="Purge past history"
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: "14px",
+                      background: "rgba(224, 86, 68, 0.1)",
+                      border: "1px solid var(--co)",
+                      color: "var(--co)",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
+                    </svg>
+                    Purge
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Backup and Cloud Navigation Card */}
@@ -224,6 +441,22 @@ export default function Settings() {
         </button>
       </div>
 
+      {/* Purge Habit History Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!purgeTarget}
+        onClose={() => setPurgeTarget(null)}
+        title={`Purge "${purgeTarget?.name}"?`}
+        description={
+          `Permanently delete this habit and all its past logs (${purgeTarget?.logCount || 0} logged days)? This will remove it from all past streaks, heatmaps, and calendar history. This action cannot be undone.`
+        }
+        confirmLabel="Purge Permanently"
+        cancelLabel="Cancel"
+        variant="danger"
+        icon="trash"
+        onConfirm={handleConfirmPurge}
+      />
+
+      {/* Reset Confirmation Modal */}
       <ConfirmModal
         isOpen={resetModalOpen}
         onClose={() => setResetModalOpen(false)}
@@ -236,6 +469,7 @@ export default function Settings() {
         onConfirm={handleConfirmReset}
       />
 
+      {/* Reset Success Modal */}
       <ConfirmModal
         isOpen={wipedModalOpen}
         onClose={() => {
@@ -249,6 +483,34 @@ export default function Settings() {
         icon="info"
         onConfirm={() => navigate("/")}
       />
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "24px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "calc(100% - 36px)",
+            maxWidth: "394px",
+            background: "var(--card)",
+            border: "1px solid var(--ln)",
+            borderRadius: "16px",
+            padding: "12px 16px",
+            boxShadow: "0 8px 30px rgba(0, 0, 0, 0.25)",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            zIndex: 90,
+          }}
+        >
+          <span style={{ fontSize: "16px" }}>✓</span>
+          <div style={{ flex: 1, fontSize: "12.5px", color: "var(--tx)", fontWeight: 600 }}>
+            {toastMessage}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

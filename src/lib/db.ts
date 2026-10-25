@@ -690,6 +690,37 @@ export async function deleteHabit(id: string, purgeLogs: boolean = false): Promi
   }
 }
 
+export async function restoreHabit(id: string): Promise<void> {
+  clearHabitDeletedMark(id);
+  const existing = await db.habits.get(id);
+  if (existing) {
+    const updated: Habit = {
+      ...existing,
+      isActive: true,
+      archivedAt: undefined,
+    };
+    await db.habits.put(updated);
+    try {
+      const list = getCachedHabits();
+      if (!list.some((h) => h.id === id)) {
+        list.push(updated);
+        setCachedHabits(list);
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
+      }
+    } catch {}
+    try {
+      await db.outbox.add({
+        table: "habits",
+        op: "update",
+        row: updated,
+        ts: Date.now(),
+      });
+    } catch {}
+  }
+}
+
 export async function getSetting(key: string, defaultValue = ""): Promise<string> {
   const row = await db.settings.get(key);
   return row ? row.value : defaultValue;
