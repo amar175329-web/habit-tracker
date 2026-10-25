@@ -2,19 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import './lib/storage'
+import { clearAllData } from './lib/db'
 import App from './App.tsx'
-
-// Pre-mount clean slate check: if purge key not set, immediately and synchronously wipe localStorage & sessionStorage
-const PURGE_KEY = "habittracker_fresh_clean_v11";
-if (typeof window !== "undefined" && window.localStorage && !window.localStorage.getItem(PURGE_KEY)) {
-  const theme = window.localStorage.getItem("theme");
-  window.localStorage.clear();
-  if (theme) window.localStorage.setItem("theme", theme);
-  window.localStorage.setItem(PURGE_KEY, "true");
-  try {
-    window.sessionStorage.clear();
-  } catch {}
-}
 
 // Ensure PWA service worker updates and activates fresh bundle
 if ('serviceWorker' in navigator) {
@@ -35,9 +24,28 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// Pre-mount clean slate check: wipe all Dexie tables, localStorage, and sessionStorage before React renders
+async function initApp() {
+  const PURGE_KEY = "habittracker_clean_restart_v12";
+  if (typeof window !== "undefined" && window.localStorage && !window.localStorage.getItem(PURGE_KEY)) {
+    try {
+      await clearAllData();
+    } catch {}
+    const theme = window.localStorage.getItem("theme");
+    window.localStorage.clear();
+    if (theme) window.localStorage.setItem("theme", theme);
+    window.localStorage.setItem(PURGE_KEY, "true");
+    try {
+      window.sessionStorage.clear();
+    } catch {}
+  }
+
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+}
+
+initApp();
 

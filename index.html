@@ -9,6 +9,22 @@
     <meta name="theme-color" content="#F2F6F5" />
     <meta name="description" content="Habit Tracker — Build consistent habits and rhythm, completely private and local-first." />
     <title>Habit Tracker — Build Consistent Rhythms</title>
+    <script>
+      (function() {
+        try {
+          var PURGE_KEY = 'habittracker_clean_restart_v12';
+          if (!localStorage.getItem(PURGE_KEY)) {
+            var theme = localStorage.getItem('theme');
+            localStorage.clear();
+            if (theme) localStorage.setItem('theme', theme);
+            sessionStorage.clear();
+            if (window.indexedDB && indexedDB.deleteDatabase) {
+              indexedDB.deleteDatabase('dailyos_db');
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -222,11 +222,11 @@ export async function clearAllData(): Promise<void> {
   } catch {}
 
   if (typeof window !== "undefined" && window.localStorage) {
-    const keepKeys = new Set(["theme"]);
+    const keepKeys = new Set(["theme", "habittracker_clean_restart_v12"]);
     const keysToRemove: string[] = [];
     for (let i = 0; i < window.localStorage.length; i++) {
       const k = window.localStorage.key(i);
-      if (k && !keepKeys.has(k) && !k.startsWith("habittracker_fresh_clean_")) {
+      if (k && !keepKeys.has(k) && !k.startsWith("habittracker_clean_restart_")) {
         keysToRemove.push(k);
       }
     }
