@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "../lib/db";
+import { db, useHabits } from "../lib/db";
 import { CalendarGrid } from "../components/signature/CalendarGrid";
 
 export default function Calendar() {
@@ -17,8 +17,8 @@ export default function Calendar() {
     return `${y}-${m}-${d}`;
   }, []);
 
-  // Fetch all habits and habit logs from Dexie
-  const habits = useLiveQuery(() => db.habits.filter((h) => h.isActive).toArray(), []) ?? [];
+  // Fetch all habits and habit logs
+  const habits = useHabits();
   const allLogs = useLiveQuery(() => db.habit_logs.toArray(), []) ?? [];
 
   const maxHabits = habits.length || 5;

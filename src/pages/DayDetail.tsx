@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, toggleHabit } from "../lib/db";
+import { db, toggleHabit, useHabits } from "../lib/db";
 import { isHabitEditable, fromMs, toMs } from "../lib/habitRules";
 import { getIconPath } from "../lib/icons";
 
@@ -26,7 +26,7 @@ export default function DayDetail() {
     return isHabitEditable(date, todayStr);
   }, [date, todayStr]);
 
-  const habits = useLiveQuery(() => db.habits.filter((h) => h.isActive).sortBy("sort"), []) ?? [];
+  const habits = useHabits();
   const dayLogs = useLiveQuery(() => db.habit_logs.where("date").equals(date).toArray(), [date]) ?? [];
   const sleepLog = useLiveQuery(() => db.sleep_logs.get(date), [date]);
   const moodLog = useLiveQuery(() => db.mood_logs.get(date), [date]);

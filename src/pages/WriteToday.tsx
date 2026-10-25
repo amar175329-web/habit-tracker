@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, saveReflection } from "../lib/db";
+import { db, saveReflection, useHabits } from "../lib/db";
 
 export default function WriteToday() {
   const navigate = useNavigate();
@@ -18,7 +18,7 @@ export default function WriteToday() {
   const mood = useLiveQuery(() => db.mood_logs.get(todayStr), [todayStr]);
   const sleep = useLiveQuery(() => db.sleep_logs.get(todayStr), [todayStr]);
   const habitLogs = useLiveQuery(() => db.habit_logs.where("date").equals(todayStr).toArray(), [todayStr]) ?? [];
-  const habits = useLiveQuery(() => db.habits.filter((h) => h.isActive).toArray(), []) ?? [];
+  const habits = useHabits();
 
   const [content, setContent] = useState("");
   const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving...">("Saved");

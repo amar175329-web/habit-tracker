@@ -465,6 +465,13 @@ export function clearHabitDeletedMark(id: string): void {
   } catch {}
 }
 
+export function clearAllDeletedMarks(): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    window.localStorage.removeItem(DELETED_HABITS_KEY);
+  } catch {}
+}
+
 export function getCachedHabits(): Habit[] {
   if (typeof window === "undefined" || !window.localStorage) return [];
   try {
@@ -555,13 +562,20 @@ export async function setSetting(key: string, value: string): Promise<void> {
 // -----------------------------------------------------------------------------
 
 export async function exportAllData(): Promise<DailyOSExport> {
-  const [habits, habit_logs, sleep_logs, mood_logs, reflections, settings] = await Promise.all([
-    db.habits.toArray(),
-    db.habit_logs.toArray(),
-    db.sleep_logs.toArray(),
-    db.mood_logs.toArray(),
-    db.reflections.toArray(),
-    db.settings.toArray(),
+  const deleted = getDeletedHabitIds();
+  const cached = getCachedHabits().filter((h) => h.isActive && !deleted.has(h.id));
+  const dbHabits = await db.habits.filter((h) => h.isActive && !deleted.has(h.id)).toArray().catch(() => []);
+  const map = new Map<string, Habit>();
+  cached.forEach((h) => map.set(h.id, h));
+  dbHabits.forEach((h) => map.set(h.id, h));
+  const habits = Array.from(map.values()).sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+
+  const [habit_logs, sleep_logs, mood_logs, reflections, settings] = await Promise.all([
+    db.habit_logs.toArray().catch(() => []),
+    db.sleep_logs.toArray().catch(() => []),
+    db.mood_logs.toArray().catch(() => []),
+    db.reflections.toArray().catch(() => []),
+    db.settings.toArray().catch(() => []),
   ]);
 
   return {
@@ -589,4 +603,15 @@ export async function importAllData(data: DailyOSExport): Promise<void> {
     if (data.reflections?.length) await db.reflections.bulkPut(data.reflections);
     if (data.settings?.length) await db.settings.bulkPut(data.settings);
   });
+
+  if (data.habits && Array.isArray(data.habits)) {
+    clearAllDeletedMarks();
+    setCachedHabits(data.habits.filter((h) => h.isActive));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
+    }
+  }
 }
+
+export { useHabits } from "./useHabits";
+

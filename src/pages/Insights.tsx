@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "../lib/db";
+import { db, useHabits } from "../lib/db";
 import {
   fromMs,
   toMs,
@@ -21,7 +21,7 @@ export default function Insights() {
     return `${y}-${m}-${d}`;
   }, []);
 
-  const habits = useLiveQuery(() => db.habits.filter((h) => h.isActive).sortBy("sort"), []) ?? [];
+  const habits = useHabits();
   const allLogs = useLiveQuery(() => db.habit_logs.toArray(), []) ?? [];
   const allSleep = useLiveQuery(() => db.sleep_logs.toArray(), []) ?? [];
 

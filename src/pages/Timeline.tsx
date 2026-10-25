@@ -1,14 +1,14 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "../lib/db";
+import { db, useHabits } from "../lib/db";
 import { getIconPath } from "../lib/icons";
 
 export default function Timeline() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"All" | "Habits" | "Mood" | "Sleep">("All");
 
-  const habits = useLiveQuery(() => db.habits.toArray(), []) ?? [];
+  const habits = useHabits();
   const allLogs = useLiveQuery(() => db.habit_logs.toArray(), []) ?? [];
   const allSleep = useLiveQuery(() => db.sleep_logs.toArray(), []) ?? [];
   const allMood = useLiveQuery(() => db.mood_logs.toArray(), []) ?? [];

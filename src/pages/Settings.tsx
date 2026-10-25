@@ -1,13 +1,12 @@
 import { useNavigate } from "react-router-dom";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db, clearAllData } from "../lib/db";
+import { clearAllData, useHabits } from "../lib/db";
 import { useTheme } from "../lib/theme";
 
 export default function Settings() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
 
-  const habits = useLiveQuery(() => db.habits.filter((h) => h.isActive).sortBy("sort"), []) ?? [];
+  const habits = useHabits();
 
   const handleResetData = async () => {
     if (confirm("Are you sure you want to reset all data? This will clear all habits and logs for a completely clean slate.")) {

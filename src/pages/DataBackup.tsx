@@ -7,6 +7,7 @@ import {
   importAllData,
   getSetting,
   setSetting,
+  useHabits,
   type DailyOSExport,
 } from "../lib/db";
 
@@ -15,11 +16,15 @@ export default function DataBackup() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Statistics
-  const habitsCount = useLiveQuery(() => db.habits.count(), []) ?? 0;
+  const habits = useHabits();
+  const habitsCount = habits.length;
   const logsCount = useLiveQuery(() => db.habit_logs.count(), []) ?? 0;
   const reflectionsCount = useLiveQuery(() => db.reflections.count(), []) ?? 0;
   const sleepCount = useLiveQuery(() => db.sleep_logs.count(), []) ?? 0;
   const pendingOutboxCount = useLiveQuery(() => db.outbox.count(), []) ?? 0;
+
+  // Visual feedback for Export/Import operations
+  const [feedback, setFeedback] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
 
   // Cloud Turso Settings
   const [dbUrl, setDbUrl] = useState("");
@@ -122,21 +127,51 @@ export default function DataBackup() {
   // Export JSON file
   const handleExportJSON = async () => {
     try {
+      setFeedback({ type: "info", message: "Preparing backup export..." });
       const exportData = await exportAllData();
       const jsonStr = JSON.stringify(exportData, null, 2);
-      const blob = new Blob([jsonStr], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `dailyos-backup-${dateStr}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const filename = `dailyos-backup-${dateStr}.json`;
+      const blob = new Blob([jsonStr], { type: "application/json" });
+
+      let shared = false;
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        try {
+          const file = new File([blob], filename, { type: "application/json" });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: "DailyOS Backup",
+              text: `DailyOS backup (${exportData.habits.length} habits, ${exportData.habit_logs.length} logs)`,
+              files: [file],
+            });
+            shared = true;
+          }
+        } catch (e: any) {
+          if (e.name !== "AbortError") {
+            console.warn("Navigator share failed, using anchor fallback:", e);
+          }
+        }
+      }
+
+      if (!shared) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      setFeedback({
+        type: "success",
+        message: `Export successful! Saved ${exportData.habits.length} habits and ${exportData.habit_logs.length} logs to ${filename}.`,
+      });
     } catch (err: any) {
+      console.error(err);
+      setFeedback({ type: "error", message: `Export failed: ${err.message}` });
       alert(`Export failed: ${err.message}`);
     }
   };
@@ -146,6 +181,7 @@ export default function DataBackup() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setFeedback({ type: "info", message: `Reading ${file.name}...` });
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
@@ -156,11 +192,21 @@ export default function DataBackup() {
         }
 
         await importAllData(data);
-        alert(`Backup imported successfully! Loaded ${data.habits?.length || 0} habits and ${data.habit_logs?.length || 0} logs.`);
-        navigate("/");
+        setFeedback({
+          type: "success",
+          message: `Backup imported successfully! Restored ${data.habits?.length || 0} habits and ${data.habit_logs?.length || 0} logs.`,
+        });
+        setTimeout(() => {
+          navigate("/");
+        }, 1000);
       } catch (err: any) {
+        console.error(err);
+        setFeedback({ type: "error", message: `Import failed: ${err.message}` });
         alert(`Import failed: ${err.message}`);
       }
+    };
+    reader.onerror = () => {
+      setFeedback({ type: "error", message: "Failed to read the selected file." });
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -442,6 +488,24 @@ export default function DataBackup() {
         <div style={{ fontSize: "11px", letterSpacing: ".14em", fontWeight: 700, color: "var(--mu)" }}>
           BACKUP FILE
         </div>
+
+        {feedback && (
+          <div
+            style={{
+              marginTop: "10px",
+              padding: "10px 14px",
+              borderRadius: "14px",
+              fontSize: "13px",
+              fontWeight: 600,
+              lineHeight: 1.4,
+              background: feedback.type === "success" ? "var(--tint)" : feedback.type === "error" ? "#FEE4E2" : "var(--bg)",
+              color: feedback.type === "success" ? "var(--prt)" : feedback.type === "error" ? "#B42318" : "var(--tx)",
+              border: `1px solid ${feedback.type === "success" ? "var(--pr)" : feedback.type === "error" ? "#FDA29B" : "var(--ln)"}`,
+            }}
+          >
+            {feedback.message}
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
           <button

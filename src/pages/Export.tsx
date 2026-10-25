@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Download, FileJson, FileSpreadsheet, ArrowLeft, ShieldCheck } from "lucide-react";
+import { exportAllData } from "../lib/db";
 
 export default function ExportPage() {
   const navigate = useNavigate();
@@ -9,39 +10,100 @@ export default function ExportPage() {
   const downloadJson = async () => {
     setStatus("Preparing JSON…");
     try {
-      const res = await fetch("/api/export", { credentials: "include" });
-      if (!res.ok) throw new Error(await res.text());
-      const json: any = await res.json();
-      const blob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `daily-os-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setStatus(`Exported ${json.habitLogs.length} habit logs, ${json.dailyLogs.length} daily logs, ${json.sleepLogs.length} sleep logs`);
+      const data = await exportAllData();
+      const jsonStr = JSON.stringify(data, null, 2);
+      const filename = `daily-os-${new Date().toISOString().slice(0, 10)}.json`;
+      const blob = new Blob([jsonStr], { type: "application/json" });
+
+      let shared = false;
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        try {
+          const file = new File([blob], filename, { type: "application/json" });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: "DailyOS Vault Export",
+              text: `DailyOS backup (${data.habits.length} habits, ${data.habit_logs.length} logs)`,
+              files: [file],
+            });
+            shared = true;
+          }
+        } catch (e: any) {
+          if (e.name !== "AbortError") console.warn("Share fallback:", e);
+        }
+      }
+
+      if (!shared) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      setStatus(`Exported ${data.habits.length} habits, ${data.habit_logs.length} habit logs, ${data.reflections.length} reflections, ${data.sleep_logs.length} sleep logs`);
     } catch (e: any) {
-      setStatus(e.message);
+      console.error(e);
+      setStatus(`Export error: ${e.message}`);
     }
   };
 
   const downloadCsv = async () => {
     setStatus("Preparing CSV…");
     try {
-      const res = await fetch("/api/export.csv", { credentials: "include" });
-      if (!res.ok) throw new Error(await res.text());
-      const text = await res.text();
-      const blob = new Blob([text], { type: "text/csv" });
+      const data = await exportAllData();
+      const habits = data.habits || [];
+      const habitLogs = data.habit_logs || [];
+      const sleepLogs = data.sleep_logs || [];
+      const moodLogs = data.mood_logs || [];
+      const reflections = data.reflections || [];
+
+      // Collect all unique dates
+      const allDates = new Set<string>();
+      habitLogs.forEach((l) => allDates.add(l.date));
+      sleepLogs.forEach((s) => allDates.add(s.date));
+      moodLogs.forEach((m) => allDates.add(m.date));
+      reflections.forEach((r) => allDates.add(r.date));
+
+      const sortedDates = Array.from(allDates).sort();
+
+      // CSV Header
+      const habitHeaders = habits.map((h) => h.name.toLowerCase().replace(/[^a-z0-9_]/g, "_"));
+      const headerRow = ["date", ...habitHeaders, "mood_score", "sleep_duration_min", "reflection_words"].join(",");
+      const lines = [headerRow];
+
+      for (const d of sortedDates) {
+        const habitStates = habits.map((h) => {
+          const log = habitLogs.find((l) => l.habitId === h.id && l.date === d);
+          return log ? log.state : 0;
+        });
+
+        const mood = moodLogs.find((m) => m.date === d)?.score ?? "";
+        const sleep = sleepLogs.find((s) => s.date === d)?.durationMin ?? "";
+        const ref = reflections.find((r) => r.date === d)?.content ?? "";
+        const refWords = ref.trim() ? ref.trim().split(/\s+/).filter(Boolean).length : 0;
+
+        lines.push([d, ...habitStates, mood, sleep, refWords].join(","));
+      }
+
+      const csvContent = lines.join("\n");
+      const filename = `daily-os-${new Date().toISOString().slice(0, 10)}.csv`;
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `daily-os-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = filename;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
-      const lines = text.trim().split("\n").length - 1;
-      setStatus(`CSV with ${lines} dates`);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      setStatus(`CSV generated with ${sortedDates.length} recorded dates`);
     } catch (e: any) {
-      setStatus(e.message);
+      console.error(e);
+      setStatus(`CSV export error: ${e.message}`);
     }
   };
 
