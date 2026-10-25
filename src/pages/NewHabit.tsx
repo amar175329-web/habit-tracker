@@ -121,6 +121,7 @@ export default function NewHabit() {
   const [isSaving, setIsSaving] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleSave = (e?: React.FormEvent | React.MouseEvent) => {
     if (e) {
@@ -285,7 +286,7 @@ export default function NewHabit() {
         {editId && (
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={() => setShowDeleteConfirm(true)}
             style={{
               color: "var(--co)",
               background: "none",
@@ -516,6 +517,136 @@ export default function NewHabit() {
           {isSaving ? "Saving..." : (editId ? "Update Habit" : "Save Habit")}
         </button>
       </form>
+
+      {/* Delete Confirmation Sheet */}
+      {showDeleteConfirm && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 70,
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          {/* Backdrop */}
+          <div
+            onClick={() => setShowDeleteConfirm(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(10, 20, 20, 0.45)",
+              backdropFilter: "blur(3px)",
+            }}
+          />
+
+          {/* Drawer */}
+          <div
+            style={{
+              position: "fixed",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              maxWidth: "430px",
+              margin: "0 auto",
+              background: "var(--card)",
+              borderRadius: "32px 32px 0 0",
+              padding: "14px 18px 30px",
+              borderTop: "1px solid var(--ln)",
+              boxShadow: "0 -10px 40px rgba(0, 0, 0, 0.25)",
+              zIndex: 71,
+              boxSizing: "border-box",
+            }}
+          >
+            {/* Handle */}
+            <div
+              style={{
+                width: "42px",
+                height: "5px",
+                borderRadius: "3px",
+                background: "var(--tr)",
+                margin: "0 auto 16px",
+              }}
+            />
+
+            {/* Warning Icon & Confirmation Text */}
+            <div style={{ textAlign: "center", padding: "12px 6px 22px" }}>
+              <div
+                style={{
+                  width: "56px",
+                  height: "56px",
+                  borderRadius: "20px",
+                  background: "rgba(224, 86, 68, 0.12)",
+                  color: "var(--co)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 14px",
+                }}
+              >
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
+                </svg>
+              </div>
+              <div style={{ fontWeight: 800, fontSize: "19px", color: "var(--tx)", marginBottom: "6px" }}>
+                Delete “{name || "this habit"}”?
+              </div>
+              <div style={{ fontSize: "13px", color: "var(--mu)", lineHeight: 1.45, maxWidth: "280px", margin: "0 auto" }}>
+                Are you sure? This habit and all its logged history will be permanently deleted.
+              </div>
+            </div>
+
+            {/* Top Button: Yes, delete */}
+            <button
+              type="button"
+              onClick={handleDelete}
+              style={{
+                width: "100%",
+                height: "50px",
+                borderRadius: "25px",
+                background: "var(--co)",
+                color: "#ffffff",
+                border: "none",
+                fontWeight: 800,
+                fontSize: "15px",
+                cursor: "pointer",
+                boxShadow: "0 6px 20px rgba(224, 86, 68, 0.3)",
+                marginBottom: "10px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                fontFamily: "inherit",
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+              Yes, delete
+            </button>
+
+            {/* Bottom Button: Cancel (Piche chala jaye) */}
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(false)}
+              style={{
+                width: "100%",
+                height: "46px",
+                borderRadius: "23px",
+                border: "1px solid var(--ln)",
+                background: "var(--bg)",
+                color: "var(--tx)",
+                fontWeight: 700,
+                fontSize: "14px",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
