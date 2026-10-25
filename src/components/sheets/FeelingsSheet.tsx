@@ -52,6 +52,7 @@ export function FeelingsSheet({
   const [score, setScore] = useState<number | undefined>(initialScore);
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>(initialEmotions);
   const [customTag, setCustomTag] = useState("");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const effectiveLocked = isLocked || changeCount >= maxChanges;
   const remaining = Math.max(0, maxChanges - changeCount);
@@ -75,11 +76,11 @@ export function FeelingsSheet({
 
   const handleSave = async () => {
     if (effectiveLocked) {
-      alert(`Feeling changes limit reached (${maxChanges}/${maxChanges} used for today).`);
+      setErrorMsg(`Feeling changes limit reached (${maxChanges}/${maxChanges} used for today).`);
       return;
     }
     if (!score) {
-      alert("Please select a feeling first.");
+      setErrorMsg("Please select a feeling first.");
       return;
     }
     try {
@@ -87,7 +88,7 @@ export function FeelingsSheet({
       if (onSaved) onSaved();
       onClose();
     } catch (err: any) {
-      alert(err.message || "Failed to save mood");
+      setErrorMsg(err.message || "Failed to save mood");
     }
   };
 
@@ -285,8 +286,14 @@ export function FeelingsSheet({
           </form>
         </div>
 
+        {errorMsg && (
+          <div style={{ color: "#EF4444", fontSize: "13px", fontWeight: 700, textAlign: "center", marginTop: "16px" }}>
+            {errorMsg}
+          </div>
+        )}
+
         {/* Save button at bottom */}
-        <div style={{ marginTop: "28px" }}>
+        <div style={{ marginTop: errorMsg ? "12px" : "28px" }}>
           <button
             type="button"
             onClick={handleSave}

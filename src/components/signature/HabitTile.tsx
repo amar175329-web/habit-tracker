@@ -34,7 +34,7 @@ export function HabitTile({
   onToggle,
   spanTwo = false,
   onToggleWidth: _onToggleWidth,
-  onMenuClick: _onMenuClick,
+  onMenuClick,
   className = "",
   style = {},
 }: HabitTileProps) {
@@ -164,6 +164,40 @@ export function HabitTile({
               {streak}d
             </span>
           ) : null}
+
+          {onMenuClick && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMenuClick();
+              }}
+              style={{
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                border: "none",
+                background: state === 2 ? "rgba(255,255,255,0.2)" : "var(--tint, rgba(0,0,0,0.05))",
+                color: "inherit",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                padding: 0,
+                marginLeft: "2px",
+                flexShrink: 0,
+                opacity: 0.85,
+                transition: "opacity 0.15s ease",
+              }}
+              aria-label={`Options for ${name}`}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="2.2" />
+                <circle cx="12" cy="12" r="2.2" />
+                <circle cx="12" cy="19" r="2.2" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 

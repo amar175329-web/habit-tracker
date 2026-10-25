@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { clearAllData, useHabits } from "../lib/db";
 import { useTheme } from "../lib/theme";
+import { ConfirmModal } from "../components/modals/ConfirmModal";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -8,15 +10,19 @@ export default function Settings() {
 
   const habits = useHabits();
 
-  const handleResetData = async () => {
-    if (confirm("Are you sure you want to reset all data? This will clear all habits and logs for a completely clean slate.")) {
-      await clearAllData();
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
-      }
-      alert("All data cleared successfully.");
-      navigate("/");
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [wipedModalOpen, setWipedModalOpen] = useState(false);
+
+  const handleResetData = () => {
+    setResetModalOpen(true);
+  };
+
+  const handleConfirmReset = async () => {
+    await clearAllData();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
     }
+    setWipedModalOpen(true);
   };
 
   return (
@@ -217,6 +223,32 @@ export default function Settings() {
           Wipe All Data (Clean Slate)
         </button>
       </div>
+
+      <ConfirmModal
+        isOpen={resetModalOpen}
+        onClose={() => setResetModalOpen(false)}
+        title="Reset All Data?"
+        description="Are you sure you want to delete all data? This will clear all habits, daily logs, sleep records, and reflections for a fresh slate."
+        confirmLabel="Reset Everything"
+        cancelLabel="Cancel"
+        variant="danger"
+        icon="trash"
+        onConfirm={handleConfirmReset}
+      />
+
+      <ConfirmModal
+        isOpen={wipedModalOpen}
+        onClose={() => {
+          setWipedModalOpen(false);
+          navigate("/");
+        }}
+        title="Data Cleared"
+        description="All your data has been successfully wiped and reset to a clean slate."
+        confirmLabel="Return to Today"
+        variant="primary"
+        icon="info"
+        onConfirm={() => navigate("/")}
+      />
     </div>
   );
 }

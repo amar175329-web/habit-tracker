@@ -26,7 +26,7 @@ import {
   isHabitEditable,
   calculateOverallStreak,
 } from "../lib/habitRules";
-import { canEdit, passesLeft, dayState } from "../lib/editPasses";
+import { canEdit, passesLeft } from "../lib/editPasses";
 import { getIconPath } from "../lib/icons";
 import { MomentumGauge } from "../components/signature/MomentumGauge";
 import { DayRings, type DayRingItem } from "../components/signature/DayRings";
@@ -36,6 +36,7 @@ import { MenuSheet } from "../components/sheets/MenuSheet";
 import { FeelingsSheet } from "../components/sheets/FeelingsSheet";
 import { HabitActionSheet } from "../components/sheets/HabitActionSheet";
 import { StreakSheet } from "../components/sheets/StreakSheet";
+import { ConfirmModal } from "../components/modals/ConfirmModal";
 
 export default function Today() {
   const { date: paramDate } = useParams();
@@ -215,6 +216,22 @@ export default function Today() {
   // Currently active habit for the 3-dots action sheet
   const [activeMenuHabit, setActiveMenuHabit] = useState<Habit | null>(null);
 
+  // In-app luxury confirm / alert modal state (eliminates browser window.confirm / alert)
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: React.ReactNode;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm?: () => void | Promise<void>;
+    variant?: "primary" | "danger" | "warning";
+    icon?: "lock" | "warning" | "info" | "trash";
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+  });
+
   const handleDeleteHabitFromMenu = (habitId: string) => {
     // 1. Instantly hide from UI (0ms feedback)
     setDeletedHabitIds((prev) => new Set(prev).add(habitId));
@@ -335,18 +352,20 @@ export default function Today() {
       });
 
       const isFrozen = usedFreezeDates.includes(d);
-      const st = dayState(d, todayStr, firstUseDate, score);
+      const isPast = d < todayStr;
+      const maxScore = habits.length || 5;
+      const isMissed = isPast && !isFrozen && score < maxScore;
 
       items.push({
         dayLabel: labels[i],
         date: d,
         score,
-        maxScore: habits.length || 5,
-        isMissed: !isFrozen && st === "missed",
+        maxScore,
+        isMissed,
         isToday,
         isSelected,
         isFuture,
-        isNeutral: st === "neutral",
+        isNeutral: false,
         isFrozen,
       });
     }
@@ -401,27 +420,7 @@ export default function Today() {
     }
   }, [date]);
 
-  const handleToggleHabit = async (habitId: string) => {
-    if (!isCurrentDayEditable) {
-      if (date < currentWeekStart) {
-        alert("Older weeks are locked and cannot be edited.");
-        return;
-      }
-      if (passesCount <= 0) {
-        alert("No edit passes left this week (3 of 3 used).");
-        return;
-      }
-      const confirmUnlock = window.confirm(
-        `Unlock this past day to edit? (Uses 1 pass, ${passesCount} left this week)`
-      );
-      if (!confirmUnlock) return;
-      const res = await useEditPass(date, todayStr);
-      if (!res.ok) {
-        alert(res.reason === "no-passes" ? "No edit passes left this week" : "Cannot unlock this day");
-        return;
-      }
-    }
-
+  const executeToggleHabit = async (habitId: string) => {
     const current = habitStateMap.get(habitId) ?? 0;
     let next = 0;
     if (current === 0) next = 2;
@@ -439,8 +438,76 @@ export default function Today() {
         rollback.delete(habitId);
         return rollback;
       });
-      alert(err.message || "Failed to update habit");
+      setModalConfig({
+        isOpen: true,
+        title: "Update Failed",
+        description: err.message || "Failed to update habit status.",
+        confirmLabel: "OK",
+        variant: "danger",
+        icon: "warning",
+      });
     }
+  };
+
+  const handleToggleHabit = async (habitId: string) => {
+    if (!isCurrentDayEditable) {
+      if (date < currentWeekStart) {
+        setModalConfig({
+          isOpen: true,
+          title: "Past Week Locked",
+          description: "Days from previous weeks cannot be edited to preserve the integrity of your history.",
+          confirmLabel: "Understood",
+          variant: "warning",
+          icon: "lock",
+        });
+        return;
+      }
+      if (passesCount <= 0) {
+        setModalConfig({
+          isOpen: true,
+          title: "No Passes Left",
+          description: "You have used all 3 edit passes for this week. Passes reset every Monday.",
+          confirmLabel: "Got It",
+          variant: "warning",
+          icon: "warning",
+        });
+        return;
+      }
+      setModalConfig({
+        isOpen: true,
+        title: "Unlock Past Day?",
+        description: (
+          <span>
+            Unlock this past day for editing? This will use <strong>1 edit pass</strong> ({passesCount} remaining this week).
+          </span>
+        ),
+        confirmLabel: "Unlock Day",
+        cancelLabel: "Keep Locked",
+        variant: "primary",
+        icon: "lock",
+        onConfirm: async () => {
+          const res = await useEditPass(date, todayStr);
+          if (res.ok) {
+            executeToggleHabit(habitId);
+          } else {
+            setModalConfig({
+              isOpen: true,
+              title: "Cannot Unlock Day",
+              description:
+                res.reason === "no-passes"
+                  ? "No edit passes left this week (3 of 3 used)."
+                  : "Cannot unlock this day.",
+              confirmLabel: "OK",
+              variant: "warning",
+              icon: "warning",
+            });
+          }
+        },
+      });
+      return;
+    }
+
+    executeToggleHabit(habitId);
   };
 
   const handleSelectRingDay = (day: DayRingItem) => {
@@ -563,15 +630,47 @@ export default function Today() {
             {!isCurrentDayEditable && date >= currentWeekStart && (
               <button
                 type="button"
-                onClick={async () => {
-                  const res = await useEditPass(date, todayStr);
-                  if (!res.ok) {
-                    alert(
-                      res.reason === "no-passes"
-                        ? "No edit passes left this week (3 of 3 used)"
-                        : "Cannot unlock this day"
-                    );
+                onClick={() => {
+                  if (passesCount <= 0) {
+                    setModalConfig({
+                      isOpen: true,
+                      title: "No Passes Left",
+                      description: "You have used all 3 edit passes for this week. Passes reset every Monday.",
+                      confirmLabel: "Got It",
+                      variant: "warning",
+                      icon: "warning",
+                    });
+                    return;
                   }
+                  setModalConfig({
+                    isOpen: true,
+                    title: "Unlock Past Day?",
+                    description: (
+                      <span>
+                        Unlock this past day for editing? This will use <strong>1 edit pass</strong> ({passesCount} remaining this week).
+                      </span>
+                    ),
+                    confirmLabel: "Unlock Day",
+                    cancelLabel: "Cancel",
+                    variant: "primary",
+                    icon: "lock",
+                    onConfirm: async () => {
+                      const res = await useEditPass(date, todayStr);
+                      if (!res.ok) {
+                        setModalConfig({
+                          isOpen: true,
+                          title: "Cannot Unlock Day",
+                          description:
+                            res.reason === "no-passes"
+                              ? "No edit passes left this week (3 of 3 used)."
+                              : "Cannot unlock this day.",
+                          confirmLabel: "OK",
+                          variant: "warning",
+                          icon: "warning",
+                        });
+                      }
+                    },
+                  });
                 }}
                 style={{
                   fontSize: "12.5px",
@@ -1124,6 +1223,19 @@ export default function Today() {
         allMoodLogs={allMoodLogs}
         allReflections={allReflections}
         usedFreezeDates={usedFreezeDates}
+      />
+
+      {/* In-app Luxury Confirm / Alert Modal */}
+      <ConfirmModal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig((prev) => ({ ...prev, isOpen: false }))}
+        title={modalConfig.title}
+        description={modalConfig.description}
+        confirmLabel={modalConfig.confirmLabel}
+        cancelLabel={modalConfig.cancelLabel}
+        onConfirm={modalConfig.onConfirm}
+        variant={modalConfig.variant}
+        icon={modalConfig.icon}
       />
     </div>
   );

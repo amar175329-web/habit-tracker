@@ -204,7 +204,8 @@ export function StreakSheet({
       setClaimSuccess(`Streak Freeze applied for ${targetDate}! Streak preserved 🔥`);
       setTimeout(() => setClaimSuccess(null), 3000);
     } catch (err: any) {
-      alert(err.message || "Failed to use freeze token");
+      setClaimSuccess(err.message || "Failed to use freeze token");
+      setTimeout(() => setClaimSuccess(null), 4000);
     } finally {
       setClaimingFreeze(false);
     }
