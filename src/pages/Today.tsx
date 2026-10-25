@@ -11,6 +11,8 @@ import {
   getDeletedHabitIds,
   markHabitDeleted,
   useEditPass,
+  markDateUnlocked,
+  getSessionUnlockedDates,
   useFreezeToken,
   type Habit,
 } from "../lib/db";
@@ -62,7 +64,25 @@ export default function Today() {
     () => db.edit_passes.where("week_start").equals(currentWeekStart).toArray(),
     [currentWeekStart]
   ) ?? [];
-  const unlockedDates = useMemo(() => unlockedPasses.map((p) => p.date), [unlockedPasses]);
+  const dbUnlockedDates = useMemo(() => unlockedPasses.map((p) => p.date), [unlockedPasses]);
+  const [optimisticUnlocked, setOptimisticUnlocked] = useState<string[]>(() => getSessionUnlockedDates());
+
+  useEffect(() => {
+    const handleUnlocked = (e: any) => {
+      const d = e.detail?.date;
+      if (d) {
+        setOptimisticUnlocked((prev) => (prev.includes(d) ? prev : [...prev, d]));
+      }
+    };
+    window.addEventListener("dailyos_unlocked_updated", handleUnlocked);
+    return () => window.removeEventListener("dailyos_unlocked_updated", handleUnlocked);
+  }, []);
+
+  const unlockedDates = useMemo(() => {
+    const set = new Set([...dbUnlockedDates, ...optimisticUnlocked]);
+    return Array.from(set);
+  }, [dbUnlockedDates, optimisticUnlocked]);
+
   const passesCount = passesLeft(unlockedDates);
   const isCurrentDayEditable = canEdit(date, todayStr, unlockedDates);
 
@@ -82,9 +102,13 @@ export default function Today() {
   useEffect(() => {
     const handleSync = () => setCacheVersion((v) => v + 1);
     window.addEventListener("dailyos_habits_updated", handleSync);
+    window.addEventListener("dailyos_sleep_updated", handleSync);
+    window.addEventListener("dailyos_mood_updated", handleSync);
     window.addEventListener("storage", handleSync);
     return () => {
       window.removeEventListener("dailyos_habits_updated", handleSync);
+      window.removeEventListener("dailyos_sleep_updated", handleSync);
+      window.removeEventListener("dailyos_mood_updated", handleSync);
       window.removeEventListener("storage", handleSync);
     };
   }, []);
@@ -174,8 +198,27 @@ export default function Today() {
   }, [dbHabits, deletedHabitIds, cacheVersion]);
   const currentDayLogs = useLiveQuery(() => db.habit_logs.where("date").equals(date).toArray(), [date]) ?? [];
   const allLogs = useLiveQuery(() => db.habit_logs.toArray(), []) ?? [];
-  const currentSleep = useLiveQuery(() => db.sleep_logs.get(date), [date]);
-  const currentMood = useLiveQuery(() => db.mood_logs.get(date), [date]);
+  const currentSleep = useLiveQuery(() => db.sleep_logs.get(date), [date, cacheVersion]);
+  const dbMood = useLiveQuery(() => db.mood_logs.get(date), [date, cacheVersion]);
+  const [optimisticMood, setOptimisticMood] = useState<{ score?: MoodScore; changeCount?: number } | null>(null);
+
+  useEffect(() => {
+    if (optimisticMood && dbMood && dbMood.score === optimisticMood.score) {
+      setOptimisticMood(null);
+    }
+  }, [dbMood, optimisticMood]);
+
+  const currentMood = useMemo(() => {
+    if (!optimisticMood) return dbMood;
+    return {
+      date,
+      score: (optimisticMood.score ?? dbMood?.score ?? 3) as any,
+      changeCount: optimisticMood.changeCount ?? dbMood?.changeCount ?? 0,
+      emotions: dbMood?.emotions || [],
+      isLocked: (optimisticMood.changeCount ?? dbMood?.changeCount ?? 0) >= 3,
+      updatedAt: new Date().toISOString(),
+    };
+  }, [dbMood, optimisticMood, date]);
   const currentReflection = useLiveQuery(() => db.reflections.get(date), [date]);
   const allSleepLogs = useLiveQuery(() => db.sleep_logs.toArray(), []) ?? [];
   const allMoodLogs = useLiveQuery(() => db.mood_logs.toArray(), []) ?? [];
@@ -482,6 +525,8 @@ export default function Today() {
         variant: "primary",
         icon: "lock",
         onConfirm: async () => {
+          markDateUnlocked(date);
+          setOptimisticUnlocked((prev) => (prev.includes(date) ? prev : [...prev, date]));
           const res = await useEditPass(date, todayStr);
           if (res.ok) {
             executeToggleHabit(habitId);
@@ -651,6 +696,8 @@ export default function Today() {
                     variant: "primary",
                     icon: "lock",
                     onConfirm: async () => {
+                      markDateUnlocked(date);
+                      setOptimisticUnlocked((prev) => (prev.includes(date) ? prev : [...prev, date]));
                       const res = await useEditPass(date, todayStr);
                       if (!res.ok) {
                         setModalConfig({
@@ -1037,6 +1084,8 @@ export default function Today() {
                 variant: "primary",
                 icon: "lock",
                 onConfirm: async () => {
+                  markDateUnlocked(date);
+                  setOptimisticUnlocked((prev) => (prev.includes(date) ? prev : [...prev, date]));
                   const res = await useEditPass(date, todayStr);
                   if (res.ok) {
                     setFeelingsOpen(true);
@@ -1125,7 +1174,13 @@ export default function Today() {
                 isLocked={isMoodLocked}
                 onChange={async (score) => {
                   if (!isMoodLocked && (isViewingToday || isCurrentDayEditable)) {
-                    await saveMood(date, score, currentMood?.emotions || [], todayStr);
+                    const nextCount = (currentMood?.changeCount ?? 0) + 1;
+                    setOptimisticMood({ score, changeCount: nextCount });
+                    try {
+                      await saveMood(date, score, currentMood?.emotions || [], todayStr);
+                    } catch {
+                      setOptimisticMood(null);
+                    }
                   }
                 }}
               />

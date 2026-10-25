@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, toggleHabit, useHabits } from "../lib/db";
+import { db, toggleHabit, useHabits, useEditPass, markDateUnlocked, getSessionUnlockedDates } from "../lib/db";
 import { weekStart } from "../lib/habitRules";
 import { getIconPath } from "../lib/icons";
 import { formatTime12h } from "../lib/sleep";
@@ -25,7 +25,26 @@ export default function DayDetail() {
     () => db.edit_passes.where("week_start").equals(currentWeekStart).toArray(),
     [currentWeekStart]
   ) ?? [];
-  const unlockedDates = useMemo(() => unlockedPasses.map((p) => p.date), [unlockedPasses]);
+  const dbUnlockedDates = useMemo(() => unlockedPasses.map((p) => p.date), [unlockedPasses]);
+  const [optimisticUnlocked, setOptimisticUnlocked] = useState<string[]>(() => getSessionUnlockedDates());
+
+  useEffect(() => {
+    const handleUnlocked = (e: any) => {
+      const d = e.detail?.date;
+      if (d) {
+        setOptimisticUnlocked((prev) => (prev.includes(d) ? prev : [...prev, d]));
+      }
+    };
+    window.addEventListener("dailyos_unlocked_updated", handleUnlocked);
+    return () => window.removeEventListener("dailyos_unlocked_updated", handleUnlocked);
+  }, []);
+
+  const unlockedDates = useMemo(() => {
+    const set = new Set([...dbUnlockedDates, ...optimisticUnlocked]);
+    return Array.from(set);
+  }, [dbUnlockedDates, optimisticUnlocked]);
+
+  const passesLeftCount = Math.max(0, 3 - unlockedDates.length);
   const isUnlocked = unlockedDates.includes(date);
   const editable = isToday || isUnlocked;
 
@@ -167,12 +186,43 @@ export default function DayDetail() {
                 borderRadius: "20px",
                 padding: "12px 14px",
                 marginTop: "14px",
-                fontSize: "13px",
-                fontWeight: 600,
-                color: "var(--mu)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
             >
-              This day is locked and view-only.
+              <div>
+                <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--mu)" }}>
+                  This day is locked and view-only.
+                </div>
+                {date >= currentWeekStart && (
+                  <div style={{ fontSize: "11px", color: "var(--mu)", marginTop: "2px" }}>
+                    {passesLeftCount} weekly edit pass{passesLeftCount === 1 ? "" : "es"} remaining.
+                  </div>
+                )}
+              </div>
+              {date >= currentWeekStart && passesLeftCount > 0 && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    markDateUnlocked(date);
+                    setOptimisticUnlocked((prev) => (prev.includes(date) ? prev : [...prev, date]));
+                    await useEditPass(date, todayStr);
+                  }}
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: "var(--prt)",
+                    background: "var(--tint)",
+                    border: "none",
+                    borderRadius: "99px",
+                    padding: "6px 12px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Unlock Day
+                </button>
+              )}
             </div>
           )
         )}

@@ -282,6 +282,57 @@ export function purgeLegacyStorage(): void {
 // In-flight state tracker to prevent click races before Dexie transaction finishes
 const inFlightToggles = new Map<string, number>();
 
+// In-memory unlocked dates for 0ms instant real-time checks
+const inMemoryUnlockedDates = new Set<string>();
+
+export function getSessionUnlockedDates(): string[] {
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      const raw = sessionStorage.getItem("dailyos_unlocked_dates");
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          arr.forEach((d) => inMemoryUnlockedDates.add(d));
+        }
+      }
+    }
+  } catch {}
+  return Array.from(inMemoryUnlockedDates);
+}
+
+export function markDateUnlocked(date: string): void {
+  inMemoryUnlockedDates.add(date);
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      const dates = Array.from(inMemoryUnlockedDates);
+      sessionStorage.setItem("dailyos_unlocked_dates", JSON.stringify(dates));
+    }
+  } catch {}
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("dailyos_unlocked_updated", { detail: { date } }));
+  }
+}
+
+export async function isDateUnlocked(date: string, today: string): Promise<boolean> {
+  if (inMemoryUnlockedDates.has(date)) return true;
+  try {
+    const stored = getSessionUnlockedDates();
+    if (stored.includes(date)) return true;
+    const currentWeek = weekStart(today);
+    const pass = await db.edit_passes.get(`${currentWeek}_${date}`);
+    if (pass) {
+      inMemoryUnlockedDates.add(date);
+      return true;
+    }
+    const anyPass = await db.edit_passes.where("date").equals(date).first();
+    if (anyPass) {
+      inMemoryUnlockedDates.add(date);
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
 // -----------------------------------------------------------------------------
 // MUTATIONS (All mutations update Dexie first, then push to outbox)
 // -----------------------------------------------------------------------------
@@ -293,8 +344,7 @@ export async function toggleHabit(
 ): Promise<number> {
   let canEdit = isHabitEditable(date, today);
   if (!canEdit && weekStart(date) === weekStart(today)) {
-    const pass = await db.edit_passes.get(date);
-    if (pass) canEdit = true;
+    if (await isDateUnlocked(date, today)) canEdit = true;
   }
   if (!canEdit) {
     throw new Error(`Habit for ${date} is locked.`);
@@ -355,8 +405,7 @@ export async function setHabitState(
 ): Promise<void> {
   let canEdit = isHabitEditable(date, today);
   if (!canEdit && weekStart(date) === weekStart(today)) {
-    const pass = await db.edit_passes.get(date);
-    if (pass) canEdit = true;
+    if (await isDateUnlocked(date, today)) canEdit = true;
   }
   if (!canEdit) {
     throw new Error(`Habit for ${date} is locked.`);
@@ -392,8 +441,7 @@ export async function saveSleep(
 ): Promise<void> {
   let canEdit = isSleepOrMoodEditable(date, today);
   if (!canEdit && weekStart(date) === weekStart(today)) {
-    const pass = await db.edit_passes.get(date);
-    if (pass) canEdit = true;
+    if (await isDateUnlocked(date, today)) canEdit = true;
   }
   if (!canEdit) {
     throw new Error(`Sleep for ${date} is locked.`);
@@ -417,6 +465,10 @@ export async function saveSleep(
       ts: Date.now(),
     });
   });
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("dailyos_sleep_updated", { detail: { date } }));
+  }
 }
 
 export const MAX_MOOD_CHANGES = 3;
@@ -429,8 +481,7 @@ export async function saveMood(
 ): Promise<MoodLog> {
   let canEdit = isSleepOrMoodEditable(date, today);
   if (!canEdit && weekStart(date) === weekStart(today)) {
-    const pass = await db.edit_passes.get(date);
-    if (pass) canEdit = true;
+    if (await isDateUnlocked(date, today)) canEdit = true;
   }
   if (!canEdit) {
     throw new Error(`Mood for ${date} is locked.`);
@@ -465,6 +516,10 @@ export async function saveMood(
       ts: Date.now(),
     });
   });
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("dailyos_mood_updated", { detail: { date, score } }));
+  }
   return row;
 }
 
@@ -687,9 +742,15 @@ import { unlock as computeUnlock, weekStart as getWeekStart } from "./editPasses
 export async function getUnlockedDates(weekStartStr: string): Promise<string[]> {
   try {
     const records = await db.edit_passes.where("week_start").equals(weekStartStr).toArray();
-    return records.map((r) => r.date);
+    const dates = records.map((r) => r.date);
+    for (const d of inMemoryUnlockedDates) {
+      if (weekStart(d) === weekStartStr && !dates.includes(d)) {
+        dates.push(d);
+      }
+    }
+    return dates;
   } catch {
-    return [];
+    return Array.from(inMemoryUnlockedDates).filter((d) => weekStart(d) === weekStartStr);
   }
 }
 
@@ -703,6 +764,7 @@ export async function useEditPass(
   if (!result.ok) {
     return result;
   }
+  markDateUnlocked(date);
   if (!currentUnlocked.includes(date)) {
     await db.edit_passes.put({
       id: `${currentWeek}_${date}`,
