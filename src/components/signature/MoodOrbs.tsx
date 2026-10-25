@@ -1,4 +1,6 @@
 
+import { useState } from "react";
+
 export type MoodScore = 1 | 2 | 3 | 4 | 5;
 
 export interface MoodOrbsProps {
@@ -42,6 +44,7 @@ export function MoodOrbs({
   const currentOrb = ORBS.find((o) => o.score === value);
   const effectiveLocked = isLocked || changeCount >= maxChanges;
   const remaining = Math.max(0, maxChanges - changeCount);
+  const [lockedNotice, setLockedNotice] = useState<string | null>(null);
 
   return (
     <div
@@ -109,12 +112,17 @@ export function MoodOrbs({
             <div
               key={orb.score}
               onClick={() => {
-                if (!effectiveLocked) onChange?.(orb.score);
+                if (!effectiveLocked) {
+                  onChange?.(orb.score);
+                } else {
+                  setLockedNotice(`Locked for today: You've reached the ${maxChanges}/${maxChanges} daily change limit.`);
+                  setTimeout(() => setLockedNotice(null), 3500);
+                }
               }}
               style={{
                 flex: 1,
                 textAlign: "center",
-                cursor: !effectiveLocked && onChange ? "pointer" : "default",
+                cursor: onChange ? "pointer" : "default",
               }}
             >
               <div
@@ -162,6 +170,24 @@ export function MoodOrbs({
           ? `Tap an orb to log your feeling (up to ${maxChanges} changes per day)`
           : `Changed ${changeCount}/${maxChanges} · ${remaining} change${remaining > 1 ? "s" : ""} left today`}
       </div>
+
+      {lockedNotice && (
+        <div
+          style={{
+            fontSize: "12px",
+            fontWeight: 700,
+            color: "var(--prt)",
+            background: "var(--tint)",
+            padding: "8px 12px",
+            borderRadius: "14px",
+            marginTop: "10px",
+            textAlign: "center",
+            border: "1px solid var(--pr)",
+          }}
+        >
+          🔒 {lockedNotice}
+        </div>
+      )}
 
       {showFeelingsLink && !effectiveLocked && (
         <div

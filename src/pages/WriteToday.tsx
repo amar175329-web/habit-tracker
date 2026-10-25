@@ -22,11 +22,17 @@ export default function WriteToday() {
 
   const [content, setContent] = useState("");
   const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving...">("Saved");
+  const [lockNotice, setLockNotice] = useState<string | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isInitializedRef = useRef(false);
 
   useEffect(() => {
-    if (reflection?.content !== undefined) {
-      setContent(reflection.content);
+    if (!isInitializedRef.current && reflection !== undefined) {
+      isInitializedRef.current = true;
+      if (reflection?.content) {
+        setContent(reflection.content);
+      }
     }
   }, [reflection]);
 
@@ -51,6 +57,21 @@ export default function WriteToday() {
     });
   }, []);
 
+  const flushSave = async (text: string) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    setSaveStatus("Saving...");
+    try {
+      await saveReflection(todayStr, text, todayStr);
+      setSaveStatus("Saved");
+    } catch (err: any) {
+      console.error(err);
+      setSaveStatus("Saved");
+    }
+  };
+
   const handleChange = (newVal: string) => {
     setContent(newVal);
     setSaveStatus("Saving...");
@@ -70,10 +91,46 @@ export default function WriteToday() {
     }, 400);
   };
 
-  const handleNudge = (starter: string) => {
-    const prefix = content.trim() ? `${content.trim()}\n\n` : "";
-    const updated = `${prefix}${starter}: `;
-    handleChange(updated);
+  const handleNudge = async (starter: string) => {
+    const trimmed = content.trim();
+    const updated = trimmed ? `${trimmed}\n\n${starter}: ` : `${starter}: `;
+    setContent(updated);
+    await flushSave(updated);
+
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
+        const len = textareaRef.current.value.length;
+        textareaRef.current.setSelectionRange(len, len);
+      }
+    }, 50);
+  };
+
+  const isMoodLocked = useMemo(() => {
+    if (!mood) return false;
+    const count = mood.changeCount ?? (mood.isLocked ? 3 : 0);
+    return Boolean(mood.isLocked || count >= 3);
+  }, [mood]);
+
+  const handleMoodClick = async () => {
+    if (isMoodLocked) {
+      setLockNotice("🔒 Mood is locked for today (3 of 3 changes used).");
+      setTimeout(() => setLockNotice(null), 4000);
+      return;
+    }
+    await flushSave(content);
+    navigate("/#mood-section");
+  };
+
+  const handleHabitsClick = async () => {
+    await flushSave(content);
+    navigate("/#habits-section");
+  };
+
+  const handleSleepClick = async () => {
+    await flushSave(content);
+    navigate("/#sleep-section");
   };
 
   return (
@@ -172,6 +229,7 @@ export default function WriteToday() {
         }}
       >
         <textarea
+          ref={textareaRef}
           value={content}
           onChange={(e) => handleChange(e.target.value)}
           placeholder="What made today memorable? Write freely..."
@@ -196,6 +254,42 @@ export default function WriteToday() {
         <span>Autosaves as you type</span>
       </div>
 
+      {/* Optional Locked Notification Banner */}
+      {lockNotice && (
+        <div
+          style={{
+            marginTop: "12px",
+            background: "var(--tint)",
+            border: "1.5px solid var(--pr)",
+            borderRadius: "16px",
+            padding: "10px 14px",
+            fontSize: "13px",
+            fontWeight: 700,
+            color: "var(--prt)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span>{lockNotice}</span>
+          <button
+            type="button"
+            onClick={() => setLockNotice(null)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--prt)",
+              fontWeight: 800,
+              fontSize: "16px",
+              cursor: "pointer",
+              padding: "0 4px",
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Attached Context Box */}
       <div
         style={{
@@ -210,60 +304,109 @@ export default function WriteToday() {
           ATTACHED TO TODAY
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "10px" }}>
-          {mood && (
-            <span
-              style={{
-                fontSize: "12.5px",
-                fontWeight: 700,
-                padding: "8px 13px",
-                borderRadius: "99px",
-                background: "var(--card)",
-                color: "var(--mu)",
-                border: "1px solid var(--ln)",
-              }}
-            >
-              {mood.score === 1
-                ? "Rough"
-                : mood.score === 2
-                ? "Low"
-                : mood.score === 3
-                ? "Okay"
-                : mood.score === 5
-                ? "Energized"
-                : "Good"}{" "}
-              · {mood.score}
-            </span>
-          )}
-
-          {sleep && (
-            <span
-              style={{
-                fontSize: "12.5px",
-                fontWeight: 700,
-                padding: "8px 13px",
-                borderRadius: "99px",
-                background: "var(--card)",
-                color: "var(--mu)",
-                border: "1px solid var(--ln)",
-              }}
-            >
-              Slept {Math.floor(sleep.durationMin / 60)}h {sleep.durationMin % 60}m
-            </span>
-          )}
-
-          <span
+          <button
+            type="button"
+            onClick={handleMoodClick}
             style={{
               fontSize: "12.5px",
               fontWeight: 700,
-              padding: "8px 13px",
+              padding: "8px 14px",
               borderRadius: "99px",
-              background: "var(--card)",
-              color: "var(--mu)",
-              border: "1px solid var(--ln)",
+              background: isMoodLocked ? "var(--tint)" : "var(--card)",
+              color: isMoodLocked ? "var(--prt)" : "var(--tx)",
+              border: `1px solid ${isMoodLocked ? "var(--pr)" : "var(--ln)"}`,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
             }}
           >
-            {habitsScore.toFixed(1)} / {habits.length || 5} habits
-          </span>
+            {mood ? (
+              <>
+                <span
+                  style={{
+                    width: "12px",
+                    height: "12px",
+                    borderRadius: "50%",
+                    background: `color-mix(in srgb, var(--co) ${mood.score * 20}%, var(--card))`,
+                    display: "inline-block",
+                  }}
+                />
+                <span>
+                  {mood.score === 1
+                    ? "Rough"
+                    : mood.score === 2
+                    ? "Low"
+                    : mood.score === 3
+                    ? "Okay"
+                    : mood.score === 5
+                    ? "Energized"
+                    : "Good"}{" "}
+                  · {mood.score}
+                </span>
+                {isMoodLocked ? <span>🔒</span> : <span style={{ opacity: 0.6 }}>↗</span>}
+              </>
+            ) : (
+              <>
+                <span>+ Log feeling</span>
+                <span style={{ opacity: 0.6 }}>↗</span>
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSleepClick}
+            style={{
+              fontSize: "12.5px",
+              fontWeight: 700,
+              padding: "8px 14px",
+              borderRadius: "99px",
+              background: "var(--card)",
+              color: "var(--tx)",
+              border: "1px solid var(--ln)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            {sleep ? (
+              <>
+                <span>🌙 Slept {Math.floor(sleep.durationMin / 60)}h {sleep.durationMin % 60}m</span>
+                <span style={{ opacity: 0.6 }}>↗</span>
+              </>
+            ) : (
+              <>
+                <span>+ Log sleep</span>
+                <span style={{ opacity: 0.6 }}>↗</span>
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleHabitsClick}
+            style={{
+              fontSize: "12.5px",
+              fontWeight: 700,
+              padding: "8px 14px",
+              borderRadius: "99px",
+              background: "var(--card)",
+              color: "var(--tx)",
+              border: "1px solid var(--ln)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <span>{habitsScore.toFixed(1)} / {habits.length || 5} habits</span>
+            <span style={{ opacity: 0.6 }}>↗</span>
+          </button>
         </div>
       </div>
     </div>

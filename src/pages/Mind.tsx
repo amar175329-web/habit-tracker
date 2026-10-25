@@ -1,10 +1,12 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../lib/db";
 import { fromMs, toMs } from "../lib/habitRules";
 import { ReflectionsList } from "./ReflectionsList";
 
 export default function Mind() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"mood" | "reflections">("mood");
 
   const todayStr = useMemo(() => {
@@ -24,10 +26,10 @@ export default function Mind() {
     if (allMoods.length === 0) {
       return { avg: "—", highDays: 0, lowDays: 0 };
     }
-    const sum = allMoods.reduce((acc, m) => acc + m.score, 0);
+    const sum = allMoods.reduce((acc, m) => acc + Number(m.score || 0), 0);
     const avg = (sum / allMoods.length).toFixed(1);
-    const highDays = allMoods.filter((m) => m.score >= 4).length;
-    const lowDays = allMoods.filter((m) => m.score <= 2).length;
+    const highDays = allMoods.filter((m) => Number(m.score) >= 4).length;
+    const lowDays = allMoods.filter((m) => Number(m.score) <= 2).length;
     return { avg, highDays, lowDays };
   }, [allMoods]);
 
@@ -187,6 +189,36 @@ export default function Mind() {
                   {moodStats.lowDays}
                 </div>
               </div>
+            </div>
+
+            {/* Scale explanation and quick log/change action */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "6px 8px 0",
+                fontSize: "11px",
+                fontWeight: 600,
+                color: "var(--mu)",
+              }}
+            >
+              <span>High: 4–5 · Low: 1–2 · Okay: 3</span>
+              <button
+                type="button"
+                onClick={() => navigate("/#mood-section")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  color: "var(--prt)",
+                  fontWeight: 700,
+                  fontSize: "11.5px",
+                  cursor: "pointer",
+                }}
+              >
+                Log / Change today ›
+              </button>
             </div>
 
             {/* Last 7 Days Orbs */}

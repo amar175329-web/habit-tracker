@@ -72,6 +72,31 @@ export default function Today() {
     };
   }, []);
 
+  // Smooth scroll and pulse target section on hash change
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash;
+      if (hash) {
+        const id = hash.replace("#", "");
+        setTimeout(() => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.style.transition = "box-shadow 0.3s ease, border-color 0.3s ease";
+            el.style.boxShadow = "0 0 0 3px var(--pr)";
+            setTimeout(() => {
+              el.style.boxShadow = "";
+            }, 2000);
+          }
+        }, 150);
+      }
+    };
+
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
+
   // Synchronize localStorage cache whenever dbHabits updates from IndexedDB
   useEffect(() => {
     if (dbHabits) {
@@ -509,6 +534,7 @@ export default function Today() {
         {/* Habits Grid / First-Run Zero Habits Empty State */}
         {habits.length === 0 ? (
           <div
+            id="habits-section"
             style={{
               background: "var(--card)",
               border: "1px dashed var(--tr)",
@@ -561,6 +587,7 @@ export default function Today() {
           </div>
         ) : (
           <div
+            id="habits-section"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
@@ -664,6 +691,7 @@ export default function Today() {
 
         {/* Sleep Card */}
         <div
+          id="sleep-section"
           onClick={() => navigate("/sleep")}
           style={{
             background: "var(--card)",
@@ -716,6 +744,7 @@ export default function Today() {
 
           return (
             <div
+              id="mood-section"
               style={{
                 background: "var(--card)",
                 border: "1px solid var(--ln)",
@@ -819,6 +848,7 @@ export default function Today() {
 
         {/* Today's Reflection Card */}
         <div
+          id="reflection-section"
           onClick={() => {
             if (isViewingToday) {
               navigate("/write-today");
