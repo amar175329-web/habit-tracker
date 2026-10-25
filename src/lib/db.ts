@@ -224,6 +224,11 @@ export async function clearAllData(): Promise<void> {
     }
     keysToRemove.forEach((k) => window.localStorage.removeItem(k));
   }
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    try {
+      window.sessionStorage.clear();
+    } catch {}
+  }
 }
 
 /**
@@ -257,6 +262,11 @@ export function purgeLegacyStorage(): void {
       }
     }
     keysToRemove.forEach((k) => window.localStorage.removeItem(k));
+  }
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    try {
+      window.sessionStorage.clear();
+    } catch {}
   }
 }
 
