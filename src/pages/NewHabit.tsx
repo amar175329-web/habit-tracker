@@ -9,6 +9,7 @@ import {
   setCachedHabits,
   markHabitDeleted,
   clearHabitDeletedMark,
+  getDeletedHabitIds,
   type Habit,
 } from "../lib/db";
 import { autoPickIcon, getIconPath } from "../lib/icons";
@@ -131,6 +132,7 @@ export default function NewHabit() {
 
   const handleNameChange = (val: string) => {
     setName(val);
+    if (errorMsg) setErrorMsg("");
     if (!userPickedIcon && !editId) {
       const suggested = autoPickIcon(val);
       setIcon(suggested);
@@ -177,6 +179,27 @@ export default function NewHabit() {
     // Dismiss soft keyboard immediately on mobile
     (document.activeElement as HTMLElement)?.blur();
 
+    // Check for duplicate habit name across DB and cache (case-insensitive)
+    // NOTE: Name alone determines uniqueness; icon is NOT included in the duplicate check.
+    const deleted = getDeletedHabitIds();
+    const cachedList = getCachedHabits().filter((h) => h.isActive && !deleted.has(h.id));
+    const dbList = (allDbHabits ?? []).filter((h) => h.isActive && !deleted.has(h.id));
+    const activeMap = new Map<string, Habit>();
+    cachedList.forEach((h) => activeMap.set(h.id, h));
+    dbList.forEach((h) => activeMap.set(h.id, h));
+    const allActive = Array.from(activeMap.values());
+
+    const normalized = trimmedName.toLowerCase();
+    const duplicate = allActive.find(
+      (h) => h.id !== editId && h.name.trim().toLowerCase() === normalized
+    );
+
+    if (duplicate) {
+      setErrorMsg(`A habit named "${trimmedName}" already exists.`);
+      setIsSaving(false);
+      return;
+    }
+
     // Haptic feedback for tactile feel on mobile
     try {
       if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -188,7 +211,6 @@ export default function NewHabit() {
     setErrorMsg("");
 
     // Monotonically append to the end (last position) across both DB and cache
-    const cachedList = getCachedHabits();
     const allKnown = [...(allDbHabits ?? []), ...cachedList];
     let maxSort = 0;
     for (const h of allKnown) {

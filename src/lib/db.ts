@@ -486,6 +486,7 @@ export function setCachedHabits(habits: Habit[]): void {
   if (typeof window === "undefined" || !window.localStorage) return;
   try {
     window.localStorage.setItem(HABITS_CACHE_KEY, JSON.stringify(habits));
+    window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
   } catch {}
 }
 

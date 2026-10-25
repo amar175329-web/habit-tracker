@@ -25,6 +25,7 @@ export default function DataBackup() {
 
   // Visual feedback for Export/Import operations
   const [feedback, setFeedback] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
+  const [downloadLink, setDownloadLink] = useState<{ url: string; filename: string } | null>(null);
 
   // Cloud Turso Settings
   const [dbUrl, setDbUrl] = useState("");
@@ -135,35 +136,16 @@ export default function DataBackup() {
       const filename = `dailyos-backup-${dateStr}.json`;
       const blob = new Blob([jsonStr], { type: "application/json" });
 
-      let shared = false;
-      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-        try {
-          const file = new File([blob], filename, { type: "application/json" });
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              title: "DailyOS Backup",
-              text: `DailyOS backup (${exportData.habits.length} habits, ${exportData.habit_logs.length} logs)`,
-              files: [file],
-            });
-            shared = true;
-          }
-        } catch (e: any) {
-          if (e.name !== "AbortError") {
-            console.warn("Navigator share failed, using anchor fallback:", e);
-          }
-        }
-      }
+      const url = URL.createObjectURL(blob);
+      setDownloadLink({ url, filename });
 
-      if (!shared) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
+      // Direct anchor download
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
 
       setFeedback({
         type: "success",
@@ -172,7 +154,6 @@ export default function DataBackup() {
     } catch (err: any) {
       console.error(err);
       setFeedback({ type: "error", message: `Export failed: ${err.message}` });
-      alert(`Export failed: ${err.message}`);
     }
   };
 
@@ -503,7 +484,26 @@ export default function DataBackup() {
               border: `1px solid ${feedback.type === "success" ? "var(--pr)" : feedback.type === "error" ? "#FDA29B" : "var(--ln)"}`,
             }}
           >
-            {feedback.message}
+            <div>{feedback.message}</div>
+            {downloadLink && feedback.type === "success" && (
+              <div style={{ marginTop: "8px" }}>
+                <a
+                  href={downloadLink.url}
+                  download={downloadLink.filename}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontWeight: 800,
+                    fontSize: "13px",
+                    color: "inherit",
+                    textDecoration: "underline",
+                  }}
+                >
+                  📥 Click here to download {downloadLink.filename} directly
+                </a>
+              </div>
+            )}
           </div>
         )}
 

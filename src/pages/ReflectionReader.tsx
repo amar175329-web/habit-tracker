@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "../lib/db";
+import { db, useHabits } from "../lib/db";
 import { fromMs, toMs } from "../lib/habitRules";
 
 export default function ReflectionReader() {
@@ -11,7 +11,7 @@ export default function ReflectionReader() {
   const reflection = useLiveQuery(() => db.reflections.get(date), [date]);
   const mood = useLiveQuery(() => db.mood_logs.get(date), [date]);
   const sleep = useLiveQuery(() => db.sleep_logs.get(date), [date]);
-  const habits = useLiveQuery(() => db.habits.filter((h) => h.isActive).toArray(), []) ?? [];
+  const habits = useHabits();
   const habitLogs = useLiveQuery(() => db.habit_logs.where("date").equals(date).toArray(), [date]) ?? [];
 
   const formattedDate = useMemo(() => {

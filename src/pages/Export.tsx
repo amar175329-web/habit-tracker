@@ -6,6 +6,7 @@ import { exportAllData } from "../lib/db";
 export default function ExportPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<string | null>(null);
+  const [downloadLink, setDownloadLink] = useState<{ url: string; filename: string } | null>(null);
 
   const downloadJson = async () => {
     setStatus("Preparing JSON…");
@@ -15,33 +16,15 @@ export default function ExportPage() {
       const filename = `daily-os-${new Date().toISOString().slice(0, 10)}.json`;
       const blob = new Blob([jsonStr], { type: "application/json" });
 
-      let shared = false;
-      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-        try {
-          const file = new File([blob], filename, { type: "application/json" });
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              title: "DailyOS Vault Export",
-              text: `DailyOS backup (${data.habits.length} habits, ${data.habit_logs.length} logs)`,
-              files: [file],
-            });
-            shared = true;
-          }
-        } catch (e: any) {
-          if (e.name !== "AbortError") console.warn("Share fallback:", e);
-        }
-      }
+      const url = URL.createObjectURL(blob);
+      setDownloadLink({ url, filename });
 
-      if (!shared) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
 
       setStatus(`Exported ${data.habits.length} habits, ${data.habit_logs.length} habit logs, ${data.reflections.length} reflections, ${data.sleep_logs.length} sleep logs`);
     } catch (e: any) {
@@ -92,13 +75,14 @@ export default function ExportPage() {
       const filename = `daily-os-${new Date().toISOString().slice(0, 10)}.csv`;
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
+      setDownloadLink({ url, filename });
+
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
 
       setStatus(`CSV generated with ${sortedDates.length} recorded dates`);
     } catch (e: any) {
@@ -173,8 +157,19 @@ export default function ExportPage() {
           </div>
 
           {status && (
-            <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06] text-xs text-emerald-400 font-mono text-center">
-              {status}
+            <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06] text-xs text-emerald-400 font-mono text-center space-y-2">
+              <div>{status}</div>
+              {downloadLink && (
+                <div>
+                  <a
+                    href={downloadLink.url}
+                    download={downloadLink.filename}
+                    className="underline text-emerald-300 font-bold hover:text-emerald-200 inline-block py-1"
+                  >
+                    📥 Click here to save {downloadLink.filename}
+                  </a>
+                </div>
+              )}
             </div>
           )}
 

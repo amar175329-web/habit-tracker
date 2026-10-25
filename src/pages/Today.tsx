@@ -65,7 +65,11 @@ export default function Today() {
   useEffect(() => {
     const handleSync = () => setCacheVersion((v) => v + 1);
     window.addEventListener("dailyos_habits_updated", handleSync);
-    return () => window.removeEventListener("dailyos_habits_updated", handleSync);
+    window.addEventListener("storage", handleSync);
+    return () => {
+      window.removeEventListener("dailyos_habits_updated", handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
   }, []);
 
   // Synchronize localStorage cache whenever dbHabits updates from IndexedDB
