@@ -244,14 +244,6 @@ export default function NewHabit() {
     } catch {}
 
     // 2. Smooth, instantaneous client-side SPA navigation to Today screen (0ms redirect!)
-    try {
-      sessionStorage.setItem(
-        "today_toast_msg",
-        editId
-          ? "Habit updated. Past history & records can be managed in Settings."
-          : "New habit created!"
-      );
-    } catch {}
     navigate("/", { replace: true });
 
     // 3. Persist to Dexie and Outbox asynchronously in background (never blocks UI)
@@ -279,12 +271,13 @@ export default function NewHabit() {
       }
     } catch {}
 
-    // 2. Instant redirect to Today screen
+    // 2. Instant redirect to Today screen with first-time tip trigger
     try {
-      sessionStorage.setItem(
-        "today_toast_msg",
-        "Habit removed. Past streaks are preserved. To permanently purge past data, visit Settings."
-      );
+      const hasSeenDeleteTip = localStorage.getItem("has_seen_delete_tip") === "true";
+      if (!hasSeenDeleteTip) {
+        localStorage.setItem("has_seen_delete_tip", "true");
+        sessionStorage.setItem("show_first_delete_tip", "true");
+      }
     } catch {}
     navigate("/", { replace: true });
 

@@ -272,24 +272,23 @@ export default function Today() {
     description: "",
   });
 
-  const [toastMsg, setToastMsg] = useState<string | null>(() => {
+  const [showFirstDeleteTip, setShowFirstDeleteTip] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       try {
-        const msg = sessionStorage.getItem("today_toast_msg");
-        if (msg) {
-          sessionStorage.removeItem("today_toast_msg");
-          return msg;
+        if (sessionStorage.getItem("show_first_delete_tip") === "true") {
+          sessionStorage.removeItem("show_first_delete_tip");
+          return true;
         }
       } catch {}
     }
-    return null;
+    return false;
   });
 
   useEffect(() => {
-    if (!toastMsg) return;
-    const t = setTimeout(() => setToastMsg(null), 4500);
+    if (!showFirstDeleteTip) return;
+    const t = setTimeout(() => setShowFirstDeleteTip(false), 5000);
     return () => clearTimeout(t);
-  }, [toastMsg]);
+  }, [showFirstDeleteTip]);
 
   const handleDeleteHabitFromMenu = (habitId: string, purgeHistory = false) => {
     // 1. Instantly hide from UI (0ms feedback)
@@ -304,9 +303,17 @@ export default function Today() {
 
     // 3. Close the action sheet immediately
     setActiveMenuHabit(null);
-    setToastMsg("Habit removed. Past streaks are preserved. To permanently purge past data, visit Settings.");
 
-    // 4. Delete or archive in Dexie in background
+    // 4. Trigger first-time delete tip strictly once
+    try {
+      const hasSeenDeleteTip = localStorage.getItem("has_seen_delete_tip") === "true";
+      if (!hasSeenDeleteTip) {
+        localStorage.setItem("has_seen_delete_tip", "true");
+        setShowFirstDeleteTip(true);
+      }
+    } catch {}
+
+    // 5. Delete or archive in Dexie in background
     deleteHabit(habitId, purgeHistory).catch((err) => {
       console.error("Delete error:", err);
     });
@@ -1342,49 +1349,88 @@ export default function Today() {
         usedFreezeDates={usedFreezeDates}
       />
 
-      {/* Toast Notification */}
-      {toastMsg && (
+      {/* First-Time Habit Delete Onboarding Tip (Theme-Adaptive & Only Shown Once Ever) */}
+      {showFirstDeleteTip && (
         <div
-          onClick={() => setToastMsg(null)}
+          onClick={() => setShowFirstDeleteTip(false)}
           style={{
             position: "fixed",
-            bottom: "84px",
+            bottom: "94px",
             left: "50%",
             transform: "translateX(-50%)",
-            width: "calc(100% - 36px)",
-            maxWidth: "394px",
+            width: "calc(100% - 32px)",
+            maxWidth: "398px",
             background: "var(--card)",
             border: "1px solid var(--ln)",
-            borderRadius: "18px",
-            padding: "12px 16px",
-            boxShadow: "0 8px 30px rgba(0, 0, 0, 0.25)",
+            borderRadius: "20px",
+            padding: "12px 14px",
+            boxShadow: "0 12px 36px rgba(0, 0, 0, 0.16)",
             display: "flex",
             alignItems: "center",
-            gap: "10px",
-            zIndex: 80,
+            gap: "12px",
+            zIndex: 85,
             cursor: "pointer",
+            animation: "habitTipFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+            backdropFilter: "blur(12px)",
           }}
         >
-          <span style={{ fontSize: "16px" }}>ℹ️</span>
-          <div style={{ flex: 1, fontSize: "12px", color: "var(--tx)", fontWeight: 600, lineHeight: 1.35 }}>
-            {toastMsg}
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setToastMsg(null);
-            }}
+          {/* Elegant Shield/Check Icon Chip */}
+          <div
             style={{
-              background: "none",
-              border: "none",
-              color: "var(--mu)",
-              fontSize: "16px",
-              cursor: "pointer",
-              padding: "4px",
+              width: "36px",
+              height: "36px",
+              borderRadius: "12px",
+              background: "var(--tint)",
+              color: "var(--prt)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
             }}
           >
-            ✕
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+          </div>
+
+          {/* Clean 2-Line Typography */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--tx)", lineHeight: 1.25 }}>
+              Past Streaks Preserved
+            </div>
+            <div style={{ fontSize: "11.5px", color: "var(--mu)", marginTop: "2px", lineHeight: 1.35 }}>
+              Old records stay safe in charts. Purge anytime in Settings.
+            </div>
+          </div>
+
+          {/* Subtle Dismiss Cross */}
+          <button
+            type="button"
+            aria-label="Dismiss notice"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowFirstDeleteTip(false);
+            }}
+            style={{
+              width: "28px",
+              height: "28px",
+              borderRadius: "50%",
+              background: "transparent",
+              border: "none",
+              color: "var(--mu)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              padding: 0,
+              flexShrink: 0,
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
       )}
