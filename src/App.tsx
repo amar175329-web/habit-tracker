@@ -23,6 +23,7 @@ import Settings from "./pages/Settings";
 import NewHabit from "./pages/NewHabit";
 import IconPicker from "./pages/IconPicker";
 import DataBackup from "./pages/DataBackup";
+import ExportPage from "./pages/Export";
 
 function AppNavigation() {
   const location = useLocation();
@@ -36,6 +37,7 @@ function AppNavigation() {
     "/new-habit",
     "/icon-picker",
     "/data-backup",
+    "/export",
   ];
 
   const shouldHide = hiddenPaths.some((p) => location.pathname.startsWith(p)) || location.pathname.startsWith("/reflection/");
@@ -134,6 +136,7 @@ export default function App() {
               <Route path="/new-habit" element={<NewHabit />} />
               <Route path="/icon-picker" element={<IconPicker />} />
               <Route path="/data-backup" element={<DataBackup />} />
+              <Route path="/export" element={<ExportPage />} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
