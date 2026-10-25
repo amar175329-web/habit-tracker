@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { STREAK_BADGES, toMs, fromMs, isHabitActiveOnDate } from "../../lib/habitRules";
 import { getIconPath } from "../../lib/icons";
 import { formatTime12h } from "../../lib/sleep";
@@ -50,10 +50,10 @@ export function StreakSheet({
   allReflections = [],
   usedFreezeDates = [],
 }: StreakSheetProps) {
-  const [timelineOffset, setTimelineOffset] = useState<number>(0);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [claimingFreeze, setClaimingFreeze] = useState(false);
   const [claimSuccess, setClaimSuccess] = useState<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const isEmpty = streak <= 0;
   const longest = Math.max(streak, longestStreak);
@@ -67,7 +67,7 @@ export function StreakSheet({
   );
   const daysToGo = Math.max(0, nextBadge - streak);
 
-  // Generate single 7-day strip where Today is anchored at 3rd slot (index 2)
+  // Generate continuous timeline strip: 60 past days + Today + 4 future days
   const timelineDays = useMemo(() => {
     const list: {
       date: string;
@@ -82,14 +82,13 @@ export function StreakSheet({
     }[] = [];
     const DAY_MS = 86400000;
     const freezeSet = new Set(usedFreezeDates);
+    const todayMs = toMs(todayStr);
 
-    // Anchor: Today is placed at index 2 (the 3rd slot of the 7-day strip)
-    // Index 0 is Today - 2 days, Index 1 is Today - 1 day, Index 2 is TODAY!
-    const curBaseMs = toMs(todayStr) - 2 * DAY_MS;
-    const targetBaseMs = curBaseMs - timelineOffset * 7 * DAY_MS;
+    const PAST_DAYS = 60;
+    const FUTURE_DAYS = 4;
 
-    for (let i = 0; i < 7; i++) {
-      const d = fromMs(targetBaseMs + i * DAY_MS);
+    for (let offset = -PAST_DAYS; offset <= FUTURE_DAYS; offset++) {
+      const d = fromMs(todayMs + offset * DAY_MS);
       const dt = new Date(`${d}T00:00:00Z`);
       const dayName = dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
       const dayNum = d.slice(8);
@@ -121,56 +120,52 @@ export function StreakSheet({
       });
     }
     return list;
-  }, [timelineOffset, todayStr, allHabits, allHabitLogs, usedFreezeDates]);
+  }, [todayStr, allHabits, allHabitLogs, usedFreezeDates]);
 
-  // Reset to today on sheet open without any auto-move
+  // Position Today at slot 3 on open, and select Today by default
   useEffect(() => {
     if (isOpen) {
-      setTimelineOffset(0);
       setSelectedDate(todayStr);
+      const t = setTimeout(() => {
+        const el = scrollContainerRef.current;
+        if (!el) return;
+        const todayEl = document.getElementById("streak-day-today");
+        if (todayEl) {
+          const cardWidth = todayEl.offsetWidth + 6;
+          el.scrollLeft = todayEl.offsetLeft - cardWidth * 2;
+        } else {
+          const cardWidth = (el.clientWidth - 36) / 7 + 6;
+          el.scrollLeft = 58 * cardWidth;
+        }
+      }, 40);
+      return () => clearTimeout(t);
     }
   }, [isOpen, todayStr]);
 
   const handleJumpToToday = () => {
-    setTimelineOffset(0);
     setSelectedDate(todayStr);
-  };
-
-  const handlePrevWeek = () => {
-    const newOffset = timelineOffset + 1;
-    setTimelineOffset(newOffset);
-    const curBaseMs = toMs(todayStr) - 2 * 86400000;
-    const pastCenter = fromMs(curBaseMs - newOffset * 7 * 86400000 + 2 * 86400000);
-    setSelectedDate(pastCenter);
-  };
-
-  const handleNextWeek = () => {
-    const newOffset = Math.max(0, timelineOffset - 1);
-    setTimelineOffset(newOffset);
-    if (newOffset === 0) {
-      setSelectedDate(todayStr);
-    } else {
-      const curBaseMs = toMs(todayStr) - 2 * 86400000;
-      const pastCenter = fromMs(curBaseMs - newOffset * 7 * 86400000 + 2 * 86400000);
-      setSelectedDate(pastCenter);
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const todayEl = document.getElementById("streak-day-today");
+    if (todayEl) {
+      const cardWidth = todayEl.offsetWidth + 6;
+      el.scrollTo({ left: todayEl.offsetLeft - cardWidth * 2, behavior: "smooth" });
     }
   };
 
-  const timelineHeaderLabel = useMemo(() => {
-    if (timelineOffset === 0) {
-      return "STREAK TIMELINE";
-    }
-    if (timelineDays.length === 7) {
-      const first = timelineDays[0].date;
-      const last = timelineDays[6].date;
-      const fDt = new Date(`${first}T00:00:00Z`);
-      const lDt = new Date(`${last}T00:00:00Z`);
-      const fStr = fDt.toLocaleDateString("en-US", { day: "numeric", month: "short", timeZone: "UTC" });
-      const lStr = lDt.toLocaleDateString("en-US", { day: "numeric", month: "short", timeZone: "UTC" });
-      return `STREAK TIMELINE · ${fStr.toUpperCase()} – ${lStr.toUpperCase()}`;
-    }
-    return "STREAK TIMELINE";
-  }, [timelineOffset, timelineDays]);
+  const handlePrevDays = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const scrollStep = el.clientWidth - 12;
+    el.scrollBy({ left: -scrollStep, behavior: "smooth" });
+  };
+
+  const handleNextDays = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const scrollStep = el.clientWidth - 12;
+    el.scrollBy({ left: scrollStep, behavior: "smooth" });
+  };
 
   // Selected Day Report Card details
   const reportCard = useMemo(() => {
@@ -482,17 +477,17 @@ export function StreakSheet({
           </div>
         </div>
 
-        {/* 7-Day Timeline Strip: Today anchored at 3rd slot (index 2), clean 7-column grid without auto-move */}
+        {/* Continuous Timeline Strip: Smooth touch horizontal scroll, ‹ / › navigation without changing selection */}
         <div style={{ marginTop: "22px" }}>
           {/* Header Row: Title & Action Controls */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", padding: "0 2px" }}>
             <div style={{ fontSize: "11px", letterSpacing: ".12em", fontWeight: 800, color: "var(--mu)", textTransform: "uppercase" }}>
-              {timelineHeaderLabel}
+              STREAK TIMELINE
             </div>
 
             {/* Navigation Controls: Today Jump & Page Buttons (‹ and ›) */}
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              {(timelineOffset > 0 || selectedDate !== todayStr) && (
+              {selectedDate !== todayStr && (
                 <button
                   type="button"
                   onClick={handleJumpToToday}
@@ -518,7 +513,7 @@ export function StreakSheet({
               )}
               <button
                 type="button"
-                onClick={handlePrevWeek}
+                onClick={handlePrevDays}
                 style={{
                   width: "32px",
                   height: "32px",
@@ -543,8 +538,7 @@ export function StreakSheet({
               </button>
               <button
                 type="button"
-                onClick={handleNextWeek}
-                disabled={timelineOffset === 0}
+                onClick={handleNextDays}
                 style={{
                   width: "32px",
                   height: "32px",
@@ -555,8 +549,7 @@ export function StreakSheet({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  cursor: timelineOffset === 0 ? "not-allowed" : "pointer",
-                  opacity: timelineOffset === 0 ? 0.35 : 1,
+                  cursor: "pointer",
                   fontSize: "18px",
                   fontWeight: 800,
                   transition: "background 0.15s ease",
@@ -571,13 +564,18 @@ export function StreakSheet({
             </div>
           </div>
 
-          {/* Days Strip: Clean 7-column layout, zero auto-move */}
+          {/* Days Strip: Horizontal scroll container supporting finger swipe, 7 visible items */}
           <div
+            ref={scrollContainerRef}
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(7, 1fr)",
+              display: "flex",
               gap: "6px",
-              paddingBottom: "4px",
+              overflowX: "auto",
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+              padding: "4px 2px",
+              scrollBehavior: "smooth",
             }}
           >
             {timelineDays.map((d) => {
@@ -585,12 +583,17 @@ export function StreakSheet({
               return (
                 <button
                   key={d.date}
+                  id={d.isToday ? "streak-day-today" : undefined}
                   type="button"
                   disabled={d.isLocked}
                   onClick={() => {
                     if (!d.isLocked) setSelectedDate(d.date);
                   }}
                   style={{
+                    flex: "0 0 calc((100% - 36px) / 7)",
+                    minWidth: "43px",
+                    maxWidth: "52px",
+                    boxSizing: "border-box",
                     padding: "9px 2px",
                     borderRadius: "16px",
                     background: isSelected ? "var(--prt)" : "var(--card)",
@@ -605,9 +608,10 @@ export function StreakSheet({
                     flexDirection: "column",
                     alignItems: "center",
                     cursor: d.isLocked ? "not-allowed" : "pointer",
-                    transition: "all 0.15s ease",
+                    transition: "background 0.15s ease, border-color 0.15s ease",
                     boxShadow: isSelected ? "0 4px 14px rgba(15, 60, 55, 0.15)" : "none",
                     outline: "none",
+                    userSelect: "none",
                   }}
                 >
                   <div style={{ fontSize: "10.5px", fontWeight: 700, opacity: isSelected ? 0.9 : 0.7 }}>
@@ -617,7 +621,7 @@ export function StreakSheet({
                     {d.dayNum}
                   </div>
 
-                  {/* Status Indicator: strictly 3 states (Flame / Cyan Flame / Dot) per user instruction */}
+                  {/* Status Indicator */}
                   <div
                     style={{
                       marginTop: "6px",
@@ -633,17 +637,14 @@ export function StreakSheet({
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                       </svg>
                     ) : d.hasPoints ? (
-                      /* Lal / Orange Flame */
                       <svg width="15" height="15" viewBox="0 0 24 24" fill={isSelected ? "var(--on)" : "var(--fl, #F97316)"} aria-label="Streak active">
                         <path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z" />
                       </svg>
                     ) : d.isFrozen ? (
-                      /* Neela Aag (Cyan Ice Flame) */
                       <svg width="15" height="15" viewBox="0 0 24 24" fill={isSelected ? "var(--on)" : "#06B6D4"} aria-label="Streak freeze applied">
                         <path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z" />
                       </svg>
                     ) : d.isBeforeCreation ? (
-                      /* Neutral inactive dot for days before habit creation */
                       <span
                         style={{
                           width: "5px",
@@ -656,7 +657,6 @@ export function StreakSheet({
                         aria-label="No habits active"
                       />
                     ) : (
-                      /* Dot for missed or nothing done */
                       <span
                         style={{
                           width: "7px",
@@ -707,14 +707,14 @@ export function StreakSheet({
         >
           {/* Card Header & Status Badge */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
-            <div>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--pr)" }} />
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--pr)", flexShrink: 0 }} />
                 <span style={{ fontSize: "11px", letterSpacing: ".12em", fontWeight: 800, color: "var(--mu)", textTransform: "uppercase" }}>
                   DAY REPORT
                 </span>
               </div>
-              <div style={{ fontSize: "19px", fontWeight: 800, marginTop: "4px", letterSpacing: "-0.01em" }}>
+              <div style={{ fontSize: "19px", fontWeight: 800, marginTop: "4px", letterSpacing: "-0.015em", color: "var(--tx)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {reportCard.dateFormatted}
               </div>
             </div>
@@ -728,6 +728,10 @@ export function StreakSheet({
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "5px",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+                alignSelf: "flex-start",
+                letterSpacing: "-0.01em",
                 background: reportCard.isFuture
                   ? "var(--bg)"
                   : reportCard.hasCompletedHabits
@@ -754,7 +758,12 @@ export function StreakSheet({
                   ? "1px solid var(--ln)"
                   : reportCard.isMissed
                   ? "1px solid color-mix(in srgb, var(--fl) 25%, transparent)"
-                  : "none",
+                  : reportCard.isFrozen
+                  ? "1px solid rgba(14, 165, 233, 0.28)"
+                  : reportCard.hasCompletedHabits
+                  ? "1px solid color-mix(in srgb, var(--fl) 28%, transparent)"
+                  : "1px solid color-mix(in srgb, var(--pr) 26%, transparent)",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
               }}
             >
               {reportCard.isFuture ? (
@@ -1034,12 +1043,71 @@ export function StreakSheet({
                 })}
               </div>
             ) : reportCard.isBeforeCreation ? (
-              <div style={{ fontSize: "13px", color: "var(--mu)", fontWeight: 500, padding: "12px 0", textAlign: "center" }}>
-                No habits were active on this date.
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  background: "var(--bg)",
+                  border: "1px solid var(--ln)",
+                  borderRadius: "18px",
+                  padding: "14px 16px",
+                  marginTop: "4px",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.02)",
+                }}
+              >
+                <div
+                  style={{
+                    width: "38px",
+                    height: "38px",
+                    borderRadius: "12px",
+                    background: "var(--card)",
+                    border: "1px solid var(--ln)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    color: "var(--mu)",
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--tx)" }}>
+                    No Active Habits
+                  </div>
+                  <div style={{ fontSize: "12px", color: "var(--mu)", marginTop: "2px", lineHeight: 1.4 }}>
+                    Habits were created on a later date. This day remains neutral.
+                  </div>
+                </div>
               </div>
             ) : reportCard.isToday ? (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--bg)", padding: "10px 14px", borderRadius: "14px", border: "1px solid var(--ln)" }}>
-                <span style={{ fontSize: "13px", color: "var(--mu)", fontWeight: 600 }}>No habits completed yet today.</span>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  background: "var(--bg)",
+                  padding: "14px 16px",
+                  borderRadius: "18px",
+                  border: "1px solid var(--ln)",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.02)",
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--tx)" }}>
+                    No habits completed yet today
+                  </div>
+                  <div style={{ fontSize: "12px", color: "var(--mu)", marginTop: "2px", lineHeight: 1.4 }}>
+                    Check off habits on Today screen to build your streak.
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
@@ -1050,19 +1118,59 @@ export function StreakSheet({
                     background: "var(--pr)",
                     color: "var(--on)",
                     border: 0,
-                    padding: "5px 12px",
+                    padding: "8px 16px",
                     borderRadius: "99px",
-                    fontSize: "12px",
+                    fontSize: "12.5px",
                     fontWeight: 800,
                     cursor: "pointer",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    transition: "transform 0.1s ease",
                   }}
                 >
                   + Start ›
                 </button>
               </div>
             ) : (
-              <div style={{ fontSize: "13px", color: "var(--mu)", fontWeight: 500, padding: "8px 0" }}>
-                No habits were completed on this date.
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  background: "var(--bg)",
+                  border: "1px solid var(--ln)",
+                  borderRadius: "18px",
+                  padding: "14px 16px",
+                  marginTop: "4px",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.02)",
+                }}
+              >
+                <div
+                  style={{
+                    width: "38px",
+                    height: "38px",
+                    borderRadius: "12px",
+                    background: "color-mix(in srgb, var(--fl) 10%, var(--card))",
+                    border: "1px solid color-mix(in srgb, var(--fl) 20%, transparent)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    color: "var(--fl)",
+                  }}
+                >
+                  <span style={{ fontSize: "16px" }}>⚠️</span>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--tx)" }}>
+                    No Habits Completed
+                  </div>
+                  <div style={{ fontSize: "12px", color: "var(--mu)", marginTop: "2px", lineHeight: 1.4 }}>
+                    No habits were checked off on this date.
+                  </div>
+                </div>
               </div>
             )}
           </div>
