@@ -94,6 +94,17 @@ export function MenuSheet({ isOpen, onClose }: MenuSheetProps) {
           Menu
         </div>
 
+        {/* Add new habit */}
+        <button type="button" onClick={() => handleNav("/new-habit")} style={itemStyle}>
+          <span style={iconBoxStyle}>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </span>
+          <span style={{ flex: 1 }}>Add new habit</span>
+          <span style={{ color: "var(--mu)", fontSize: "16px" }}>›</span>
+        </button>
+
         {/* Timeline */}
         <button type="button" onClick={() => handleNav("/timeline")} style={itemStyle}>
           <span style={iconBoxStyle}>

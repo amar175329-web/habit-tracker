@@ -258,6 +258,8 @@ export default function Today() {
     }
   };
 
+  const isLastHabitExpanded = habits.length > 0 && fullWidthHabits.has(habits[habits.length - 1].id);
+
   return (
     <div
       style={{
@@ -502,8 +504,8 @@ export default function Today() {
               );
             })}
 
-            {/* In-Grid + Add habit tile (visible when habits < 5, disappears at 5 habits) */}
-            {habits.length < 5 && (
+            {/* In-Grid + Add habit tile (visible when last habit is half-width, disappears when last habit is expanded to full width) */}
+            {!isLastHabitExpanded && (
               <div
                 role="button"
                 tabIndex={0}
