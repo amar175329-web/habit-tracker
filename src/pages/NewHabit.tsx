@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, saveHabit, deleteHabit, type Habit } from "../lib/db";
+import { db, saveHabit, deleteHabit, getCachedHabits, type Habit } from "../lib/db";
 import { autoPickIcon, getIconPath } from "../lib/icons";
 
 const HABIT_DRAFT_KEY = "habit_draft_data";
@@ -119,14 +119,14 @@ export default function NewHabit() {
     }
     if (isSaving) return;
 
-    // Dismiss soft keyboard immediately on mobile
-    (document.activeElement as HTMLElement)?.blur();
-
     const trimmedName = name.trim();
     if (!trimmedName) {
       setErrorMsg("Please enter a habit name.");
       return;
     }
+
+    // Dismiss soft keyboard immediately on mobile
+    (document.activeElement as HTMLElement)?.blur();
 
     // Haptic feedback for tactile feel on mobile
     try {
@@ -138,13 +138,22 @@ export default function NewHabit() {
     setIsSaving(true);
     setErrorMsg("");
 
+    // Monotonically append to the end (last position)
+    const allHabits = getCachedHabits();
+    let maxSort = 0;
+    for (const h of allHabits) {
+      const s = typeof h.sort === "number" && !isNaN(h.sort) ? h.sort : 0;
+      if (s > maxSort) maxSort = s;
+    }
+    const targetSort = existingHabit?.sort ?? (maxSort + 1);
+
     const targetId = editId || `h_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const newHabit: Habit = {
       id: targetId,
       name: trimmedName,
       icon,
       goalDays: isCustomDays ? goalDays : 7,
-      sort: existingHabit?.sort ?? Date.now(),
+      sort: targetSort,
       isActive: true,
       createdAt: existingHabit?.createdAt ?? new Date().toISOString(),
     };
@@ -156,12 +165,9 @@ export default function NewHabit() {
       sessionStorage.removeItem("last_saved_habit");
     } catch {}
 
-    // Await saving to IndexedDB & cache (capped at 400ms for safety)
+    // Save habit (synchronously updates cache & dispatches event immediately)
     try {
-      await Promise.race([
-        saveHabit(newHabit),
-        new Promise((resolve) => setTimeout(resolve, 400)),
-      ]);
+      await saveHabit(newHabit);
     } catch (err) {
       console.error("Save error:", err);
     }
@@ -170,18 +176,25 @@ export default function NewHabit() {
     navigate("/", { replace: true });
   };
 
-  const handleDelete = async () => {
-    if (!editId) return;
-    try {
-      await deleteHabit(editId);
-    } catch (e) {
-      console.error("Delete error:", e);
+  const handleDelete = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
+    if (!editId) return;
+
     try {
       sessionStorage.removeItem(HABIT_DRAFT_KEY);
       sessionStorage.removeItem("selected_icon");
       sessionStorage.removeItem("last_saved_habit");
     } catch {}
+
+    try {
+      await deleteHabit(editId);
+    } catch (e) {
+      console.error("Delete error:", e);
+    }
+
     navigate("/", { replace: true });
   };
 
@@ -437,12 +450,10 @@ export default function NewHabit() {
 
         {/* Save Button */}
         <button
-          type="submit"
+          type="button"
+          onClick={handleSave}
           disabled={isSaving}
-          onPointerDown={() => {
-            setIsPressed(true);
-            (document.activeElement as HTMLElement)?.blur();
-          }}
+          onPointerDown={() => setIsPressed(true)}
           onPointerUp={() => setIsPressed(false)}
           onPointerCancel={() => setIsPressed(false)}
           style={{

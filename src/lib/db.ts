@@ -453,8 +453,6 @@ export function setCachedHabits(habits: Habit[]): void {
 }
 
 export async function saveHabit(habit: Habit): Promise<void> {
-  await db.habits.put(habit);
-
   try {
     const list = getCachedHabits();
     const idx = list.findIndex((h) => h.id === habit.id);
@@ -464,7 +462,12 @@ export async function saveHabit(habit: Habit): Promise<void> {
       list.push(habit);
     }
     setCachedHabits(list);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
+    }
   } catch {}
+
+  await db.habits.put(habit);
 
   try {
     await db.outbox.add({
@@ -477,12 +480,15 @@ export async function saveHabit(habit: Habit): Promise<void> {
 }
 
 export async function deleteHabit(id: string): Promise<void> {
-  await db.habits.delete(id);
-
   try {
     const list = getCachedHabits().filter((h) => h.id !== id);
     setCachedHabits(list);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
+    }
   } catch {}
+
+  await db.habits.delete(id);
 
   try {
     await db.outbox.add({

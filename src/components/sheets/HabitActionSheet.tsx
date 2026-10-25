@@ -150,7 +150,9 @@ export function HabitActionSheet({
         {/* Action 1: Toggle Width (Expand / Collapse) */}
         <button
           type="button"
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             onToggleWidth();
             onClose();
           }}
@@ -183,9 +185,11 @@ export function HabitActionSheet({
         {/* Action 2: Edit Habit (Rename, Change Icon, Goal Days) */}
         <button
           type="button"
-          onClick={() => {
-            onClose();
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             onEdit();
+            onClose();
           }}
           style={btnStyle}
         >
@@ -206,9 +210,11 @@ export function HabitActionSheet({
         {/* Action 3: Delete Habit */}
         <button
           type="button"
-          onClick={() => {
-            onClose();
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             onDelete();
+            onClose();
           }}
           style={{
             ...btnStyle,

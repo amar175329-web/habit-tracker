@@ -57,13 +57,22 @@ export default function Today() {
 
   // Track deleted habit IDs locally for 0ms instantaneous UI feedback
   const [deletedHabitIds, setDeletedHabitIds] = useState<Set<string>>(new Set());
+  const [cacheVersion, setCacheVersion] = useState(0);
+
+  // Instant broadcast listener for real-time additions/edits/deletions across components
+  useEffect(() => {
+    const handleSync = () => setCacheVersion((v) => v + 1);
+    window.addEventListener("dailyos_habits_updated", handleSync);
+    return () => window.removeEventListener("dailyos_habits_updated", handleSync);
+  }, []);
 
   // Synchronize localStorage cache whenever dbHabits updates from IndexedDB
   useEffect(() => {
-    if (dbHabits && dbHabits.length > 0) {
-      setCachedHabits(dbHabits);
+    if (dbHabits) {
+      const activeHabits = dbHabits.filter((h) => !deletedHabitIds.has(h.id));
+      setCachedHabits(activeHabits);
     }
-  }, [dbHabits]);
+  }, [dbHabits, deletedHabitIds]);
 
   // Merge dbHabits and cached habits, eliminating duplicates by ID
   const habits = useMemo(() => {
@@ -86,8 +95,12 @@ export default function Today() {
       });
     }
 
-    return Array.from(map.values()).sort((a, b) => a.sort - b.sort);
-  }, [dbHabits, deletedHabitIds]);
+    return Array.from(map.values()).sort((a, b) => {
+      const sa = typeof a.sort === "number" && !isNaN(a.sort) ? a.sort : 0;
+      const sb = typeof b.sort === "number" && !isNaN(b.sort) ? b.sort : 0;
+      return sa - sb;
+    });
+  }, [dbHabits, deletedHabitIds, cacheVersion]);
   const currentDayLogs = useLiveQuery(() => db.habit_logs.where("date").equals(date).toArray(), [date]) ?? [];
   const allLogs = useLiveQuery(() => db.habit_logs.toArray(), []) ?? [];
   const currentSleep = useLiveQuery(() => db.sleep_logs.get(date), [date]);
@@ -128,14 +141,23 @@ export default function Today() {
   // Currently active habit for the 3-dots action sheet
   const [activeMenuHabit, setActiveMenuHabit] = useState<Habit | null>(null);
 
-  const handleDeleteHabitFromMenu = async (habitId: string) => {
+  const handleDeleteHabitFromMenu = (habitId: string) => {
+    // 1. Instantly hide from UI (0ms feedback)
     setDeletedHabitIds((prev) => new Set(prev).add(habitId));
-    setActiveMenuHabit(null);
+    
+    // 2. Instantly remove from local storage array cache
     try {
-      await deleteHabit(habitId);
-    } catch (err) {
+      const remaining = getCachedHabits().filter((h) => h.id !== habitId);
+      setCachedHabits(remaining);
+    } catch {}
+
+    // 3. Close the action sheet immediately
+    setActiveMenuHabit(null);
+
+    // 4. Delete from Dexie in background
+    deleteHabit(habitId).catch((err) => {
       console.error("Delete error:", err);
-    }
+    });
   };
 
   // Clear optimistic override once Dexie commits and emits the matching state
