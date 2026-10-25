@@ -28,9 +28,18 @@ export default function NewHabit() {
 
   const [name, setName] = useState(() => {
     try {
-      const draft = sessionStorage.getItem(HABIT_DRAFT_KEY);
-      if (draft) return JSON.parse(draft).name ?? "";
+      const rawDraft = sessionStorage.getItem(HABIT_DRAFT_KEY);
+      if (rawDraft) {
+        const draft = JSON.parse(rawDraft);
+        if (draft.editId === (editId || null) && typeof draft.name === "string") {
+          return draft.name;
+        }
+      }
     } catch {}
+    if (editId) {
+      const found = getCachedHabits().find((h) => h.id === editId);
+      if (found) return found.name;
+    }
     return "";
   });
 
@@ -38,47 +47,75 @@ export default function NewHabit() {
     const picked = sessionStorage.getItem("selected_icon");
     if (picked) return picked;
     try {
-      const draft = sessionStorage.getItem(HABIT_DRAFT_KEY);
-      if (draft) return JSON.parse(draft).icon ?? "check";
+      const rawDraft = sessionStorage.getItem(HABIT_DRAFT_KEY);
+      if (rawDraft) {
+        const draft = JSON.parse(rawDraft);
+        if (draft.editId === (editId || null) && draft.icon) {
+          return draft.icon;
+        }
+      }
     } catch {}
+    if (editId) {
+      const found = getCachedHabits().find((h) => h.id === editId);
+      if (found) return found.icon;
+    }
     return "check";
   });
 
   const [goalDays, setGoalDays] = useState(() => {
     try {
-      const draft = sessionStorage.getItem(HABIT_DRAFT_KEY);
-      if (draft) return JSON.parse(draft).goalDays ?? 7;
+      const rawDraft = sessionStorage.getItem(HABIT_DRAFT_KEY);
+      if (rawDraft) {
+        const draft = JSON.parse(rawDraft);
+        if (draft.editId === (editId || null) && typeof draft.goalDays === "number") {
+          return draft.goalDays;
+        }
+      }
     } catch {}
+    if (editId) {
+      const found = getCachedHabits().find((h) => h.id === editId);
+      if (found) return found.goalDays ?? 7;
+    }
     return 7;
   });
 
   const [isCustomDays, setIsCustomDays] = useState(() => {
     try {
-      const draft = sessionStorage.getItem(HABIT_DRAFT_KEY);
-      if (draft) return JSON.parse(draft).isCustomDays ?? false;
+      const rawDraft = sessionStorage.getItem(HABIT_DRAFT_KEY);
+      if (rawDraft) {
+        const draft = JSON.parse(rawDraft);
+        if (draft.editId === (editId || null) && typeof draft.isCustomDays === "boolean") {
+          return draft.isCustomDays;
+        }
+      }
     } catch {}
+    if (editId) {
+      const found = getCachedHabits().find((h) => h.id === editId);
+      if (found) return (found.goalDays ?? 7) < 7;
+    }
     return false;
   });
 
   const [userPickedIcon, setUserPickedIcon] = useState(() => {
     if (sessionStorage.getItem("selected_icon")) return true;
+    if (editId) return true;
     try {
-      const draft = sessionStorage.getItem(HABIT_DRAFT_KEY);
-      if (draft) return JSON.parse(draft).userPickedIcon ?? false;
+      const rawDraft = sessionStorage.getItem(HABIT_DRAFT_KEY);
+      if (rawDraft) {
+        const draft = JSON.parse(rawDraft);
+        if (draft.editId === (editId || null)) return draft.userPickedIcon ?? false;
+      }
     } catch {}
     return false;
   });
 
   useEffect(() => {
     if (existingHabit) {
-      const hasDraft = sessionStorage.getItem(HABIT_DRAFT_KEY);
-      if (!hasDraft) {
-        setName(existingHabit.name);
-        setIcon(existingHabit.icon);
-        setGoalDays(existingHabit.goalDays);
-        setIsCustomDays(existingHabit.goalDays < 7);
-        setUserPickedIcon(true);
-      }
+      setName((prev: string) => (!prev ? existingHabit.name : prev));
+      setIcon((prev: string) => (prev === "check" ? existingHabit.icon : prev));
+      setGoalDays((prev: number) => (prev === 7 && existingHabit.goalDays !== 7 ? existingHabit.goalDays : prev));
+      setIsCustomDays((prev: boolean) => (!prev && existingHabit.goalDays < 7 ? true : prev));
+      setUserPickedIcon(true);
     }
   }, [existingHabit]);
 
@@ -94,7 +131,7 @@ export default function NewHabit() {
 
   const handleNameChange = (val: string) => {
     setName(val);
-    if (!userPickedIcon) {
+    if (!userPickedIcon && !editId) {
       const suggested = autoPickIcon(val);
       setIcon(suggested);
     }
@@ -105,6 +142,7 @@ export default function NewHabit() {
       sessionStorage.setItem(
         HABIT_DRAFT_KEY,
         JSON.stringify({
+          editId: editId || null,
           name,
           icon,
           goalDays,
@@ -157,7 +195,8 @@ export default function NewHabit() {
       const s = typeof h.sort === "number" && !isNaN(h.sort) ? h.sort : 0;
       if (s > maxSort) maxSort = s;
     }
-    const targetSort = existingHabit?.sort ?? (maxSort + 1);
+    const existing = editId ? allKnown.find((h) => h.id === editId) || existingHabit : undefined;
+    const targetSort = existing?.sort ?? (maxSort + 1);
 
     const targetId = editId || `h_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const newHabit: Habit = {
@@ -167,7 +206,7 @@ export default function NewHabit() {
       goalDays: isCustomDays ? goalDays : 7,
       sort: targetSort,
       isActive: true,
-      createdAt: existingHabit?.createdAt ?? new Date().toISOString(),
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
     };
 
     // Clean up draft and icon picker keys
