@@ -1,4 +1,6 @@
 
+import { useRef, useState, useCallback, useEffect } from "react";
+
 export interface SleepDialProps {
   bedtime?: string;  // "23:00"
   wakeTime?: string; // "06:30"
@@ -45,6 +47,9 @@ export function SleepDial({
   showControls = true,
   className = "",
 }: SleepDialProps) {
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [dragging, setDragging] = useState<"bed" | "wake" | null>(null);
+
   const bedMins = parseTimeToMinutes(bedtime);
   const wakeMins = parseTimeToMinutes(wakeTime);
   const durationMins = calculateDuration(bedMins, wakeMins);
@@ -71,6 +76,57 @@ export function SleepDial({
   const wakeX = (165 + 110 * Math.cos(wakeRad)).toFixed(1);
   const wakeY = (150 + 110 * Math.sin(wakeRad)).toFixed(1);
 
+  // Helper to convert pointer coordinates to minutes with 15-min snapping
+  const getMinutesFromPointer = useCallback((clientX: number, clientY: number): number => {
+    if (!svgRef.current) return 0;
+    const rect = svgRef.current.getBoundingClientRect();
+    // SVG viewBox is 330 x 300 with center at (165, 150)
+    const scaleX = 330 / rect.width;
+    const scaleY = 300 / rect.height;
+    const svgX = (clientX - rect.left) * scaleX;
+    const svgY = (clientY - rect.top) * scaleY;
+
+    let deg = Math.atan2(svgY - 150, svgX - 165) * (180 / Math.PI);
+    // Since 12 AM is at -90 deg (top):
+    deg = (deg + 90 + 360) % 360;
+    const rawMins = deg * 4;
+    // Snap to 15-minute intervals
+    const snappedMins = (Math.round(rawMins / 15) * 15) % 1440;
+    return snappedMins;
+  }, []);
+
+  const handlePointerMove = useCallback(
+    (e: PointerEvent) => {
+      if (!dragging || !onChange) return;
+      const mins = getMinutesFromPointer(e.clientX, e.clientY);
+      const newTime = formatMinutesToTime(mins);
+
+      if (dragging === "bed") {
+        onChange(newTime, wakeTime);
+      } else if (dragging === "wake") {
+        onChange(bedtime, newTime);
+      }
+    },
+    [dragging, onChange, getMinutesFromPointer, bedtime, wakeTime]
+  );
+
+  const handlePointerUp = useCallback(() => {
+    setDragging(null);
+  }, []);
+
+  useEffect(() => {
+    if (dragging) {
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+      window.addEventListener("pointercancel", handlePointerUp);
+      return () => {
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
+        window.removeEventListener("pointercancel", handlePointerUp);
+      };
+    }
+  }, [dragging, handlePointerMove, handlePointerUp]);
+
   const adjustBedtime = (deltaMinutes: number) => {
     if (!onChange) return;
     const newBed = formatMinutesToTime(bedMins + deltaMinutes);
@@ -96,9 +152,10 @@ export function SleepDial({
         }}
       >
         <svg
+          ref={svgRef}
           viewBox="0 0 330 300"
           width="100%"
-          style={{ display: "block" }}
+          style={{ display: "block", touchAction: "none" }}
           role="img"
           aria-label={`Sleep dial: ${formatTime12h(bedtime)} to ${formatTime12h(wakeTime)}, duration ${durationText}`}
         >
@@ -136,19 +193,55 @@ export function SleepDial({
             style={{ stroke: "var(--ind)" }}
           />
 
-          {/* Bedtime Moon Marker */}
-          <circle cx={bedX} cy={bedY} r="13" style={{ fill: "var(--card)" }} />
-          <path
-            transform={`translate(${parseFloat(bedX) - 7} ${parseFloat(bedY) - 7}) scale(.6)`}
-            d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"
-            fill="none"
-            strokeWidth="2.4"
-            style={{ stroke: "var(--ind)" }}
-          />
+          {/* Bedtime Moon Marker (Rotatable handle) */}
+          <g
+            style={{ cursor: dragging === "bed" ? "grabbing" : "grab", touchAction: "none" }}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              setDragging("bed");
+            }}
+          >
+            <circle cx={bedX} cy={bedY} r="24" fill="transparent" />
+            <circle
+              cx={bedX}
+              cy={bedY}
+              r="14"
+              style={{
+                fill: "var(--card)",
+                stroke: dragging === "bed" ? "var(--ind)" : "var(--ln)",
+                strokeWidth: dragging === "bed" ? 2.5 : 1,
+              }}
+            />
+            <path
+              transform={`translate(${parseFloat(bedX) - 7} ${parseFloat(bedY) - 7}) scale(.6)`}
+              d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"
+              fill="none"
+              strokeWidth="2.4"
+              style={{ stroke: "var(--ind)" }}
+            />
+          </g>
 
-          {/* Wake Time Sun Marker */}
-          <circle cx={wakeX} cy={wakeY} r="13" style={{ fill: "var(--card)" }} />
-          <circle cx={wakeX} cy={wakeY} r="4.2" style={{ fill: "var(--fl)" }} />
+          {/* Wake Time Sun Marker (Rotatable handle) */}
+          <g
+            style={{ cursor: dragging === "wake" ? "grabbing" : "grab", touchAction: "none" }}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              setDragging("wake");
+            }}
+          >
+            <circle cx={wakeX} cy={wakeY} r="24" fill="transparent" />
+            <circle
+              cx={wakeX}
+              cy={wakeY}
+              r="14"
+              style={{
+                fill: "var(--card)",
+                stroke: dragging === "wake" ? "var(--fl)" : "var(--ln)",
+                strokeWidth: dragging === "wake" ? 2.5 : 1,
+              }}
+            />
+            <circle cx={wakeX} cy={wakeY} r="4.5" style={{ fill: "var(--fl)" }} />
+          </g>
 
           {/* Clock Labels */}
           <text x="165" y="10" textAnchor="middle" fontSize="11" fontWeight="700" style={{ fill: "var(--mu)" }}>

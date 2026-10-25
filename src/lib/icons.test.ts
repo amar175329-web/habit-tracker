@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { autoPickIcon, getIconPath, ICONS } from "./icons";
 
 describe("icons autoPickIcon & resolution", () => {
-  it("loads 100 icons", () => {
-    expect(ICONS.length).toBe(100);
+  it("loads 200 icons", () => {
+    expect(ICONS.length).toBe(200);
   });
 
   it("auto-picks based on English keywords", () => {

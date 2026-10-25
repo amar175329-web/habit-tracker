@@ -4,10 +4,12 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../lib/db";
 import { fromMs, toMs } from "../lib/habitRules";
 import { ReflectionsList } from "./ReflectionsList";
+import { MoodSleepCorrelationModal } from "../components/sheets/MoodSleepCorrelationModal";
 
 export default function Mind() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"mood" | "reflections">("mood");
+  const [correlationModalOpen, setCorrelationModalOpen] = useState(false);
 
   const todayStr = useMemo(() => {
     const now = new Date();
@@ -96,6 +98,12 @@ export default function Mind() {
       lowStr: `${lowH}h ${lowM}m`,
     };
   }, [allMoods, allSleep]);
+
+  const pairedDaysCount = useMemo(() => {
+    const sleepDates = new Set(allSleep.filter((s) => s.durationMin > 0).map((s) => s.date));
+    return allMoods.filter((m) => m.score > 0 && sleepDates.has(m.date)).length;
+  }, [allMoods, allSleep]);
+  const hasFourDays = pairedDaysCount >= 4;
 
   return (
     <div
@@ -256,22 +264,134 @@ export default function Mind() {
             </div>
 
             {/* Mood and Sleep Card */}
-            <div style={{ background: "var(--card)", border: "1px solid var(--ln)", borderRadius: "24px", padding: "16px", marginTop: "12px" }}>
-              <div style={{ fontSize: "11px", letterSpacing: ".14em", fontWeight: 700, color: "var(--mu)" }}>MOOD AND SLEEP</div>
-              <div style={{ fontSize: "14px", lineHeight: 1.55, marginTop: "8px", color: sleepCorrelation.hasData ? "var(--tx)" : "var(--mu)" }}>
-                {sleepCorrelation.hasData ? (
-                  <>
-                    {sleepCorrelation.highCount > 0 && (
-                      <span>On your best days you slept <b>{sleepCorrelation.highStr}</b> on average. </span>
-                    )}
-                    {sleepCorrelation.lowCount > 0 && (
-                      <span>On low days: <b>{sleepCorrelation.lowStr}</b>.</span>
-                    )}
-                  </>
+            <div
+              onClick={() => setCorrelationModalOpen(true)}
+              style={{
+                background: "var(--card)",
+                border: "1px solid var(--ln)",
+                borderRadius: "24px",
+                padding: "16px",
+                marginTop: "12px",
+                cursor: "pointer",
+                transition: "transform 0.15s ease",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: "11px", letterSpacing: ".14em", fontWeight: 700, color: "var(--mu)" }}>
+                  MOOD AND SLEEP
+                </div>
+                {!hasFourDays ? (
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 800,
+                      color: "var(--ind)",
+                      background: "color-mix(in srgb, var(--ind) 14%, transparent)",
+                      padding: "4px 10px",
+                      borderRadius: "99px",
+                    }}
+                  >
+                    Example
+                  </span>
                 ) : (
-                  <span>Log mood and sleep for a few days to see how your sleep affects your mood.</span>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--prt)" }}>
+                    View Trends ›
+                  </span>
                 )}
               </div>
+
+              {!hasFourDays ? (
+                <>
+                  <div style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--mu)", lineHeight: 1.5, marginTop: "8px" }}>
+                    Does a good night’s sleep give you a better day? Orange dot = mood, purple bar = hours slept. This is how it will look once you log a few days:
+                  </div>
+
+                  {/* Sample 7-day visualization from reference mind.html */}
+                  <div style={{ display: "flex", marginTop: "14px" }}>
+                    {[
+                      { d: "M", moodMix: 60, orbSize: 26, barH: 43, opacity: 0.45 },
+                      { d: "T", moodMix: 80, orbSize: 30, barH: 52, opacity: 1 },
+                      { d: "W", moodMix: 40, orbSize: 22, barH: 40, opacity: 0.45 },
+                      { d: "T", moodMix: 100, orbSize: 34, barH: 56, opacity: 1 },
+                      { d: "F", moodMix: 80, orbSize: 30, barH: 52, opacity: 1 },
+                      { d: "S", moodMix: 60, orbSize: 26, barH: 44, opacity: 0.45 },
+                      { d: "S", moodMix: 80, orbSize: 30, barH: 50, opacity: 1 },
+                    ].map((item, idx) => (
+                      <div key={idx} style={{ flex: 1, textAlign: "center" }}>
+                        <div style={{ height: "42px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <i
+                            style={{
+                              display: "block",
+                              borderRadius: "50%",
+                              width: `${item.orbSize}px`,
+                              height: `${item.orbSize}px`,
+                              background: `color-mix(in srgb, var(--co) ${item.moodMix}%, var(--card))`,
+                            }}
+                          />
+                        </div>
+                        <div style={{ height: "60px", display: "flex", alignItems: "flex-end", justifyContent: "center", marginTop: "4px" }}>
+                          <i
+                            style={{
+                              display: "block",
+                              width: "14px",
+                              height: `${item.barH}px`,
+                              borderRadius: "6px",
+                              background: "var(--ind)",
+                              opacity: item.opacity,
+                            }}
+                          />
+                        </div>
+                        <div style={{ fontSize: "10.5px", fontWeight: 700, color: "var(--mu)", marginTop: "6px" }}>
+                          {item.d}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Progress Counter */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginTop: "16px",
+                      paddingTop: "14px",
+                      borderTop: "1px solid var(--ln)",
+                    }}
+                  >
+                    <span style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--mu)" }}>
+                      Log 4 days to see your own
+                    </span>
+                    <span style={{ display: "inline-flex", gap: "4px", alignItems: "center" }}>
+                      {[1, 2, 3, 4].map((step) => (
+                        <i
+                          key={step}
+                          style={{
+                            width: "8px",
+                            height: "8px",
+                            borderRadius: "50%",
+                            display: "inline-block",
+                            background: step <= pairedDaysCount ? "var(--co)" : "var(--tr)",
+                          }}
+                        />
+                      ))}
+                      <b style={{ fontSize: "12px", marginLeft: "6px", color: "var(--co)" }}>
+                        {pairedDaysCount} of 4
+                      </b>
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: "14px", lineHeight: 1.55, marginTop: "8px", color: "var(--tx)" }}>
+                  {sleepCorrelation.highCount > 0 && (
+                    <span>On your best days you slept <b>{sleepCorrelation.highStr}</b> on average. </span>
+                  )}
+                  {sleepCorrelation.lowCount > 0 && (
+                    <span>On low days: <b>{sleepCorrelation.lowStr}</b>. </span>
+                  )}
+                  <span style={{ color: "var(--prt)", fontWeight: 700 }}>Tap to see full pattern.</span>
+                </div>
+              )}
             </div>
 
             {/* Switch to Reflections Banner */}
@@ -304,6 +424,13 @@ export default function Mind() {
           </div>
         )}
       </div>
+
+      <MoodSleepCorrelationModal
+        isOpen={correlationModalOpen}
+        onClose={() => setCorrelationModalOpen(false)}
+        allMoods={allMoods}
+        allSleep={allSleep}
+      />
     </div>
   );
 }

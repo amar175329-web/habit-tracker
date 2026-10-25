@@ -58,7 +58,7 @@ export function MomentumGauge({
   mindFraction = 4 / 7,
   sleepCount: _sleepCount,
   mindCount: _mindCount,
-  statusLabel = "Consistent pace",
+  statusLabel: _statusLabel = "Consistent pace",
   subtitle,
   className = "",
   showHeader = true,
@@ -67,8 +67,6 @@ export function MomentumGauge({
   const safeWeeklyMax = isNaN(weeklyMax) ? 0 : weeklyMax;
   const habitFraction = safeWeeklyMax > 0 ? safeHabitScore / safeWeeklyMax : 0;
   const habitPct = Math.round(habitFraction * 100);
-  const sleepPct = Math.round((isNaN(sleepFraction) ? 0 : Math.max(0, Math.min(1, sleepFraction))) * 100);
-  const mindPct = Math.round((isNaN(mindFraction) ? 0 : Math.max(0, Math.min(1, mindFraction))) * 100);
 
   // 3 concentric dotted rings with FEWER, LARGER dots:
   // outer r120 / 36 dots (Habits, teal), middle r98 / 30 dots (Sleep, indigo), inner r76 / 24 dots (Mind, coral)
@@ -87,10 +85,23 @@ export function MomentumGauge({
     [mindFraction]
   );
 
-  const isZeroState = safeWeeklyMax === 0;
+  const sleepNights = _sleepCount !== undefined ? _sleepCount : Math.round((isNaN(sleepFraction) ? 0 : sleepFraction) * 7);
+  const mindDays = _mindCount !== undefined ? _mindCount : Math.round((isNaN(mindFraction) ? 0 : mindFraction) * 7);
 
-  const centerSubtitle =
-    subtitle ?? (isZeroState ? "Your week starts here" : (safeWeeklyMax > 0 ? `${safeHabitScore} of ${safeWeeklyMax} pts` : statusLabel));
+  const isZeroMax = safeWeeklyMax === 0;
+  const isZeroState = habitPct === 0;
+
+  const defaultStatusWord = isZeroMax
+    ? "Your week starts here"
+    : isZeroState
+    ? "Fresh week"
+    : habitPct >= 80
+    ? "Flow state"
+    : habitPct >= 50
+    ? "Consistent pace"
+    : "Building pace";
+
+  const centerSubtitle = subtitle ?? defaultStatusWord;
 
   return (
     <div
@@ -118,20 +129,6 @@ export function MomentumGauge({
           >
             WEEKLY MOMENTUM
           </div>
-          {statusLabel && (
-            <span
-              style={{
-                fontSize: "12px",
-                fontWeight: 700,
-                color: "var(--prt)",
-                background: "var(--tint)",
-                padding: "5px 11px",
-                borderRadius: "99px",
-              }}
-            >
-              {statusLabel}
-            </span>
-          )}
         </div>
       )}
 
@@ -253,7 +250,7 @@ export function MomentumGauge({
               display: "block",
             }}
           />
-          Sleep <b style={{ color: "var(--tx)" }}>{sleepPct}%</b>
+          Sleep <b style={{ color: "var(--tx)" }}>{sleepNights} nights</b>
         </span>
 
         <span
@@ -275,7 +272,7 @@ export function MomentumGauge({
               display: "block",
             }}
           />
-          Mind <b style={{ color: "var(--tx)" }}>{mindPct}%</b>
+          Mind <b style={{ color: "var(--tx)" }}>{mindDays} days</b>
         </span>
       </div>
     </div>

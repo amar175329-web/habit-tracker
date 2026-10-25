@@ -1,0 +1,49 @@
+{
+  "bugs": [],
+  "personas": {
+    "Rushed Student (light)": {
+      "status": "PASS",
+      "screenshot": "/home/ubuntu/habit-tracker/qa-screenshots/persona1-light-done.png"
+    },
+    "Rushed Student (dark)": {
+      "status": "PASS",
+      "screenshot": "/home/ubuntu/habit-tracker/qa-screenshots/persona1-dark-done.png"
+    },
+    "Perfectionist": {
+      "status": "PASS",
+      "screenshot": "/home/ubuntu/habit-tracker/qa-screenshots/persona2-done.png"
+    },
+    "Hinglish Typist": {
+      "status": "PASS",
+      "screenshot": "/home/ubuntu/habit-tracker/qa-screenshots/persona3-hinglish.png"
+    },
+    "Night-shift Worker": {
+      "status": "PASS",
+      "screenshot": "/home/ubuntu/habit-tracker/qa-screenshots/persona4-nightshift.png"
+    },
+    "Traveller": {
+      "status": "PASS",
+      "screenshot": "/home/ubuntu/habit-tracker/qa-screenshots/persona5-done.png"
+    },
+    "Chaotic Tapper": {
+      "status": "PASS",
+      "screenshot": "/home/ubuntu/habit-tracker/qa-screenshots/persona6-done.png"
+    },
+    "Privacy User": {
+      "status": "PASS",
+      "screenshot": "/home/ubuntu/habit-tracker/qa-screenshots/persona7-backup.png"
+    },
+    "Power User": {
+      "status": "PASS",
+      "screenshot": "/home/ubuntu/habit-tracker/qa-screenshots/persona8-power.png"
+    },
+    "Senior User": {
+      "status": "PASS",
+      "screenshot": "/home/ubuntu/habit-tracker/qa-screenshots/persona9-senior.png"
+    },
+    "Skeptic / Security Tester": {
+      "status": "PASS",
+      "screenshot": "/home/ubuntu/habit-tracker/qa-screenshots/persona10-security.png"
+    }
+  }
+}

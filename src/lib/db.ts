@@ -48,6 +48,21 @@ export interface Setting {
   value: string;
 }
 
+export interface EditPass {
+  id: string; // `${week_start}_${date}`
+  week_start: string;
+  date: string;
+  used_at: string;
+}
+
+export interface StreakFreeze {
+  id: string; // YYYY-MM
+  month: string;
+  available: number; // default 2
+  usedDates: string[];
+  updatedAt: string;
+}
+
 export interface OutboxItem {
   id?: number;
   table: string;
@@ -123,6 +138,8 @@ export class DailyOSDatabase extends Dexie {
   reflections!: Table<Reflection, string>;
   settings!: Table<Setting, string>;
   outbox!: Table<OutboxItem, number>;
+  edit_passes!: Table<EditPass, string>;
+  streak_freezes!: Table<StreakFreeze, string>;
 
   constructor(dbName = "habittracker_db") {
     super(dbName);
@@ -134,6 +151,10 @@ export class DailyOSDatabase extends Dexie {
       reflections: "date, updatedAt",
       settings: "key",
       outbox: "++id, table, op, ts",
+    });
+    this.version(2).stores({
+      edit_passes: "id, week_start, date, used_at",
+      streak_freezes: "id, month, updatedAt",
     });
   }
 }
@@ -179,7 +200,7 @@ export async function initDatabase(seedZero = true): Promise<void> {
 export async function clearAllData(): Promise<void> {
   await db.transaction(
     "rw",
-    [db.habits, db.habit_logs, db.sleep_logs, db.mood_logs, db.reflections, db.settings, db.outbox],
+    [db.habits, db.habit_logs, db.sleep_logs, db.mood_logs, db.reflections, db.settings, db.outbox, db.edit_passes, db.streak_freezes],
     async () => {
       await db.habits.clear();
       await db.habit_logs.clear();
@@ -188,6 +209,8 @@ export async function clearAllData(): Promise<void> {
       await db.reflections.clear();
       await db.settings.clear();
       await db.outbox.clear();
+      await db.edit_passes.clear();
+      await db.streak_freezes.clear();
     }
   );
   if (typeof window !== "undefined" && window.localStorage) {
@@ -615,4 +638,88 @@ export async function importAllData(data: DailyOSExport): Promise<void> {
 }
 
 export { useHabits } from "./useHabits";
+
+// ==========================================
+// EDIT PASSES & STREAK FREEZE HELPERS
+// ==========================================
+
+import { unlock as computeUnlock, weekStart as getWeekStart } from "./editPasses";
+
+export async function getUnlockedDates(weekStartStr: string): Promise<string[]> {
+  try {
+    const records = await db.edit_passes.where("week_start").equals(weekStartStr).toArray();
+    return records.map((r) => r.date);
+  } catch {
+    return [];
+  }
+}
+
+export async function useEditPass(
+  date: string,
+  today: string
+): Promise<{ ok: boolean; reason?: string; unlocked: string[] }> {
+  const currentWeek = getWeekStart(today);
+  const currentUnlocked = await getUnlockedDates(currentWeek);
+  const result = computeUnlock(date, today, currentUnlocked);
+  if (!result.ok) {
+    return result;
+  }
+  if (!currentUnlocked.includes(date)) {
+    await db.edit_passes.put({
+      id: `${currentWeek}_${date}`,
+      week_start: currentWeek,
+      date,
+      used_at: new Date().toISOString(),
+    });
+  }
+  return result;
+}
+
+export async function getFreezeTokens(monthStr?: string): Promise<{ available: number; usedDates: string[] }> {
+  const currentMonth = monthStr || new Date().toISOString().slice(0, 7);
+  try {
+    const record = await db.streak_freezes.get(currentMonth);
+    if (record) {
+      return { available: record.available, usedDates: record.usedDates || [] };
+    }
+  } catch {}
+  // Default: 2 available freezes per month
+  return { available: 2, usedDates: [] };
+}
+
+export async function useFreezeToken(date: string): Promise<{ ok: boolean; error?: string }> {
+  const currentMonth = date.slice(0, 7);
+  const current = await getFreezeTokens(currentMonth);
+  if (current.usedDates.includes(date)) {
+    return { ok: true };
+  }
+  if (current.available <= 0) {
+    return { ok: false, error: "No freeze tokens left for this month" };
+  }
+  const updatedUsed = [...current.usedDates, date];
+  const updatedAvailable = current.available - 1;
+  await db.streak_freezes.put({
+    id: currentMonth,
+    month: currentMonth,
+    available: updatedAvailable,
+    usedDates: updatedUsed,
+    updatedAt: new Date().toISOString(),
+  });
+  return { ok: true };
+}
+
+export async function rewardCompletedWeekFreeze(monthStr?: string): Promise<boolean> {
+  const currentMonth = monthStr || new Date().toISOString().slice(0, 7);
+  const current = await getFreezeTokens(currentMonth);
+  if (current.available >= 2) return false; // Capped at 2
+  await db.streak_freezes.put({
+    id: currentMonth,
+    month: currentMonth,
+    available: Math.min(2, current.available + 1),
+    usedDates: current.usedDates,
+    updatedAt: new Date().toISOString(),
+  });
+  return true;
+}
+
 

@@ -13,6 +13,7 @@ import {
   type Habit,
 } from "../lib/db";
 import { autoPickIcon, getIconPath } from "../lib/icons";
+import { IconPickerSheet } from "../components/sheets/IconPickerSheet";
 
 const HABIT_DRAFT_KEY = "habit_draft_data";
 
@@ -20,6 +21,7 @@ export default function NewHabit() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
   const existingHabit = useLiveQuery(
     () => (editId ? db.habits.get(editId) : undefined),
@@ -140,20 +142,7 @@ export default function NewHabit() {
   };
 
   const handleOpenIconPicker = () => {
-    try {
-      sessionStorage.setItem(
-        HABIT_DRAFT_KEY,
-        JSON.stringify({
-          editId: editId || null,
-          name,
-          icon,
-          goalDays,
-          isCustomDays,
-          userPickedIcon: true,
-        })
-      );
-    } catch {}
-    navigate(`/icon-picker?returnTo=${encodeURIComponent(location.pathname + location.search)}`);
+    setIconPickerOpen(true);
   };
 
   const iconSvgPath = useMemo(() => getIconPath(icon), [icon]);
@@ -708,6 +697,17 @@ export default function NewHabit() {
           </div>
         </div>
       )}
+
+      {/* In-Sheet Icon Picker */}
+      <IconPickerSheet
+        isOpen={iconPickerOpen}
+        onClose={() => setIconPickerOpen(false)}
+        selectedIcon={icon}
+        onSelectIcon={(picked) => {
+          setIcon(picked);
+          setUserPickedIcon(true);
+        }}
+      />
     </div>
   );
 }

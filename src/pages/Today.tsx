@@ -10,6 +10,8 @@ import {
   setCachedHabits,
   getDeletedHabitIds,
   markHabitDeleted,
+  useEditPass,
+  useFreezeToken,
   type Habit,
 } from "../lib/db";
 import {
@@ -22,7 +24,9 @@ import {
   streakDays,
   goalDaysDone,
   isHabitEditable,
+  calculateOverallStreak,
 } from "../lib/habitRules";
+import { canEdit, passesLeft, dayState } from "../lib/editPasses";
 import { getIconPath } from "../lib/icons";
 import { MomentumGauge } from "../components/signature/MomentumGauge";
 import { DayRings, type DayRingItem } from "../components/signature/DayRings";
@@ -31,6 +35,7 @@ import { MoodOrbs, type MoodScore } from "../components/signature/MoodOrbs";
 import { MenuSheet } from "../components/sheets/MenuSheet";
 import { FeelingsSheet } from "../components/sheets/FeelingsSheet";
 import { HabitActionSheet } from "../components/sheets/HabitActionSheet";
+import { StreakSheet } from "../components/sheets/StreakSheet";
 
 export default function Today() {
   const { date: paramDate } = useParams();
@@ -53,6 +58,21 @@ export default function Today() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [feelingsOpen, setFeelingsOpen] = useState(false);
+  const [streakSheetOpen, setStreakSheetOpen] = useState(false);
+
+  const currentWeekStart = useMemo(() => weekStart(todayStr), [todayStr]);
+  const unlockedPasses = useLiveQuery(
+    () => db.edit_passes.where("week_start").equals(currentWeekStart).toArray(),
+    [currentWeekStart]
+  ) ?? [];
+  const unlockedDates = useMemo(() => unlockedPasses.map((p) => p.date), [unlockedPasses]);
+  const passesCount = passesLeft(unlockedDates);
+  const isCurrentDayEditable = canEdit(date, todayStr, unlockedDates);
+
+  const currentMonth = useMemo(() => todayStr.slice(0, 7), [todayStr]);
+  const freezeRecord = useLiveQuery(() => db.streak_freezes.get(currentMonth), [currentMonth]);
+  const availableFreezes = freezeRecord ? freezeRecord.available : 2;
+  const usedFreezeDates = freezeRecord?.usedDates || [];
 
   // Reactive Dexie Queries
   const dbHabits = useLiveQuery(() => db.habits.filter((h) => h.isActive).sortBy("sort"), []);
@@ -253,52 +273,60 @@ export default function Today() {
     return map;
   }, [allLogs, optimisticOverrides, date]);
 
-  // Weekly scoring calculations
+  // Weekly scoring calculations (relative to current week ending today)
   const totalWeeklyMax = useMemo(() => weeklyMax(habits), [habits]);
 
   const totalWeekPointsEarned = useMemo(() => {
     let sum = 0;
     habits.forEach((h) => {
       const logs = logsByHabit.get(h.id) ?? new Map<string, number>();
-      sum += weekPoints(logs, h.goalDays, date);
+      sum += weekPoints(logs, h.goalDays, todayStr);
     });
     return sum;
-  }, [habits, logsByHabit, date]);
+  }, [habits, logsByHabit, todayStr]);
 
   // Sleep fraction & count (nights with 7-9h this week out of 7)
   const { sleepFraction, sleepCount } = useMemo(() => {
-    const start = weekStart(date);
+    const start = weekStart(todayStr);
     let count = 0;
-    for (let d = start; d <= date; d = fromMs(toMs(d) + 86400000)) {
+    for (let d = start; d <= todayStr; d = fromMs(toMs(d) + 86400000)) {
       const s = allSleepLogs.find((log) => log.date === d);
       if (s && s.durationMin >= 420 && s.durationMin <= 540) count++;
     }
     return { sleepFraction: Math.min(1, count / 7), sleepCount: count };
-  }, [allSleepLogs, date]);
+  }, [allSleepLogs, todayStr]);
 
   // Mind fraction & count (days with reflection or mood logged this week out of 7)
   const { mindFraction, mindCount } = useMemo(() => {
-    const start = weekStart(date);
+    const start = weekStart(todayStr);
     let count = 0;
-    for (let d = start; d <= date; d = fromMs(toMs(d) + 86400000)) {
+    for (let d = start; d <= todayStr; d = fromMs(toMs(d) + 86400000)) {
       const hasMood = allMoodLogs.some((m) => m.date === d && m.score > 0);
       const hasRef = allReflections.some((r) => r.date === d && r.content?.trim());
       if (hasMood || hasRef) count++;
     }
     return { mindFraction: Math.min(1, count / 7), mindCount: count };
-  }, [allMoodLogs, allReflections, date]);
+  }, [allMoodLogs, allReflections, todayStr]);
 
-  // Day rings for Mon..Sun
+  const firstUseDate = useMemo(() => {
+    if (habits.length === 0) return todayStr;
+    return habits.reduce((earliest, h) => {
+      const d = h.createdAt?.slice(0, 10) || todayStr;
+      return d < earliest ? d : earliest;
+    }, todayStr);
+  }, [habits, todayStr]);
+
+  // Day rings for Mon..Sun (always shows the entire current week)
   const dayRings = useMemo((): DayRingItem[] => {
-    const start = weekStart(date);
+    const start = weekStart(todayStr);
     const labels = ["M", "T", "W", "T", "F", "S", "S"];
     const items: DayRingItem[] = [];
 
     for (let i = 0; i < 7; i++) {
       const d = fromMs(toMs(start) + i * 86400000);
-      const isPast = d < date;
-      const isCurrent = d === date;
-      const isFuture = d > date;
+      const isToday = d === todayStr;
+      const isSelected = d === date;
+      const isFuture = d > todayStr;
 
       let score = 0;
       habits.forEach((h) => {
@@ -306,38 +334,56 @@ export default function Today() {
         score += state === 2 ? 1 : state === 1 ? 0.5 : 0;
       });
 
+      const st = dayState(d, todayStr, firstUseDate, score);
+
       items.push({
         dayLabel: labels[i],
         date: d,
         score,
         maxScore: habits.length || 5,
-        isMissed: isPast && score < (habits.length || 5),
-        isToday: isCurrent,
+        isMissed: st === "missed",
+        isToday,
+        isSelected,
         isFuture,
+        isNeutral: st === "neutral",
       });
     }
     return items;
-  }, [date, habits, logsByHabit]);
+  }, [todayStr, date, habits, logsByHabit, firstUseDate]);
 
-  // Overall streak (max streak among habits)
-  const currentStreak = useMemo(() => {
-    let maxS = 0;
-    habits.forEach((h) => {
-      const logs = logsByHabit.get(h.id) ?? new Map();
-      const s = streakDays(logs, h.goalDays, date, h.createdAt?.slice(0, 10) || "2026-10-01");
-      if (s > maxS) maxS = s;
+  // Overall streak (calculated from days with points + streak freeze tokens)
+  const overallStreakData = useMemo(() => {
+    const activeDatesWithPoints = new Set<string>();
+    allLogs.forEach((l) => {
+      if (l.state > 0) activeDatesWithPoints.add(l.date);
     });
-    return maxS;
-  }, [habits, logsByHabit, date]);
+    return calculateOverallStreak(activeDatesWithPoints, todayStr, firstUseDate, usedFreezeDates);
+  }, [allLogs, todayStr, firstUseDate, usedFreezeDates]);
+
+  const currentStreak = overallStreakData.currentStreak;
+
+  // Per-habit streaks
+  const habitStreaksList = useMemo(() => {
+    return habits.map((h) => {
+      const logs = logsByHabit.get(h.id) ?? new Map();
+      const s = streakDays(logs, h.goalDays, todayStr, h.createdAt?.slice(0, 10) || "2026-10-01", usedFreezeDates);
+      return {
+        id: h.id,
+        name: h.name,
+        icon: h.icon,
+        streak: s,
+      };
+    });
+  }, [habits, logsByHabit, todayStr, usedFreezeDates]);
 
   // Status pace label
   const statusLabel = useMemo(() => {
     if (habits.length === 0) return "Your week starts here";
-    const target = targetSoFar(habits, date);
+    const target = targetSoFar(habits, todayStr);
     if (totalWeekPointsEarned >= target + 1) return "Ahead";
     if (totalWeekPointsEarned >= target - 1) return "Consistent Pace";
     return "Building Pace";
-  }, [habits, date, totalWeekPointsEarned]);
+  }, [habits, todayStr, totalWeekPointsEarned]);
 
   // Date formatted display string
   const formattedDate = useMemo(() => {
@@ -354,6 +400,26 @@ export default function Today() {
   }, [date]);
 
   const handleToggleHabit = async (habitId: string) => {
+    if (!isCurrentDayEditable) {
+      if (date < currentWeekStart) {
+        alert("Older weeks are locked and cannot be edited.");
+        return;
+      }
+      if (passesCount <= 0) {
+        alert("No edit passes left this week (3 of 3 used).");
+        return;
+      }
+      const confirmUnlock = window.confirm(
+        `Unlock this past day to edit? (Uses 1 pass, ${passesCount} left this week)`
+      );
+      if (!confirmUnlock) return;
+      const res = await useEditPass(date, todayStr);
+      if (!res.ok) {
+        alert(res.reason === "no-passes" ? "No edit passes left this week" : "Cannot unlock this day");
+        return;
+      }
+    }
+
     const current = habitStateMap.get(habitId) ?? 0;
     let next = 0;
     if (current === 0) next = 2;
@@ -423,8 +489,11 @@ export default function Today() {
             </div>
           </div>
 
-          {/* Streak Flame Pill */}
-          <div
+          {/* Streak Flame Pill (Clickable -> StreakSheet) */}
+          <button
+            type="button"
+            aria-label="View streaks"
+            onClick={() => setStreakSheetOpen(true)}
             style={{
               display: "flex",
               alignItems: "center",
@@ -437,13 +506,14 @@ export default function Today() {
               color: "var(--fl)",
               fontWeight: 800,
               fontSize: "13px",
+              cursor: "pointer",
             }}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z" />
             </svg>
             {currentStreak}
-          </div>
+          </button>
 
           {/* Menu Button */}
           <button
@@ -470,6 +540,69 @@ export default function Today() {
             </svg>
           </button>
         </div>
+
+        {/* Past Day View-Only / Unlock Bar (reference today-past-day.html) */}
+        {!isViewingToday && (
+          <div
+            style={{
+              marginTop: "16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              background: "var(--card)",
+              border: "1px solid var(--ln)",
+              borderRadius: "20px",
+              padding: "10px 10px 10px 14px",
+            }}
+          >
+            <span style={{ flex: 1, fontSize: "13px", fontWeight: 600, color: "var(--mu)" }}>
+              {isCurrentDayEditable ? "Unlocked for editing" : "View only"}
+            </span>
+            {!isCurrentDayEditable && date >= currentWeekStart && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await useEditPass(date, todayStr);
+                  if (!res.ok) {
+                    alert(
+                      res.reason === "no-passes"
+                        ? "No edit passes left this week (3 of 3 used)"
+                        : "Cannot unlock this day"
+                    );
+                  }
+                }}
+                style={{
+                  fontSize: "12.5px",
+                  fontWeight: 800,
+                  color: "var(--prt)",
+                  background: "var(--tint)",
+                  padding: "8px 12px",
+                  borderRadius: "99px",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Unlock · {passesCount} left
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              style={{
+                fontSize: "12.5px",
+                fontWeight: 800,
+                color: "var(--on)",
+                background: "var(--pr)",
+                padding: "8px 14px",
+                borderRadius: "99px",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              Today
+            </button>
+          </div>
+        )}
 
         {/* Yesterday Grace Banner / Past Day Warning */}
         {isYesterday && (
@@ -590,7 +723,7 @@ export default function Today() {
             id="habits-section"
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
               gap: "10px",
               marginTop: "16px",
             }}
@@ -920,6 +1053,22 @@ export default function Today() {
           onDelete={() => handleDeleteHabitFromMenu(activeMenuHabit.id)}
         />
       )}
+
+      {/* Streak Sheet */}
+      <StreakSheet
+        isOpen={streakSheetOpen}
+        onClose={() => setStreakSheetOpen(false)}
+        streak={currentStreak}
+        longestStreak={overallStreakData.longestStreak}
+        last7Days={overallStreakData.last7Days}
+        habitStreaks={habitStreaksList}
+        availableFreezes={availableFreezes}
+        maxFreezes={2}
+        onUseFreeze={async (targetDate) => {
+          await useFreezeToken(targetDate);
+        }}
+        onGoToToday={() => navigate("/")}
+      />
     </div>
   );
 }

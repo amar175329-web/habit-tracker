@@ -7,6 +7,8 @@ export interface DayRingItem {
   isMissed?: boolean;
   isToday?: boolean;
   isFuture?: boolean;
+  isSelected?: boolean;
+  isNeutral?: boolean;
 }
 
 export interface DayRingsProps {
@@ -50,6 +52,9 @@ export function DayRings({
         const fraction = Math.max(0, Math.min(1, score / maxScore));
         const arcLen = (fraction * CIRCUMFERENCE).toFixed(1);
 
+        const isNeutral = d.isNeutral;
+        const showMissed = !d.isFuture && !isNeutral && d.isMissed && fraction < 1;
+
         return (
           <div
             key={idx}
@@ -69,7 +74,6 @@ export function DayRings({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                background: d.isToday ? "var(--tint)" : "transparent",
               }}
             >
               <svg
@@ -88,12 +92,12 @@ export function DayRings({
                   strokeWidth="4"
                   style={{
                     stroke: "var(--tr)",
-                    opacity: d.isFuture ? 0.35 : 0.8,
+                    opacity: d.isFuture || isNeutral ? 0.35 : 0.8,
                   }}
                 />
 
                 {/* Missed Sand Arc */}
-                {!d.isFuture && d.isMissed && (
+                {showMissed && (
                   <circle
                     cx="15"
                     cy="15"
@@ -122,16 +126,47 @@ export function DayRings({
               </svg>
             </div>
 
-            <div
-              style={{
-                fontSize: "10.5px",
-                fontWeight: d.isToday ? 800 : 700,
-                color: d.isToday ? "var(--tx)" : "var(--mu)",
-                marginTop: "4px",
-              }}
-            >
-              {d.dayLabel}
+            <div style={{ marginTop: "4px" }}>
+              {d.isSelected ? (
+                <span
+                  style={{
+                    fontSize: "10.5px",
+                    fontWeight: 800,
+                    background: "var(--pr)",
+                    color: "var(--on)",
+                    padding: "3px 9px",
+                    borderRadius: "99px",
+                    display: "inline-block",
+                  }}
+                >
+                  {d.dayLabel}
+                </span>
+              ) : (
+                <span
+                  style={{
+                    fontSize: "10.5px",
+                    fontWeight: d.isToday ? 800 : 700,
+                    color: d.isToday ? "var(--tx)" : "var(--mu)",
+                    padding: "3px 9px",
+                    display: "inline-block",
+                  }}
+                >
+                  {d.dayLabel}
+                </span>
+              )}
             </div>
+
+            {/* Today Dot Marker */}
+            <i
+              style={{
+                display: "block",
+                width: "5px",
+                height: "5px",
+                borderRadius: "50%",
+                margin: "5px auto 0",
+                background: d.isToday ? "var(--pr)" : "transparent",
+              }}
+            />
           </div>
         );
       })}

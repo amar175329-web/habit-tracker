@@ -31,8 +31,8 @@ export function HabitTile({
   subtitle,
   onToggle,
   spanTwo = false,
-  onToggleWidth,
-  onMenuClick,
+  onToggleWidth: _onToggleWidth,
+  onMenuClick: _onMenuClick,
   className = "",
   style = {},
 }: HabitTileProps) {
@@ -45,7 +45,7 @@ export function HabitTile({
     tileStyles = {
       background: "var(--tint)",
       border: "1.5px dashed var(--pr)",
-      color: "var(--prt)",
+      color: "var(--tx)",
     };
     iconChipState = "rest";
     defaultSubtitle = "Week done · rest today";
@@ -128,9 +128,9 @@ export function HabitTile({
           )}
         </IconChip>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {/* Pips row or Streak badge */}
-          {goalDays !== undefined && goalDays > 0 ? (
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          {/* Pips only for weekly-goal habits (goalDays < 7), never daily */}
+          {goalDays !== undefined && goalDays > 0 && goalDays < 7 ? (
             <span style={{ display: "inline-flex", gap: "3px" }}>
               {Array.from({ length: goalDays }).map((_, i) => {
                 const isFilled = completedThisWeek !== undefined && i < completedThisWeek;
@@ -153,46 +153,6 @@ export function HabitTile({
               {streak}d
             </span>
           ) : null}
-
-          {/* Habit 3-dots Menu button */}
-          {(onMenuClick || onToggleWidth) && (
-            <button
-              type="button"
-              aria-label="Habit options"
-              title="Habit options"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onMenuClick) {
-                  onMenuClick();
-                } else if (onToggleWidth) {
-                  onToggleWidth();
-                }
-              }}
-              style={{
-                width: "28px",
-                height: "28px",
-                borderRadius: "50%",
-                border: "none",
-                background: "rgba(0, 0, 0, 0.05)",
-                color: "inherit",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                padding: 0,
-                opacity: 0.65,
-                transition: "all 0.15s ease",
-              }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.65")}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="12" cy="5" r="2.2" />
-                <circle cx="12" cy="12" r="2.2" />
-                <circle cx="12" cy="19" r="2.2" />
-              </svg>
-            </button>
-          )}
         </div>
       </div>
 

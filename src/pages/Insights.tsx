@@ -180,41 +180,35 @@ export default function Insights() {
   }, [habits, logsByHabit, todayStr]);
 
   // Correlation insight: sleep vs habits
-  const sleepCorrelationText = useMemo(() => {
-    if (allSleep.length >= 3 && habits.length > 0) {
-      let goodSleepDays = 0;
-      let goodSleepHabits = 0;
-      let shortSleepDays = 0;
-      let shortSleepHabits = 0;
+  const loggedSleepNights = useMemo(() => allSleep.filter((s) => s.durationMin > 0).length, [allSleep]);
+  const hasFiveNights = loggedSleepNights >= 5;
 
-      allSleep.forEach((s) => {
-        let habitsOnDay = 0;
-        habits.forEach((h) => {
-          const st = logsByHabit.get(h.id)?.get(s.date) ?? 0;
-          if (st === 2) habitsOnDay += 1;
-          else if (st === 1) habitsOnDay += 0.5;
-        });
+  const sleepStats = useMemo(() => {
+    let goodDays = 0;
+    let goodHabits = 0;
+    let shortDays = 0;
+    let shortHabits = 0;
 
-        if (s.durationMin >= 420) {
-          goodSleepDays++;
-          goodSleepHabits += habitsOnDay;
-        } else {
-          shortSleepDays++;
-          shortSleepHabits += habitsOnDay;
-        }
+    allSleep.forEach((s) => {
+      let habitsOnDay = 0;
+      habits.forEach((h) => {
+        const st = logsByHabit.get(h.id)?.get(s.date) ?? 0;
+        if (st === 2) habitsOnDay += 1;
+        else if (st === 1) habitsOnDay += 0.5;
       });
 
-      if (goodSleepDays > 0 && shortSleepDays > 0) {
-        const avgGood = goodSleepHabits / goodSleepDays;
-        const avgShort = shortSleepHabits / shortSleepDays;
-        if (avgShort > 0 && avgGood > avgShort) {
-          const diffPct = Math.round(((avgGood - avgShort) / avgShort) * 100);
-          return `You complete ${diffPct}% more habits on days following 7+ hours of sleep.`;
-        }
+      if (s.durationMin >= 420) {
+        goodDays++;
+        goodHabits += habitsOnDay;
+      } else if (s.durationMin < 360) {
+        shortDays++;
+        shortHabits += habitsOnDay;
       }
-      return `Tracking ${allSleep.length} nights of sleep. Keep logging habits to reveal your performance correlation.`;
-    }
-    return "Log 7+ hours of sleep across multiple nights to unlock habit correlation insights.";
+    });
+
+    const goodAvg = goodDays > 0 ? (goodHabits / goodDays).toFixed(1) : "3.8";
+    const shortAvg = shortDays > 0 ? (shortHabits / shortDays).toFixed(1) : "2.5";
+    return { goodAvg, shortAvg, goodDays, shortDays };
   }, [allSleep, habits, logsByHabit]);
 
   return (
@@ -398,30 +392,101 @@ export default function Insights() {
             boxShadow: "0 8px 24px rgba(15, 60, 55, 0.04)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-            <span
-              style={{
-                width: "24px",
-                height: "24px",
-                borderRadius: "50%",
-                background: "var(--tint)",
-                color: "var(--ind)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            </span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontSize: "11px", letterSpacing: ".14em", fontWeight: 700, color: "var(--mu)" }}>
               SLEEP & HABIT LINK
             </div>
+            {!hasFiveNights && (
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 800,
+                  color: "var(--ind)",
+                  background: "color-mix(in srgb, var(--ind) 14%, transparent)",
+                  padding: "4px 9px",
+                  borderRadius: "99px",
+                }}
+              >
+                Example
+              </span>
+            )}
           </div>
-          <div style={{ fontSize: "14px", lineHeight: 1.5, color: "var(--tx)", fontWeight: 600 }}>
-            {sleepCorrelationText}
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
+            <div style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--mu)", lineHeight: 1.5, flex: 1 }}>
+              {!hasFiveNights
+                ? "Does sleep change your habits? This is how it will look once you log a few nights:"
+                : "How sleep duration correlates with your daily habits completion:"}
+            </div>
           </div>
+
+          {/* Comparison bars */}
+          <div style={{ marginTop: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", fontWeight: 700 }}>
+              <span>Slept 7h or more</span>
+              <span style={{ color: "var(--mu)" }}>{sleepStats.goodAvg} habits a day</span>
+            </div>
+            <div style={{ height: "9px", borderRadius: "5px", background: "var(--bg)", marginTop: "6px" }}>
+              <div
+                style={{
+                  width: `${Math.min(100, Math.round((parseFloat(sleepStats.goodAvg) / Math.max(1, habits.length || 5)) * 100))}%`,
+                  height: "9px",
+                  borderRadius: "5px",
+                  background: "var(--pr)",
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginTop: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", fontWeight: 700 }}>
+              <span>Slept under 6h</span>
+              <span style={{ color: "var(--mu)" }}>{sleepStats.shortAvg} habits a day</span>
+            </div>
+            <div style={{ height: "9px", borderRadius: "5px", background: "var(--bg)", marginTop: "6px" }}>
+              <div
+                style={{
+                  width: `${Math.min(100, Math.round((parseFloat(sleepStats.shortAvg) / Math.max(1, habits.length || 5)) * 100))}%`,
+                  height: "9px",
+                  borderRadius: "5px",
+                  background: "color-mix(in srgb, var(--fl) 32%, var(--card))",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Progress counter if under 5 nights */}
+          {!hasFiveNights && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginTop: "16px",
+                paddingTop: "14px",
+                borderTop: "1px solid var(--ln)",
+              }}
+            >
+              <span style={{ fontSize: "13px", fontWeight: 700 }}>Log 5 nights to see your own</span>
+              <span style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                {[1, 2, 3, 4, 5].map((step) => (
+                  <i
+                    key={step}
+                    style={{
+                      width: "9px",
+                      height: "9px",
+                      borderRadius: "50%",
+                      background: step <= loggedSleepNights ? "var(--ind)" : "var(--tr)",
+                      display: "inline-block",
+                    }}
+                  />
+                ))}
+                <b style={{ fontSize: "12px", marginLeft: "6px", color: "var(--ind)" }}>
+                  {loggedSleepNights} of 5
+                </b>
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>

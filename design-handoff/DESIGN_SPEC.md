@@ -29,9 +29,23 @@ Card radius 24-28px, tile 24px, pill 99px, button 26-27px. Page padding 18px. Ga
 
 ## Rules that must not be broken
 1. Reflections: only TODAY's entry can be written or edited. Past entries are read-only everywhere (list, reader, search, day detail). Edits lock at local midnight.
-2. Habits/sleep/mood of YESTERDAY stay editable until midnight tonight (grace day). Older days are view-only. Future days are locked.
+2. EDIT PASSES (replaces the old "yesterday grace"): each week (Mon 00:00 to Sun 24:00, local) the user has 3 edit passes. A past day of the CURRENT week is view-only until the user taps "Unlock to edit"; the pass is spent when the first change on that day is saved, and that day stays editable until the week ends. Old weeks are locked forever. Anything left empty counts as missed. Today is always editable. Future days are locked. Reflections are NOT affected: only today's reflection is editable.
 3. Habit state cycles Pending -> Full -> Half -> Pending. Points 0 / 1 / 0.5.
 4. Weekly-goal habit: user picks "Every day" or N days a week (1-7). Only Full days count toward N. Points capped at N per week. Weekly max = sum of goalDays. "Target so far" = sum(goalDays * weekdayIndex/7). Reference code and tests: `src/habitRules.js`.
 5. Streak counts calendar days; rest days after the weekly goal is met keep the chain. It breaks only if a week ends unmet or can no longer be met.
 6. Done and missed get equal visual weight, but missed is shown soft (sand) and never in the future or for today's still-open habits.
 7. Icon auto-pick: tokenize the habit name (English, Hindi, Hinglish), score against `icons.json` keywords, take the best match, fallback `check`. User can override.
+
+8. Week strip: the momentum gauge and the 7 day rings ALWAYS show the whole current week, whichever day is being viewed. Viewing another day only changes the selected day (teal pill on its letter) and the habit list below. A small dot under the letter always marks the real today. Tapping a day navigates to it; a "Today" button returns. Never hide or fade other days. (reference/today-past-day.html)
+9. Legend wording: no denominators. Habits "17 pts", Sleep "4 nights", Mind "4 days". At zero show just the labels. Center word at zero: "Fresh week", never "Building pace 0%".
+10. Sleep & habit link card always shows its content: an "Example" comparison (7h+ nights vs under 6h) plus a progress row "Log 5 nights to see your own (1 of 5)". Real numbers replace the example after 5 logged nights. Same on Habit Tracker.
+11. Icon picker is a bottom sheet over the New habit form, not a separate page. The form keeps ONE draft (name, icon, frequency) that survives opening the picker, rotation and Back. Choosing an icon must never clear the name.
+
+## Added in Update 2
+8. **Week strip** (under the gauge): always shows the WHOLE current week with each day's own data, whichever day you are viewing. The viewed day is a filled teal pill on its letter; the real today is marked with the word "today" and a dot under its column. Viewing a past day never hides later days and never recomputes the gauge as "Monday to date". A slim bar under the header says "View only" with buttons "Unlock - N left" and "Today".
+9. **New users**: days before the first-use date are NEUTRAL (faint ring), never "missed" (sand). See `dayState()` in `src/editPasses.js`.
+10. **Gauge legend**: no denominators. "Habits 17 pts", "Sleep 4 nights", "Mind 4 days". At zero show "0%" with "Fresh week". Never show "0/35".
+11. **Habit tile**: daily habits show only the streak chip, no pips, no kebab (use long-press for edit). Only weekly-goal habits show goal pips (max 7 small dots) and they must never overlap the icon. The tile grid uses `grid-template-columns: repeat(2, minmax(0, 1fr))` so nothing overflows the screen.
+12. **Empty-state previews**: Sleep & Habit link (Insights) and Mood and Sleep (Mind) show an example with an "Example" chip plus a progress counter until the user has enough data. See insights.html and mind.html.
+13. **Streak sheet** (tap the flame on Today): big flame + number, longest streak, last 7 days with flames, next badge with progress, badges 3/7/14/30/60/100, per-habit streaks, "how streaks work". Empty state: grey flame, "Light your first flame", "Go to today". An overall day counts when at least one point is earned. See streak-sheet.html and streak-empty.html.
+14. **Habit form**: name, auto icon and frequency live in ONE draft. The icon picker is a bottom sheet on the same screen. Choosing an icon must never clear or reset the name.
