@@ -334,6 +334,7 @@ export default function Today() {
         score += state === 2 ? 1 : state === 1 ? 0.5 : 0;
       });
 
+      const isFrozen = usedFreezeDates.includes(d);
       const st = dayState(d, todayStr, firstUseDate, score);
 
       items.push({
@@ -341,15 +342,16 @@ export default function Today() {
         date: d,
         score,
         maxScore: habits.length || 5,
-        isMissed: st === "missed",
+        isMissed: !isFrozen && st === "missed",
         isToday,
         isSelected,
         isFuture,
         isNeutral: st === "neutral",
+        isFrozen,
       });
     }
     return items;
-  }, [todayStr, date, habits, logsByHabit, firstUseDate]);
+  }, [todayStr, date, habits, logsByHabit, firstUseDate, usedFreezeDates]);
 
   // Overall streak (calculated from days with points + streak freeze tokens)
   const overallStreakData = useMemo(() => {
@@ -604,8 +606,52 @@ export default function Today() {
           </div>
         )}
 
+        {/* Past Day Frozen Protection Banner */}
+        {!isViewingToday && usedFreezeDates.includes(date) && (
+          <div
+            style={{
+              background: "linear-gradient(135deg, rgba(14, 165, 233, 0.16) 0%, rgba(56, 189, 248, 0.06) 100%)",
+              border: "1.5px solid #38bdf8",
+              borderRadius: "20px",
+              padding: "14px 16px",
+              marginTop: "14px",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              boxShadow: "0 4px 16px rgba(14, 165, 233, 0.14)",
+            }}
+          >
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "14px",
+                background: "rgba(14, 165, 233, 0.22)",
+                color: "#0284c7",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                boxShadow: "0 0 12px rgba(56, 189, 248, 0.35)",
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z" />
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: "14px", fontWeight: 800, color: "#0284c7" }}>
+                Protected by Streak Freeze ❄️
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--mu)", marginTop: "2px", lineHeight: 1.4 }}>
+                This day's streak was saved using a freeze token. All habits count as saved!
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Yesterday Grace Banner / Past Day Warning */}
-        {isYesterday && (
+        {isYesterday && !usedFreezeDates.includes(date) && (
           <div
             style={{
               background: "var(--tint)",
@@ -622,7 +668,7 @@ export default function Today() {
           </div>
         )}
 
-        {!isViewingToday && !isYesterday && (
+        {!isViewingToday && !isYesterday && !usedFreezeDates.includes(date) && (
           <div
             style={{
               background: "var(--card)",
@@ -737,8 +783,10 @@ export default function Today() {
               const svgPath = getIconPath(h.icon);
 
               // Subtitle
+              const isDayFrozen = !isViewingToday && usedFreezeDates.includes(date);
               let subtitle = `${doneCount} of ${h.goalDays} this week`;
               if (h.goalDays === 7) subtitle = "Daily habit";
+              if (isDayFrozen) subtitle = "Saved by Freeze ❄️";
 
               return (
                 <HabitTile
@@ -749,6 +797,7 @@ export default function Today() {
                   goalDays={h.goalDays}
                   completedThisWeek={doneCount}
                   isWeekDone={isWeekDone}
+                  isFrozen={isDayFrozen}
                   subtitle={subtitle}
                   spanTwo={fullWidthHabits.has(h.id)}
                   onMenuClick={() => setActiveMenuHabit(h)}

@@ -8,6 +8,7 @@ export interface HabitTileProps {
   icon?: ReactNode;
   state?: HabitState;
   isWeekDone?: boolean;
+  isFrozen?: boolean;
   streak?: number;
   goalDays?: number;
   completedThisWeek?: number;
@@ -25,6 +26,7 @@ export function HabitTile({
   icon,
   state = 0,
   isWeekDone = false,
+  isFrozen = false,
   streak,
   goalDays,
   completedThisWeek,
@@ -36,12 +38,21 @@ export function HabitTile({
   className = "",
   style = {},
 }: HabitTileProps) {
-  // Determine tile appearance based on 4 states: Week Done, Done (2), Half (1), Pending (0)
+  // Determine tile appearance based on states: Frozen, Week Done, Done (2), Half (1), Pending (0)
   let tileStyles: React.CSSProperties = {};
-  let iconChipState: "pending" | "half" | "done" | "rest" = "pending";
+  let iconChipState: "pending" | "half" | "done" | "rest" | "frozen" = "pending";
   let defaultSubtitle = "Tap to mark";
 
-  if (isWeekDone) {
+  if (isFrozen) {
+    tileStyles = {
+      background: "linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(56, 189, 248, 0.04) 100%)",
+      border: "1.5px solid #38bdf8",
+      color: "var(--tx)",
+      boxShadow: "0 2px 10px rgba(14, 165, 233, 0.12)",
+    };
+    iconChipState = "frozen";
+    defaultSubtitle = "Saved by Freeze ❄️";
+  } else if (isWeekDone) {
     tileStyles = {
       background: "var(--tint)",
       border: "1.5px dashed var(--pr)",

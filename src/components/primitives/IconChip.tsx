@@ -1,6 +1,6 @@
 import type { ReactNode, CSSProperties, HTMLAttributes, MouseEvent } from "react";
 
-export type IconChipState = "pending" | "half" | "done" | "rest" | "menu";
+export type IconChipState = "pending" | "half" | "done" | "rest" | "menu" | "frozen";
 export type IconChipSize = 32 | 38 | 54;
 
 export interface IconChipProps extends HTMLAttributes<HTMLSpanElement> {
@@ -55,6 +55,12 @@ export function IconChip({
       stateStyles = {
         background: "var(--card)",
         color: "var(--prt)",
+      };
+      break;
+    case "frozen":
+      stateStyles = {
+        background: "rgba(14, 165, 233, 0.2)",
+        color: "#0284c7",
       };
       break;
     case "menu":

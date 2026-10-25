@@ -9,6 +9,7 @@ export interface DayRingItem {
   isFuture?: boolean;
   isSelected?: boolean;
   isNeutral?: boolean;
+  isFrozen?: boolean;
 }
 
 export interface DayRingsProps {
@@ -53,7 +54,8 @@ export function DayRings({
         const arcLen = (fraction * CIRCUMFERENCE).toFixed(1);
 
         const isNeutral = d.isNeutral;
-        const showMissed = !d.isFuture && !isNeutral && d.isMissed && fraction < 1;
+        const isFrozen = d.isFrozen;
+        const showMissed = !d.isFuture && !isNeutral && !isFrozen && d.isMissed && fraction < 1;
 
         return (
           <div
@@ -110,8 +112,24 @@ export function DayRings({
                   />
                 )}
 
+                {/* Frozen Cyan Ring */}
+                {isFrozen && (
+                  <circle
+                    cx="15"
+                    cy="15"
+                    r="11"
+                    fill="none"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    style={{
+                      stroke: "#0284c7",
+                      filter: "drop-shadow(0 0 3px rgba(56, 189, 248, 0.6))",
+                    }}
+                  />
+                )}
+
                 {/* Completed Teal Progress Arc */}
-                {!d.isFuture && fraction > 0 && (
+                {!d.isFuture && !isFrozen && fraction > 0 && (
                   <circle
                     cx="15"
                     cy="15"
@@ -123,6 +141,16 @@ export function DayRings({
                     style={{ stroke: "var(--pr)" }}
                   />
                 )}
+
+                {/* Micro Cyan Flame for Frozen Day */}
+                {isFrozen && (
+                  <g style={{ transform: "rotate(90deg)", transformOrigin: "15px 15px" }}>
+                    <path
+                      d="M15 9c0.7 1.8 2.5 3 2.5 5.5a3.5 3.5 0 0 1-6 2.2c0-1.2 0.8-2 1.3-2.8 0 1.2 0.8 1.6 1.2 1.6 0-1.8-0.4-2.8 1-6.5z"
+                      fill="#0284c7"
+                    />
+                  </g>
+                )}
               </svg>
             </div>
 
@@ -132,11 +160,12 @@ export function DayRings({
                   style={{
                     fontSize: "10.5px",
                     fontWeight: 800,
-                    background: "var(--pr)",
+                    background: isFrozen ? "#0284c7" : "var(--pr)",
                     color: "var(--on)",
                     padding: "3px 9px",
                     borderRadius: "99px",
                     display: "inline-block",
+                    boxShadow: isFrozen ? "0 2px 8px rgba(14, 165, 233, 0.35)" : "none",
                   }}
                 >
                   {d.dayLabel}
@@ -145,8 +174,8 @@ export function DayRings({
                 <span
                   style={{
                     fontSize: "10.5px",
-                    fontWeight: d.isToday ? 800 : 700,
-                    color: d.isToday ? "var(--tx)" : "var(--mu)",
+                    fontWeight: d.isToday || isFrozen ? 800 : 700,
+                    color: isFrozen ? "#0284c7" : d.isToday ? "var(--tx)" : "var(--mu)",
                     padding: "3px 9px",
                     display: "inline-block",
                   }}
@@ -156,7 +185,7 @@ export function DayRings({
               )}
             </div>
 
-            {/* Today Dot Marker */}
+            {/* Today or Frozen Dot Marker */}
             <i
               style={{
                 display: "block",
@@ -164,7 +193,8 @@ export function DayRings({
                 height: "5px",
                 borderRadius: "50%",
                 margin: "5px auto 0",
-                background: d.isToday ? "var(--pr)" : "transparent",
+                background: isFrozen ? "#0284c7" : d.isToday ? "var(--pr)" : "transparent",
+                boxShadow: isFrozen ? "0 0 6px #38bdf8" : "none",
               }}
             />
           </div>
