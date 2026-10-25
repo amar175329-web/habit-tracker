@@ -109,6 +109,7 @@ export default function NewHabit() {
   const iconSvgPath = useMemo(() => getIconPath(icon), [icon]);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   const handleSave = async (e?: React.FormEvent | React.MouseEvent) => {
@@ -126,34 +127,35 @@ export default function NewHabit() {
       return;
     }
 
+    // Haptic feedback for tactile feel on mobile
+    try {
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(25);
+      }
+    } catch {}
+
     setIsSaving(true);
     setErrorMsg("");
 
     try {
-      // Enforce unique habit name (case-insensitive check)
+      // Find if habit exists by editId or by name (case-insensitive)
       const allHabits = await db.habits.toArray();
       const normalized = trimmedName.toLowerCase();
-      const duplicate = allHabits.find(
-        (h) => h.isActive && h.id !== editId && h.name.trim().toLowerCase() === normalized
+      const existingMatch = allHabits.find(
+        (h) => h.id === editId || h.name.trim().toLowerCase() === normalized
       );
 
-      if (duplicate) {
-        setErrorMsg(`A habit named "${trimmedName}" already exists. Each habit must have a unique name.`);
-        setIsSaving(false);
-        return;
-      }
-
-      const id = editId || `h_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const targetId = existingMatch?.id || editId || `h_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       const habitCount = await db.habits.count();
 
       const newHabit: Habit = {
-        id,
+        id: targetId,
         name: trimmedName,
         icon,
         goalDays: isCustomDays ? goalDays : 7,
-        sort: existingHabit?.sort ?? habitCount + 1,
+        sort: existingHabit?.sort ?? existingMatch?.sort ?? habitCount + 1,
         isActive: true,
-        createdAt: existingHabit?.createdAt ?? new Date().toISOString(),
+        createdAt: existingHabit?.createdAt ?? existingMatch?.createdAt ?? new Date().toISOString(),
       };
 
       await saveHabit(newHabit);
@@ -163,19 +165,31 @@ export default function NewHabit() {
         sessionStorage.removeItem("selected_icon");
       } catch {}
 
-      // Instant redirection to Today screen
+      // Instant real-time redirect to Today screen
       navigate("/", { replace: true });
-
-      // Immediate fallback to guarantee transition on mobile browsers
-      setTimeout(() => {
-        if (window.location.pathname.includes("new-habit")) {
-          window.location.href = "/";
-        }
-      }, 80);
     } catch (err: any) {
-      console.error("Failed to save habit:", err);
-      setErrorMsg("Error saving habit: " + (err?.message || String(err)));
-      setIsSaving(false);
+      console.error("Failed to save habit, trying direct store put:", err);
+      try {
+        const fallbackHabit: Habit = {
+          id: editId || `h_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: trimmedName,
+          icon,
+          goalDays: isCustomDays ? goalDays : 7,
+          sort: 1,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+        };
+        await db.habits.put(fallbackHabit);
+        try {
+          sessionStorage.removeItem(HABIT_DRAFT_KEY);
+          sessionStorage.removeItem("selected_icon");
+        } catch {}
+        navigate("/", { replace: true });
+      } catch (fallbackErr: any) {
+        console.error("Direct fallback failed:", fallbackErr);
+        setErrorMsg("Error saving habit: " + (err?.message || String(err)));
+        setIsSaving(false);
+      }
     }
   };
 
@@ -275,6 +289,13 @@ export default function NewHabit() {
             placeholder="e.g. Morning Walk, Meditation..."
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                (e.target as HTMLElement)?.blur();
+                handleSave();
+              }
+            }}
             style={{
               width: "100%",
               height: "48px",
@@ -435,9 +456,14 @@ export default function NewHabit() {
 
         {/* Save Button */}
         <button
-          type="button"
-          onClick={handleSave}
+          type="submit"
           disabled={isSaving}
+          onPointerDown={() => {
+            setIsPressed(true);
+            (document.activeElement as HTMLElement)?.blur();
+          }}
+          onPointerUp={() => setIsPressed(false)}
+          onPointerCancel={() => setIsPressed(false)}
           style={{
             width: "100%",
             height: "52px",
@@ -454,8 +480,10 @@ export default function NewHabit() {
             alignItems: "center",
             justifyContent: "center",
             opacity: isSaving ? 0.75 : 1,
-            transition: "all 0.15s ease",
+            transform: isPressed ? "scale(0.97)" : "scale(1)",
+            transition: "all 0.1s ease",
             WebkitTapHighlightColor: "transparent",
+            userSelect: "none",
           }}
         >
           {isSaving ? "Saving..." : (editId ? "Update Habit" : "Save Habit")}

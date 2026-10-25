@@ -5,7 +5,6 @@ import {
   db,
   toggleHabit,
   saveMood,
-  initDatabase,
   deleteHabit,
   type Habit,
 } from "../lib/db";
@@ -50,11 +49,6 @@ export default function Today() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [feelingsOpen, setFeelingsOpen] = useState(false);
-
-  // In Habit Tracker clone, seed with 0 habits
-  useMemo(() => {
-    initDatabase(true);
-  }, []);
 
   // Reactive Dexie Queries
   const habits = useLiveQuery(() => db.habits.filter((h) => h.isActive).sortBy("sort"), []) ?? [];
