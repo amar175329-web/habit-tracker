@@ -23,7 +23,6 @@ import {
   targetSoFar,
   streakDays,
   goalDaysDone,
-  isHabitEditable,
   calculateOverallStreak,
 } from "../lib/habitRules";
 import { canEdit, passesLeft } from "../lib/editPasses";
@@ -53,9 +52,6 @@ export default function Today() {
 
   const date = paramDate && /^\d{4}-\d{2}-\d{2}$/.test(paramDate) ? paramDate : todayStr;
   const isViewingToday = date === todayStr;
-  const isYesterday = useMemo(() => {
-    return date === fromMs(toMs(todayStr) - 86400000);
-  }, [date, todayStr]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [feelingsOpen, setFeelingsOpen] = useState(false);
@@ -749,39 +745,42 @@ export default function Today() {
           </div>
         )}
 
-        {/* Yesterday Grace Banner / Past Day Warning */}
-        {isYesterday && !usedFreezeDates.includes(date) && (
-          <div
-            style={{
-              background: "var(--tint)",
-              border: "1px solid var(--pr)",
-              borderRadius: "18px",
-              padding: "12px 14px",
-              marginTop: "14px",
-              fontSize: "12.5px",
-              fontWeight: 600,
-              color: "var(--prt)",
-            }}
-          >
-            Yesterday’s habits, sleep and mood can be changed until midnight tonight.
-          </div>
-        )}
-
-        {!isViewingToday && !isYesterday && !usedFreezeDates.includes(date) && (
-          <div
-            style={{
-              background: "var(--card)",
-              border: "1px solid var(--ln)",
-              borderRadius: "18px",
-              padding: "12px 14px",
-              marginTop: "14px",
-              fontSize: "12.5px",
-              fontWeight: 600,
-              color: "var(--mu)",
-            }}
-          >
-            This past day is locked and view-only.
-          </div>
+        {/* Past Day Status Banner (3 Weekly Edit Passes) */}
+        {!isViewingToday && !usedFreezeDates.includes(date) && (
+          isCurrentDayEditable ? (
+            <div
+              style={{
+                background: "var(--tint)",
+                border: "1px solid var(--pr)",
+                borderRadius: "18px",
+                padding: "12px 14px",
+                marginTop: "14px",
+                fontSize: "12.5px",
+                fontWeight: 600,
+                color: "var(--prt)",
+              }}
+            >
+              Day unlocked with weekly edit pass. Habits and mood are editable.
+            </div>
+          ) : (
+            <div
+              style={{
+                background: "var(--card)",
+                border: "1px solid var(--ln)",
+                borderRadius: "18px",
+                padding: "12px 14px",
+                marginTop: "14px",
+                fontSize: "12.5px",
+                fontWeight: 600,
+                color: "var(--mu)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span>This past day is locked ({passesCount} weekly passes left).</span>
+            </div>
+          )
         )}
 
         {/* Weekly Momentum Gauge Card */}
@@ -1020,8 +1019,44 @@ export default function Today() {
         {/* Mood Card */}
         {(() => {
           const changeCount = currentMood?.changeCount ?? (currentMood?.isLocked ? 3 : 0);
-          const isMoodLocked = Boolean(currentMood?.isLocked) || changeCount >= 3 || (!isViewingToday && !isYesterday);
+          const isMoodLocked = Boolean(currentMood?.isLocked) || changeCount >= 3 || (!isViewingToday && !isCurrentDayEditable);
           const remaining = Math.max(0, 3 - changeCount);
+
+          const handleUnlockPrompt = () => {
+            if (!isViewingToday && !isCurrentDayEditable) {
+              setModalConfig({
+                isOpen: true,
+                title: "Unlock Past Day?",
+                description: (
+                  <span>
+                    Unlock this past day for editing? This will use <strong>1 edit pass</strong> ({passesCount} remaining this week).
+                  </span>
+                ),
+                confirmLabel: "Unlock Day",
+                cancelLabel: "Cancel",
+                variant: "primary",
+                icon: "lock",
+                onConfirm: async () => {
+                  const res = await useEditPass(date, todayStr);
+                  if (res.ok) {
+                    setFeelingsOpen(true);
+                  } else {
+                    setModalConfig({
+                      isOpen: true,
+                      title: "Cannot Unlock Day",
+                      description:
+                        res.reason === "no-passes"
+                          ? "No edit passes left this week (3 of 3 used)."
+                          : "Cannot unlock this day.",
+                      confirmLabel: "OK",
+                      variant: "warning",
+                      icon: "warning",
+                    });
+                  }
+                },
+              });
+            }
+          };
 
           return (
             <div
@@ -1052,6 +1087,7 @@ export default function Today() {
                   ) : null}
                   {isMoodLocked ? (
                     <span
+                      onClick={!isViewingToday && !isCurrentDayEditable ? handleUnlockPrompt : undefined}
                       style={{
                         fontSize: "10px",
                         fontWeight: 700,
@@ -1059,9 +1095,10 @@ export default function Today() {
                         background: "var(--tint)",
                         padding: "2px 7px",
                         borderRadius: "99px",
+                        cursor: !isViewingToday && !isCurrentDayEditable ? "pointer" : "default",
                       }}
                     >
-                      🔒 Locked (3/3)
+                      🔒 {changeCount >= 3 ? "Locked (3/3)" : "Locked · Unlock ›"}
                     </span>
                   ) : changeCount > 0 ? (
                     <span
@@ -1087,7 +1124,7 @@ export default function Today() {
                 maxChanges={3}
                 isLocked={isMoodLocked}
                 onChange={async (score) => {
-                  if (!isMoodLocked && isHabitEditable(date, todayStr)) {
+                  if (!isMoodLocked && (isViewingToday || isCurrentDayEditable)) {
                     await saveMood(date, score, currentMood?.emotions || [], todayStr);
                   }
                 }}
@@ -1110,17 +1147,21 @@ export default function Today() {
                 </div>
               ) : (
                 <div
+                  onClick={!isViewingToday && !isCurrentDayEditable ? handleUnlockPrompt : undefined}
                   style={{
                     fontSize: "11px",
                     fontWeight: 600,
                     color: "var(--mu)",
                     marginTop: "8px",
                     textAlign: "center",
+                    cursor: !isViewingToday && !isCurrentDayEditable ? "pointer" : "default",
                   }}
                 >
-                  {currentMood?.emotions?.length
-                    ? `Feelings: ${currentMood.emotions.join(", ")}`
-                    : "Locked for today (3/3 changes used)"}
+                  {changeCount >= 3
+                    ? "Maximum changes reached for today (3/3 used)."
+                    : !isViewingToday && !isCurrentDayEditable
+                    ? `Day locked · Tap to unlock with weekly edit pass (${passesCount} left) ›`
+                    : "Past day feeling is view-only."}
                 </div>
               )}
             </div>
@@ -1182,7 +1223,7 @@ export default function Today() {
         initialEmotions={currentMood?.emotions || []}
         changeCount={currentMood?.changeCount ?? (currentMood?.isLocked ? 3 : 0)}
         maxChanges={3}
-        isLocked={Boolean(currentMood?.isLocked) || (!isViewingToday && !isYesterday)}
+        isLocked={Boolean(currentMood?.isLocked) || (!isViewingToday && !isCurrentDayEditable)}
       />
       {activeMenuHabit && (
         <HabitActionSheet

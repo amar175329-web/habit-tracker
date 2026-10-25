@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, toggleHabit, useHabits } from "../lib/db";
-import { isHabitEditable, fromMs, toMs } from "../lib/habitRules";
+import { weekStart } from "../lib/habitRules";
 import { getIconPath } from "../lib/icons";
 
 export default function DayDetail() {
@@ -18,13 +18,14 @@ export default function DayDetail() {
   }, []);
 
   const isToday = date === todayStr;
-  const isYesterday = useMemo(() => {
-    return date === fromMs(toMs(todayStr) - 86400000);
-  }, [date, todayStr]);
-
-  const editable = useMemo(() => {
-    return isHabitEditable(date, todayStr);
-  }, [date, todayStr]);
+  const currentWeekStart = useMemo(() => weekStart(todayStr), [todayStr]);
+  const unlockedPasses = useLiveQuery(
+    () => db.edit_passes.where("week_start").equals(currentWeekStart).toArray(),
+    [currentWeekStart]
+  ) ?? [];
+  const unlockedDates = useMemo(() => unlockedPasses.map((p) => p.date), [unlockedPasses]);
+  const isUnlocked = unlockedDates.includes(date);
+  const editable = isToday || isUnlocked;
 
   const habits = useHabits();
   const dayLogs = useLiveQuery(() => db.habit_logs.where("date").equals(date).toArray(), [date]) ?? [];
@@ -134,43 +135,45 @@ export default function DayDetail() {
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: "20px" }}>{formattedDate}</div>
             <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--mu)" }}>
-              {isToday ? "Today" : isYesterday ? "Yesterday" : "Past Day"}
+              {isToday ? "Today" : isUnlocked ? "Unlocked Past Day" : "Past Day"}
             </div>
           </div>
         </div>
 
         {/* Notice Banner */}
-        {isYesterday ? (
-          <div
-            style={{
-              background: "var(--tint)",
-              border: "1px solid var(--pr)",
-              borderRadius: "20px",
-              padding: "12px 14px",
-              marginTop: "14px",
-              fontSize: "13px",
-              fontWeight: 600,
-              color: "var(--prt)",
-            }}
-          >
-            Yesterday’s habits, sleep and mood can be changed until midnight tonight.
-          </div>
-        ) : !isToday ? (
-          <div
-            style={{
-              background: "var(--card)",
-              border: "1px solid var(--ln)",
-              borderRadius: "20px",
-              padding: "12px 14px",
-              marginTop: "14px",
-              fontSize: "13px",
-              fontWeight: 600,
-              color: "var(--mu)",
-            }}
-          >
-            This day is locked and view-only.
-          </div>
-        ) : null}
+        {!isToday && (
+          isUnlocked ? (
+            <div
+              style={{
+                background: "var(--tint)",
+                border: "1px solid var(--pr)",
+                borderRadius: "20px",
+                padding: "12px 14px",
+                marginTop: "14px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "var(--prt)",
+              }}
+            >
+              Day unlocked with weekly edit pass. Habits are editable.
+            </div>
+          ) : (
+            <div
+              style={{
+                background: "var(--card)",
+                border: "1px solid var(--ln)",
+                borderRadius: "20px",
+                padding: "12px 14px",
+                marginTop: "14px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "var(--mu)",
+              }}
+            >
+              This day is locked and view-only.
+            </div>
+          )
+        )}
 
         {/* Habits Card */}
         <div

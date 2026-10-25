@@ -205,13 +205,12 @@ export default function Mind() {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                padding: "6px 8px 0",
-                fontSize: "11px",
-                fontWeight: 600,
-                color: "var(--mu)",
+                padding: "8px 4px 0",
               }}
             >
-              <span>High: 4–5 · Low: 1–2 · Okay: 3</span>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--mu)", letterSpacing: ".08em" }}>
+                MOOD SCALE & REFERENCE
+              </span>
               <button
                 type="button"
                 onClick={() => navigate("/#mood-section")}
@@ -220,8 +219,8 @@ export default function Mind() {
                   border: "none",
                   padding: 0,
                   color: "var(--prt)",
-                  fontWeight: 700,
-                  fontSize: "11.5px",
+                  fontWeight: 800,
+                  fontSize: "12px",
                   cursor: "pointer",
                 }}
               >
@@ -229,16 +228,73 @@ export default function Mind() {
               </button>
             </div>
 
-            {/* Last 7 Days Orbs */}
+            {/* Visual 5-point Mood Scale */}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
+              {[
+                { score: 1, label: "Rough", emoji: "⛈️" },
+                { score: 2, label: "Low", emoji: "🌧️" },
+                { score: 3, label: "Okay", emoji: "🟡" },
+                { score: 4, label: "Good", emoji: "😊" },
+                { score: 5, label: "Energized", emoji: "⚡" },
+              ].map((m) => (
+                <span
+                  key={m.score}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    color: "var(--tx)",
+                    background: "var(--card)",
+                    border: "1px solid var(--ln)",
+                    borderRadius: "99px",
+                    padding: "4px 8px",
+                  }}
+                >
+                  <span>{m.emoji}</span>
+                  <span style={{ color: "var(--mu)" }}>{m.score}</span>
+                  <span>{m.label}</span>
+                </span>
+              ))}
+            </div>
+
+            {/* Last 7 Days Orbs with Mood Names */}
             <div style={{ background: "var(--card)", border: "1px solid var(--ln)", borderRadius: "24px", padding: "16px", marginTop: "12px" }}>
-              <div style={{ fontSize: "11px", letterSpacing: ".14em", fontWeight: 700, color: "var(--mu)" }}>LAST 7 DAYS</div>
-              <div style={{ display: "flex", marginTop: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: "11px", letterSpacing: ".14em", fontWeight: 700, color: "var(--mu)" }}>LAST 7 DAYS</div>
+                <div style={{ fontSize: "10.5px", fontWeight: 600, color: "var(--mu)" }}>Tap day to view</div>
+              </div>
+              <div style={{ display: "flex", marginTop: "12px", gap: "4px" }}>
                 {last7Days.map((d) => {
                   const mix = d.score ? d.score * 20 : 0;
                   const size = d.score ? 14 + d.score * 5 : 16;
+                  const moodInfo = d.score
+                    ? d.score === 1
+                      ? { name: "Rough", emoji: "⛈️" }
+                      : d.score === 2
+                      ? { name: "Low", emoji: "🌧️" }
+                      : d.score === 3
+                      ? { name: "Okay", emoji: "🟡" }
+                      : d.score === 4
+                      ? { name: "Good", emoji: "😊" }
+                      : { name: "Energized", emoji: "⚡" }
+                    : null;
+
                   return (
-                    <div key={d.date} style={{ flex: 1, textAlign: "center" }}>
-                      <div style={{ height: "44px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div
+                      key={d.date}
+                      onClick={() => navigate(d.date === todayStr ? "/" : `/day/${d.date}`)}
+                      style={{
+                        flex: 1,
+                        textAlign: "center",
+                        cursor: "pointer",
+                        padding: "4px 2px",
+                        borderRadius: "12px",
+                        transition: "background 0.15s ease",
+                      }}
+                    >
+                      <div style={{ height: "42px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {d.score ? (
                           <i
                             style={{
@@ -253,13 +309,26 @@ export default function Mind() {
                           <i style={{ border: "1px dashed var(--tr)", width: "16px", height: "16px", borderRadius: "50%", display: "block" }} />
                         )}
                       </div>
-                      <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--mu)" }}>{d.dayNum}</div>
+                      <div style={{ fontSize: "10.5px", fontWeight: 800, color: "var(--mu)" }}>{d.dayNum}</div>
+                      <div
+                        style={{
+                          fontSize: "9.5px",
+                          fontWeight: 700,
+                          color: moodInfo ? "var(--tx)" : "var(--mu)",
+                          marginTop: "2px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {moodInfo ? moodInfo.name : "—"}
+                      </div>
                     </div>
                   );
                 })}
               </div>
-              <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--mu)", marginTop: "8px" }}>
-                Bigger and darker orange = better day. Dashed = not logged.
+              <div style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--mu)", marginTop: "10px" }}>
+                Bigger and darker orange = higher mood. Dashed = not logged.
               </div>
             </div>
 

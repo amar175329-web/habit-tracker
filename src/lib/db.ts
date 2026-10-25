@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import { isHabitEditable, isReflectionEditable, isSleepOrMoodEditable } from "./habitRules";
+import { isHabitEditable, isReflectionEditable, isSleepOrMoodEditable, weekStart } from "./habitRules";
 
 export interface Habit {
   id: string;
@@ -272,8 +272,13 @@ export async function toggleHabit(
   date: string,
   today: string
 ): Promise<number> {
-  if (!isHabitEditable(date, today)) {
-    throw new Error(`Habit for ${date} is locked (only today and yesterday can be edited).`);
+  let canEdit = isHabitEditable(date, today);
+  if (!canEdit && weekStart(date) === weekStart(today)) {
+    const pass = await db.edit_passes.get(date);
+    if (pass) canEdit = true;
+  }
+  if (!canEdit) {
+    throw new Error(`Habit for ${date} is locked.`);
   }
 
   const logId = `${habitId}_${date}`;
@@ -329,7 +334,12 @@ export async function setHabitState(
   state: number,
   today: string
 ): Promise<void> {
-  if (!isHabitEditable(date, today)) {
+  let canEdit = isHabitEditable(date, today);
+  if (!canEdit && weekStart(date) === weekStart(today)) {
+    const pass = await db.edit_passes.get(date);
+    if (pass) canEdit = true;
+  }
+  if (!canEdit) {
     throw new Error(`Habit for ${date} is locked.`);
   }
 
@@ -361,7 +371,12 @@ export async function saveSleep(
   durationMin: number,
   today: string
 ): Promise<void> {
-  if (!isSleepOrMoodEditable(date, today)) {
+  let canEdit = isSleepOrMoodEditable(date, today);
+  if (!canEdit && weekStart(date) === weekStart(today)) {
+    const pass = await db.edit_passes.get(date);
+    if (pass) canEdit = true;
+  }
+  if (!canEdit) {
     throw new Error(`Sleep for ${date} is locked.`);
   }
 
@@ -393,7 +408,12 @@ export async function saveMood(
   emotions: string[],
   today: string
 ): Promise<MoodLog> {
-  if (!isSleepOrMoodEditable(date, today)) {
+  let canEdit = isSleepOrMoodEditable(date, today);
+  if (!canEdit && weekStart(date) === weekStart(today)) {
+    const pass = await db.edit_passes.get(date);
+    if (pass) canEdit = true;
+  }
+  if (!canEdit) {
     throw new Error(`Mood for ${date} is locked.`);
   }
 
