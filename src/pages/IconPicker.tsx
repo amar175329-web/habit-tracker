@@ -31,7 +31,11 @@ export default function IconPicker() {
 
   const handleSelectIcon = (icon: IconItem) => {
     sessionStorage.setItem("selected_icon", icon.name);
-    navigate(returnTo);
+    navigate(returnTo, { replace: true });
+  };
+
+  const handleBack = () => {
+    navigate(returnTo, { replace: true });
   };
 
   return (
@@ -54,7 +58,7 @@ export default function IconPicker() {
         <button
           type="button"
           aria-label="Back"
-          onClick={() => navigate(-1)}
+          onClick={handleBack}
           style={{
             width: "44px",
             height: "44px",

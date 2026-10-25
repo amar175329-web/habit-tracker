@@ -67,6 +67,31 @@ export default function Today() {
   // Optimistic overrides for 0ms buttery-smooth UI feedback
   const [optimisticOverrides, setOptimisticOverrides] = useState<Map<string, number>>(new Map());
 
+  // User-toggled full-width habit tiles (persisted in localStorage)
+  const [fullWidthHabits, setFullWidthHabits] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem("dailyos_habit_full_widths");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const handleToggleHabitWidth = (id: string) => {
+    setFullWidthHabits((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      try {
+        localStorage.setItem("dailyos_habit_full_widths", JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+  };
+
   // Clear optimistic override once Dexie commits and emits the matching state
   useEffect(() => {
     if (optimisticOverrides.size === 0) return;
@@ -443,7 +468,7 @@ export default function Today() {
               marginTop: "16px",
             }}
           >
-            {habits.map((h, idx) => {
+            {habits.map((h) => {
               const rawState = habitStateMap.get(h.id) ?? 0;
               const habitLogs = logsByHabit.get(h.id) ?? new Map();
               const doneCount = goalDaysDone(habitLogs, date);
@@ -465,7 +490,8 @@ export default function Today() {
                   completedThisWeek={doneCount}
                   isWeekDone={isWeekDone}
                   subtitle={subtitle}
-                  spanTwo={habits.length % 2 === 1 && idx === habits.length - 1}
+                  spanTwo={fullWidthHabits.has(h.id)}
+                  onToggleWidth={() => handleToggleHabitWidth(h.id)}
                   onToggle={() => handleToggleHabit(h.id)}
                   icon={
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -475,6 +501,64 @@ export default function Today() {
                 />
               );
             })}
+
+            {/* In-Grid + Add habit tile (visible when habits < 5, disappears at 5 habits) */}
+            {habits.length < 5 && (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate("/new-habit")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate("/new-habit");
+                  }
+                }}
+                aria-label="Add habit"
+                style={{
+                  height: "92px",
+                  borderRadius: "24px",
+                  border: "1.5px dashed var(--tr)",
+                  background: "var(--card)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  cursor: "pointer",
+                  color: "var(--mu)",
+                  transition: "all 0.15s ease",
+                  userSelect: "none",
+                  boxSizing: "border-box",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--pr)";
+                  e.currentTarget.style.color = "var(--pr)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--tr)";
+                  e.currentTarget.style.color = "var(--mu)";
+                }}
+              >
+                <div
+                  style={{
+                    width: "30px",
+                    height: "30px",
+                    borderRadius: "50%",
+                    background: "var(--tint)",
+                    color: "var(--prt)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </div>
+                <span style={{ fontSize: "12px", fontWeight: 700 }}>Add habit</span>
+              </div>
+            )}
           </div>
         )}
 

@@ -4,6 +4,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db, saveHabit, deleteHabit, type Habit } from "../lib/db";
 import { autoPickIcon, getIconPath } from "../lib/icons";
 
+const HABIT_DRAFT_KEY = "habit_draft_data";
+
 export default function NewHabit() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -14,19 +16,59 @@ export default function NewHabit() {
     [editId]
   );
 
-  const [name, setName] = useState("");
-  const [icon, setIcon] = useState("check");
-  const [goalDays, setGoalDays] = useState(7);
-  const [isCustomDays, setIsCustomDays] = useState(false);
-  const [userPickedIcon, setUserPickedIcon] = useState(false);
+  const [name, setName] = useState(() => {
+    try {
+      const draft = sessionStorage.getItem(HABIT_DRAFT_KEY);
+      if (draft) return JSON.parse(draft).name ?? "";
+    } catch {}
+    return "";
+  });
+
+  const [icon, setIcon] = useState(() => {
+    const picked = sessionStorage.getItem("selected_icon");
+    if (picked) return picked;
+    try {
+      const draft = sessionStorage.getItem(HABIT_DRAFT_KEY);
+      if (draft) return JSON.parse(draft).icon ?? "check";
+    } catch {}
+    return "check";
+  });
+
+  const [goalDays, setGoalDays] = useState(() => {
+    try {
+      const draft = sessionStorage.getItem(HABIT_DRAFT_KEY);
+      if (draft) return JSON.parse(draft).goalDays ?? 7;
+    } catch {}
+    return 7;
+  });
+
+  const [isCustomDays, setIsCustomDays] = useState(() => {
+    try {
+      const draft = sessionStorage.getItem(HABIT_DRAFT_KEY);
+      if (draft) return JSON.parse(draft).isCustomDays ?? false;
+    } catch {}
+    return false;
+  });
+
+  const [userPickedIcon, setUserPickedIcon] = useState(() => {
+    if (sessionStorage.getItem("selected_icon")) return true;
+    try {
+      const draft = sessionStorage.getItem(HABIT_DRAFT_KEY);
+      if (draft) return JSON.parse(draft).userPickedIcon ?? false;
+    } catch {}
+    return false;
+  });
 
   useEffect(() => {
     if (existingHabit) {
-      setName(existingHabit.name);
-      setIcon(existingHabit.icon);
-      setGoalDays(existingHabit.goalDays);
-      setIsCustomDays(existingHabit.goalDays < 7);
-      setUserPickedIcon(true);
+      const hasDraft = sessionStorage.getItem(HABIT_DRAFT_KEY);
+      if (!hasDraft) {
+        setName(existingHabit.name);
+        setIcon(existingHabit.icon);
+        setGoalDays(existingHabit.goalDays);
+        setIsCustomDays(existingHabit.goalDays < 7);
+        setUserPickedIcon(true);
+      }
     }
   }, [existingHabit]);
 
@@ -46,6 +88,22 @@ export default function NewHabit() {
       const suggested = autoPickIcon(val);
       setIcon(suggested);
     }
+  };
+
+  const handleOpenIconPicker = () => {
+    try {
+      sessionStorage.setItem(
+        HABIT_DRAFT_KEY,
+        JSON.stringify({
+          name,
+          icon,
+          goalDays,
+          isCustomDays,
+          userPickedIcon: true,
+        })
+      );
+    } catch {}
+    navigate(`/icon-picker?returnTo=${encodeURIComponent(location.pathname + location.search)}`);
   };
 
   const iconSvgPath = useMemo(() => getIconPath(icon), [icon]);
@@ -71,14 +129,30 @@ export default function NewHabit() {
     };
 
     await saveHabit(newHabit);
+    try {
+      sessionStorage.removeItem(HABIT_DRAFT_KEY);
+      sessionStorage.removeItem("selected_icon");
+    } catch {}
     navigate(-1);
   };
 
   const handleDelete = async () => {
     if (editId && confirm("Are you sure you want to delete this habit?")) {
       await deleteHabit(editId);
+      try {
+        sessionStorage.removeItem(HABIT_DRAFT_KEY);
+        sessionStorage.removeItem("selected_icon");
+      } catch {}
       navigate(-1);
     }
+  };
+
+  const handleBack = () => {
+    try {
+      sessionStorage.removeItem(HABIT_DRAFT_KEY);
+      sessionStorage.removeItem("selected_icon");
+    } catch {}
+    navigate(-1);
   };
 
   return (
@@ -101,7 +175,7 @@ export default function NewHabit() {
         <button
           type="button"
           aria-label="Back"
-          onClick={() => navigate(-1)}
+          onClick={handleBack}
           style={{
             width: "44px",
             height: "44px",
@@ -176,7 +250,7 @@ export default function NewHabit() {
 
           {/* Icon Selector Button */}
           <div
-            onClick={() => navigate(`/icon-picker?returnTo=${encodeURIComponent(location.pathname + location.search)}`)}
+            onClick={handleOpenIconPicker}
             style={{
               display: "flex",
               alignItems: "center",
