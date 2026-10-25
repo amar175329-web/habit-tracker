@@ -63,9 +63,6 @@ function ensureDbInitialized(database: any): Promise<void> {
   if (!dbInitPromise) {
     dbInitPromise = (async () => {
       try {
-        const seedHabit = database.prepare(
-          `INSERT INTO habits (id, label, sort_order, color_full, color_light, is_active, created_at) VALUES ('video', 'Video', 5, '#22c55e', '#86efac', 1, datetime('now')) ON CONFLICT(id) DO NOTHING`
-        );
         const createMood = database.prepare(
           `CREATE TABLE IF NOT EXISTS mood_logs (
             id TEXT PRIMARY KEY,
@@ -81,9 +78,8 @@ function ensureDbInitialized(database: any): Promise<void> {
         const idx4 = database.prepare(`CREATE INDEX IF NOT EXISTS mood_logs_date_idx ON mood_logs(date)`);
 
         if (typeof database.batch === "function") {
-          await database.batch([seedHabit, createMood, idx1, idx2, idx3, idx4]).catch(() => {});
+          await database.batch([createMood, idx1, idx2, idx3, idx4]).catch(() => {});
         } else {
-          await seedHabit.run().catch(() => {});
           await createMood.run().catch(() => {});
           await idx1.run().catch(() => {});
           await idx2.run().catch(() => {});
@@ -136,6 +132,37 @@ app.get("/api/health", async (c) => {
     tz: env("APP_TZ", "Asia/Kolkata"),
     time: new Date().toISOString(),
   });
+});
+
+// Purge all data including habits and all logs from Turso Cloud for complete clean slate
+app.all("/api/purge-all-data", async (c) => {
+  const database = getDb(c);
+  await ensureDbInitialized(database);
+  try {
+    await database.prepare("DELETE FROM habits").run().catch(() => {});
+    await database.prepare("DELETE FROM habit_logs").run().catch(() => {});
+    await database.prepare("DELETE FROM sleep_logs").run().catch(() => {});
+    await database.prepare("DELETE FROM mood_logs").run().catch(() => {});
+    await database.prepare("DELETE FROM daily_logs").run().catch(() => {});
+    return c.json({ ok: true, message: "All data and habits wiped completely from Turso" });
+  } catch (err: any) {
+    return c.json({ error: String(err?.message || err) }, 500);
+  }
+});
+
+// Purge all logs, keeping habits intact
+app.all("/api/purge-all-logs", async (c) => {
+  const database = getDb(c);
+  await ensureDbInitialized(database);
+  try {
+    await database.prepare("DELETE FROM habit_logs").run().catch(() => {});
+    await database.prepare("DELETE FROM sleep_logs").run().catch(() => {});
+    await database.prepare("DELETE FROM mood_logs").run().catch(() => {});
+    await database.prepare("DELETE FROM daily_logs").run().catch(() => {});
+    return c.json({ ok: true, message: "All logs wiped, habits preserved" });
+  } catch (err: any) {
+    return c.json({ error: String(err?.message || err) }, 500);
+  }
 });
 
 // Auth — login (public)

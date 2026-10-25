@@ -213,6 +213,14 @@ export async function clearAllData(): Promise<void> {
       await db.streak_freezes.clear();
     }
   );
+
+  // Trigger server-side complete data purge if hosted
+  try {
+    if (typeof window !== "undefined" && window.location && window.location.origin?.startsWith("http")) {
+      fetch("/api/purge-all-data", { method: "POST" }).catch(() => {});
+    }
+  } catch {}
+
   if (typeof window !== "undefined" && window.localStorage) {
     const keepKeys = new Set(["theme"]);
     const keysToRemove: string[] = [];
@@ -223,6 +231,7 @@ export async function clearAllData(): Promise<void> {
       }
     }
     keysToRemove.forEach((k) => window.localStorage.removeItem(k));
+    window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
   }
   if (typeof window !== "undefined" && window.sessionStorage) {
     try {
