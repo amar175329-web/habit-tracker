@@ -15,6 +15,7 @@ export interface HabitTileProps {
   onToggle?: () => void;
   spanTwo?: boolean;
   onToggleWidth?: () => void;
+  onMenuClick?: () => void;
   className?: string;
   style?: CSSProperties;
 }
@@ -31,6 +32,7 @@ export function HabitTile({
   onToggle,
   spanTwo = false,
   onToggleWidth,
+  onMenuClick,
   className = "",
   style = {},
 }: HabitTileProps) {
@@ -152,45 +154,43 @@ export function HabitTile({
             </span>
           ) : null}
 
-          {/* Width expand/collapse button */}
-          {onToggleWidth && (
+          {/* Habit 3-dots Menu button */}
+          {(onMenuClick || onToggleWidth) && (
             <button
               type="button"
-              aria-label={spanTwo ? "Collapse to half width" : "Expand to full width"}
-              title={spanTwo ? "Collapse to half width" : "Expand to full width"}
+              aria-label="Habit options"
+              title="Habit options"
               onClick={(e) => {
                 e.stopPropagation();
-                onToggleWidth();
+                if (onMenuClick) {
+                  onMenuClick();
+                } else if (onToggleWidth) {
+                  onToggleWidth();
+                }
               }}
               style={{
-                width: "24px",
-                height: "24px",
-                borderRadius: "8px",
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
                 border: "none",
-                background: "rgba(0,0,0,0.06)",
+                background: "rgba(0, 0, 0, 0.05)",
                 color: "inherit",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: "pointer",
                 padding: 0,
-                opacity: 0.6,
-                transition: "opacity 0.15s ease",
+                opacity: 0.65,
+                transition: "all 0.15s ease",
               }}
               onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.6")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.65")}
             >
-              {spanTwo ? (
-                // Collapse icon (><)
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7" />
-                </svg>
-              ) : (
-                // Expand icon (<>)
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-                </svg>
-              )}
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="2.2" />
+                <circle cx="12" cy="12" r="2.2" />
+                <circle cx="12" cy="19" r="2.2" />
+              </svg>
             </button>
           )}
         </div>

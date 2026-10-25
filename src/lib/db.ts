@@ -140,6 +140,27 @@ export class DailyOSDatabase extends Dexie {
 
 export const db = new DailyOSDatabase();
 
+export async function deduplicateHabits(): Promise<void> {
+  const habits = await db.habits.toArray();
+  const seen = new Set<string>();
+  const toDelete: string[] = [];
+
+  for (const h of habits) {
+    const key = h.name.trim().toLowerCase();
+    if (seen.has(key)) {
+      toDelete.push(h.id);
+    } else {
+      seen.add(key);
+    }
+  }
+
+  if (toDelete.length > 0) {
+    for (const id of toDelete) {
+      await deleteHabit(id);
+    }
+  }
+}
+
 /**
  * In Habit Tracker clone mode (seedZero = true default), habits table starts empty with 0 habits.
  */
@@ -148,6 +169,7 @@ export async function initDatabase(seedZero = true): Promise<void> {
   if (count === 0 && !seedZero) {
     await db.habits.bulkAdd(DEFAULT_HABITS);
   }
+  await deduplicateHabits().catch(() => {});
 }
 
 /**

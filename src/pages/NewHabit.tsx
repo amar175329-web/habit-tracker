@@ -110,8 +110,21 @@ export default function NewHabit() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
       alert("Please enter a habit name.");
+      return;
+    }
+
+    // Enforce unique habit name (case-insensitive check)
+    const allHabits = await db.habits.toArray();
+    const normalized = trimmedName.toLowerCase();
+    const duplicate = allHabits.find(
+      (h) => h.isActive && h.id !== editId && h.name.trim().toLowerCase() === normalized
+    );
+
+    if (duplicate) {
+      alert(`A habit named "${trimmedName}" already exists. Each habit must have a unique name.`);
       return;
     }
 
@@ -120,7 +133,7 @@ export default function NewHabit() {
 
     const newHabit: Habit = {
       id,
-      name: name.trim(),
+      name: trimmedName,
       icon,
       goalDays: isCustomDays ? goalDays : 7,
       sort: existingHabit?.sort ?? habitCount + 1,
@@ -133,7 +146,7 @@ export default function NewHabit() {
       sessionStorage.removeItem(HABIT_DRAFT_KEY);
       sessionStorage.removeItem("selected_icon");
     } catch {}
-    navigate(-1);
+    navigate("/", { replace: true });
   };
 
   const handleDelete = async () => {
@@ -143,7 +156,7 @@ export default function NewHabit() {
         sessionStorage.removeItem(HABIT_DRAFT_KEY);
         sessionStorage.removeItem("selected_icon");
       } catch {}
-      navigate(-1);
+      navigate("/", { replace: true });
     }
   };
 
@@ -152,7 +165,7 @@ export default function NewHabit() {
       sessionStorage.removeItem(HABIT_DRAFT_KEY);
       sessionStorage.removeItem("selected_icon");
     } catch {}
-    navigate(-1);
+    navigate("/", { replace: true });
   };
 
   return (

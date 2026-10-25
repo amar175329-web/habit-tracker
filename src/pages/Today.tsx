@@ -6,6 +6,8 @@ import {
   toggleHabit,
   saveMood,
   initDatabase,
+  deleteHabit,
+  type Habit,
 } from "../lib/db";
 import {
   weekStart,
@@ -25,6 +27,7 @@ import { HabitTile, type HabitState } from "../components/signature/HabitTile";
 import { MoodOrbs, type MoodScore } from "../components/signature/MoodOrbs";
 import { MenuSheet } from "../components/sheets/MenuSheet";
 import { FeelingsSheet } from "../components/sheets/FeelingsSheet";
+import { HabitActionSheet } from "../components/sheets/HabitActionSheet";
 
 export default function Today() {
   const { date: paramDate } = useParams();
@@ -90,6 +93,16 @@ export default function Today() {
       } catch {}
       return next;
     });
+  };
+
+  // Currently active habit for the 3-dots action sheet
+  const [activeMenuHabit, setActiveMenuHabit] = useState<Habit | null>(null);
+
+  const handleDeleteHabitFromMenu = async (habitId: string) => {
+    if (confirm("Are you sure you want to delete this habit?")) {
+      await deleteHabit(habitId);
+      setActiveMenuHabit(null);
+    }
   };
 
   // Clear optimistic override once Dexie commits and emits the matching state
@@ -493,7 +506,7 @@ export default function Today() {
                   isWeekDone={isWeekDone}
                   subtitle={subtitle}
                   spanTwo={fullWidthHabits.has(h.id)}
-                  onToggleWidth={() => handleToggleHabitWidth(h.id)}
+                  onMenuClick={() => setActiveMenuHabit(h)}
                   onToggle={() => handleToggleHabit(h.id)}
                   icon={
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -775,6 +788,23 @@ export default function Today() {
         maxChanges={3}
         isLocked={Boolean(currentMood?.isLocked) || (!isViewingToday && !isYesterday)}
       />
+      {activeMenuHabit && (
+        <HabitActionSheet
+          isOpen={!!activeMenuHabit}
+          onClose={() => setActiveMenuHabit(null)}
+          habitName={activeMenuHabit.name}
+          habitIconSvg={
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d={getIconPath(activeMenuHabit.icon)} />
+            </svg>
+          }
+          subtitle={`Goal: ${activeMenuHabit.goalDays} days a week`}
+          isExpanded={fullWidthHabits.has(activeMenuHabit.id)}
+          onToggleWidth={() => handleToggleHabitWidth(activeMenuHabit.id)}
+          onEdit={() => navigate(`/new-habit?edit=${activeMenuHabit.id}`)}
+          onDelete={() => handleDeleteHabitFromMenu(activeMenuHabit.id)}
+        />
+      )}
     </div>
   );
 }
