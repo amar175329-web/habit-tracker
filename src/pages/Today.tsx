@@ -26,6 +26,7 @@ import {
   streakDays,
   goalDaysDone,
   calculateOverallStreak,
+  isHabitActiveOnDate,
 } from "../lib/habitRules";
 import { canEdit, passesLeft } from "../lib/editPasses";
 import { getIconPath } from "../lib/icons";
@@ -343,6 +344,14 @@ export default function Today() {
     return map;
   }, [currentDayLogs, optimisticOverrides]);
 
+  // Habits active on the selected date (omits uncreated or deleted habits unless completed)
+  const displayedHabits = useMemo(() => {
+    return habits.filter((h) => {
+      const rawState = habitStateMap.get(h.id) ?? 0;
+      return isHabitActiveOnDate(h, date, rawState > 0);
+    });
+  }, [habits, habitStateMap, date]);
+
   // Overall logs map for streak and weekly scoring
   const logsByHabit = useMemo(() => {
     const map = new Map<string, Map<string, number>>();
@@ -411,28 +420,36 @@ export default function Today() {
       const isToday = d === todayStr;
       const isSelected = d === date;
       const isFuture = d > todayStr;
+      const isFrozen = usedFreezeDates.includes(d);
+      const isPast = d < todayStr;
+
+      // Filter habits that were active on day d
+      const activeHabitsOnD = habits.filter((h) => {
+        const state = logsByHabit.get(h.id)?.get(d) ?? 0;
+        return isHabitActiveOnDate(h, d, state > 0);
+      });
 
       let score = 0;
-      habits.forEach((h) => {
+      activeHabitsOnD.forEach((h) => {
         const state = logsByHabit.get(h.id)?.get(d) ?? 0;
         score += state === 2 ? 1 : state === 1 ? 0.5 : 0;
       });
 
-      const isFrozen = usedFreezeDates.includes(d);
-      const isPast = d < todayStr;
-      const maxScore = habits.length || 5;
-      const isMissed = isPast && !isFrozen && score < maxScore;
+      const maxScore = activeHabitsOnD.length;
+      const hasActiveHabits = activeHabitsOnD.length > 0;
+      const isNeutral = !hasActiveHabits || d < firstUseDate;
+      const isMissed = isPast && !isFrozen && hasActiveHabits && score === 0;
 
       items.push({
         dayLabel: labels[i],
         date: d,
         score,
-        maxScore,
+        maxScore: maxScore > 0 ? maxScore : 5,
         isMissed,
         isToday,
         isSelected,
         isFuture,
-        isNeutral: false,
+        isNeutral,
         isFrozen,
       });
     }
@@ -937,6 +954,23 @@ export default function Today() {
               + Add habit
             </button>
           </div>
+        ) : displayedHabits.length === 0 ? (
+          <div
+            id="habits-section"
+            style={{
+              background: "var(--card)",
+              border: "1px solid var(--ln)",
+              borderRadius: "24px",
+              padding: "28px 18px",
+              marginTop: "16px",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: "15px", color: "var(--tx)" }}>No habits active on this date</div>
+            <div style={{ fontSize: "13px", color: "var(--mu)", marginTop: "4px" }}>
+              Habits created later do not count as missed on earlier dates.
+            </div>
+          </div>
         ) : (
           <div
             id="habits-section"
@@ -947,7 +981,7 @@ export default function Today() {
               marginTop: "16px",
             }}
           >
-            {habits.map((h) => {
+            {displayedHabits.map((h) => {
               const rawState = habitStateMap.get(h.id) ?? 0;
               const habitLogs = logsByHabit.get(h.id) ?? new Map();
               const doneCount = goalDaysDone(habitLogs, date);

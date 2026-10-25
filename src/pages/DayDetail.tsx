@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, toggleHabit, useHabits, useEditPass, markDateUnlocked, getSessionUnlockedDates } from "../lib/db";
-import { weekStart } from "../lib/habitRules";
+import { weekStart, isHabitActiveOnDate } from "../lib/habitRules";
 import { getIconPath } from "../lib/icons";
 import { formatTime12h } from "../lib/sleep";
 import { classifyEmotion } from "../lib/emotions";
@@ -56,16 +56,13 @@ export default function DayDetail() {
   const reflection = useLiveQuery(() => db.reflections.get(date), [date]);
 
   const displayHabits = useMemo(() => {
-    if (isToday) return habits;
     const loggedHabitIds = new Set(dayLogs.map((l) => l.habitId));
     const combined = (allHabits.length > 0 ? allHabits : habits).filter((h) => {
-      if (loggedHabitIds.has(h.id)) return true;
-      if (h.isActive) return true;
-      if (h.archivedAt && h.archivedAt >= date) return true;
-      return false;
+      const hasCompleted = loggedHabitIds.has(h.id);
+      return isHabitActiveOnDate(h, date, hasCompleted);
     });
     return combined.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
-  }, [isToday, habits, allHabits, dayLogs, date]);
+  }, [habits, allHabits, dayLogs, date]);
 
   const [optimisticOverrides, setOptimisticOverrides] = useState<Map<string, number>>(new Map());
 

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { STREAK_BADGES, toMs, fromMs } from "../../lib/habitRules";
+import { STREAK_BADGES, toMs, fromMs, isHabitActiveOnDate } from "../../lib/habitRules";
 import { getIconPath } from "../../lib/icons";
 import { formatTime12h } from "../../lib/sleep";
 import { classifyEmotion } from "../../lib/emotions";
@@ -76,6 +76,7 @@ export function StreakSheet({
       hasPoints: boolean;
       isFrozen: boolean;
       isMissed: boolean;
+      isBeforeCreation: boolean;
       isToday: boolean;
       isLocked: boolean;
     }[] = [];
@@ -99,7 +100,13 @@ export function StreakSheet({
       const hasPoints = dayLogs.some((l) => (l.state ?? 0) > 0);
       const isFrozen = freezeSet.has(d);
       const isLocked = isFuture;
-      const isMissed = !isFuture && !hasPoints && !isFrozen;
+
+      const hasActiveHabits = allHabits.some((h) => {
+        const hasLog = dayLogs.some((l) => l.habitId === h.id && (l.state ?? 0) > 0);
+        return isHabitActiveOnDate(h, d, hasLog);
+      });
+      const isBeforeCreation = !isFuture && !hasActiveHabits && !hasPoints;
+      const isMissed = !isFuture && !hasPoints && !isFrozen && hasActiveHabits;
 
       list.push({
         date: d,
@@ -108,12 +115,13 @@ export function StreakSheet({
         hasPoints,
         isFrozen,
         isMissed,
+        isBeforeCreation,
         isToday,
         isLocked,
       });
     }
     return list;
-  }, [timelineOffset, todayStr, allHabitLogs, usedFreezeDates]);
+  }, [timelineOffset, todayStr, allHabits, allHabitLogs, usedFreezeDates]);
 
   // Reset to today on sheet open without any auto-move
   useEffect(() => {
@@ -188,7 +196,15 @@ export function StreakSheet({
     const reflection = allReflections.find((r) => r.date === targetDate);
     const isFrozen = usedFreezeDates.includes(targetDate);
     const hasCompletedHabits = completedHabits.length > 0;
-    const isMissed = targetDate < todayStr && !hasCompletedHabits && !isFrozen;
+
+    const relevantHabits = allHabits.filter((h) => {
+      const isDone = completedHabits.some((c) => c.id === h.id);
+      return isHabitActiveOnDate(h, targetDate, isDone);
+    });
+
+    const hasHabitsOnDate = relevantHabits.length > 0;
+    const isBeforeCreation = targetDate < todayStr && !hasHabitsOnDate && !hasCompletedHabits;
+    const isMissed = targetDate < todayStr && hasHabitsOnDate && !hasCompletedHabits && !isFrozen;
 
     let sleepDurationStr = "No sleep logged";
     let sleepIntervalStr = "";
@@ -218,13 +234,7 @@ export function StreakSheet({
       symbol: classifyEmotion(t).symbol,
     }));
 
-    const relevantHabits = allHabits.filter((h) => {
-      if (completedHabits.some((c) => c.id === h.id)) return true;
-      if (h.archivedAt && h.archivedAt < targetDate) return false;
-      return true;
-    });
-
-    const totalHabitsCount = relevantHabits.length > 0 ? relevantHabits.length : allHabits.length;
+    const totalHabitsCount = relevantHabits.length;
 
     return {
       date: targetDate,
@@ -232,6 +242,7 @@ export function StreakSheet({
       isToday,
       isFuture,
       isMissed,
+      isBeforeCreation,
       isFrozen,
       hasCompletedHabits,
       completedHabits,
@@ -631,6 +642,19 @@ export function StreakSheet({
                       <svg width="15" height="15" viewBox="0 0 24 24" fill={isSelected ? "var(--on)" : "#06B6D4"} aria-label="Streak freeze applied">
                         <path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z" />
                       </svg>
+                    ) : d.isBeforeCreation ? (
+                      /* Neutral inactive dot for days before habit creation */
+                      <span
+                        style={{
+                          width: "5px",
+                          height: "5px",
+                          borderRadius: "50%",
+                          background: isSelected ? "var(--on)" : "var(--ln)",
+                          display: "inline-block",
+                          opacity: 0.6,
+                        }}
+                        aria-label="No habits active"
+                      />
                     ) : (
                       /* Dot for missed or nothing done */
                       <span
@@ -710,8 +734,10 @@ export function StreakSheet({
                   ? "color-mix(in srgb, var(--fl) 15%, var(--card))"
                   : reportCard.isFrozen
                   ? "rgba(14, 165, 233, 0.15)"
+                  : reportCard.isBeforeCreation
+                  ? "var(--bg)"
                   : reportCard.isMissed
-                  ? "rgba(239, 68, 68, 0.12)"
+                  ? "color-mix(in srgb, var(--fl) 12%, var(--card))"
                   : "var(--tint)",
                 color: reportCard.isFuture
                   ? "var(--mu)"
@@ -719,9 +745,16 @@ export function StreakSheet({
                   ? "var(--fl)"
                   : reportCard.isFrozen
                   ? "#0284c7"
+                  : reportCard.isBeforeCreation
+                  ? "var(--mu)"
                   : reportCard.isMissed
-                  ? "#ef4444"
+                  ? "var(--fl)"
                   : "var(--prt)",
+                border: reportCard.isBeforeCreation
+                  ? "1px solid var(--ln)"
+                  : reportCard.isMissed
+                  ? "1px solid color-mix(in srgb, var(--fl) 25%, transparent)"
+                  : "none",
               }}
             >
               {reportCard.isFuture ? (
@@ -730,8 +763,10 @@ export function StreakSheet({
                 <>🔥 Streak Active</>
               ) : reportCard.isFrozen ? (
                 <>❄️ Saved by Freeze</>
+              ) : reportCard.isBeforeCreation ? (
+                <>⚪ No Habits Active</>
               ) : reportCard.isMissed ? (
-                <>⚠️ Missed Day</>
+                <>● Missed Day</>
               ) : (
                 <>⏳ Active Today</>
               )}
@@ -743,11 +778,11 @@ export function StreakSheet({
             <div
               style={{
                 marginTop: "16px",
-                background: "linear-gradient(135deg, rgba(14, 165, 233, 0.14) 0%, rgba(56, 189, 248, 0.05) 100%)",
-                border: "1.5px solid #38bdf8",
+                background: "var(--bg)",
+                border: "1px solid var(--ln)",
                 borderRadius: "20px",
                 padding: "16px",
-                boxShadow: "0 4px 16px rgba(14, 165, 233, 0.12)",
+                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.04)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -756,8 +791,8 @@ export function StreakSheet({
                     width: "38px",
                     height: "38px",
                     borderRadius: "12px",
-                    background: "rgba(14, 165, 233, 0.2)",
-                    color: "#0284c7",
+                    background: "rgba(14, 165, 233, 0.12)",
+                    color: "#0ea5e9",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -769,8 +804,8 @@ export function StreakSheet({
                   </svg>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "14px", fontWeight: 800, color: "#0284c7" }}>
-                    Restore Streak with Freeze
+                  <div style={{ fontSize: "14px", fontWeight: 800, color: "var(--tx)" }}>
+                    Streak Freeze Protection
                   </div>
                   <div style={{ fontSize: "12px", color: "var(--mu)", marginTop: "2px" }}>
                     Missed this day? Use 1 freeze token ({availableFreezes} left) to keep your streak unbroken.
@@ -785,24 +820,23 @@ export function StreakSheet({
                   onClick={() => handleClaimFreeze(reportCard.date)}
                   style={{
                     width: "100%",
-                    height: "46px",
-                    borderRadius: "23px",
+                    height: "44px",
+                    borderRadius: "99px",
                     border: "none",
-                    background: "linear-gradient(135deg, #0284c7, #0ea5e9)",
-                    color: "#fff",
-                    fontWeight: 800,
-                    fontSize: "14px",
+                    background: "var(--tx)",
+                    color: "var(--bg)",
+                    fontWeight: 700,
+                    fontSize: "13px",
                     marginTop: "12px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "8px",
                     cursor: claimingFreeze ? "not-allowed" : "pointer",
-                    boxShadow: "0 4px 14px rgba(14, 165, 233, 0.3)",
-                    transition: "transform 0.1s ease",
+                    transition: "opacity 0.15s ease",
                   }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z" />
                   </svg>
                   {claimingFreeze ? "Applying freeze..." : `Claim Streak Freeze (${availableFreezes} left)`}
@@ -820,8 +854,8 @@ export function StreakSheet({
             <div
               style={{
                 marginTop: "14px",
-                background: "linear-gradient(135deg, rgba(14, 165, 233, 0.14) 0%, rgba(56, 189, 248, 0.05) 100%)",
-                border: "1.5px solid #38bdf8",
+                background: "var(--bg)",
+                border: "1px solid var(--ln)",
                 borderRadius: "18px",
                 padding: "12px 14px",
                 display: "flex",
@@ -834,8 +868,8 @@ export function StreakSheet({
                   width: "32px",
                   height: "32px",
                   borderRadius: "10px",
-                  background: "rgba(14, 165, 233, 0.2)",
-                  color: "#0284c7",
+                  background: "rgba(14, 165, 233, 0.12)",
+                  color: "#0ea5e9",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -846,7 +880,7 @@ export function StreakSheet({
                   <path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z" />
                 </svg>
               </div>
-              <div style={{ fontSize: "12.5px", fontWeight: 700, color: "#0284c7" }}>
+              <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--tx)" }}>
                 Streak protected by Freeze token on this date ❄️
               </div>
             </div>
@@ -998,6 +1032,10 @@ export function StreakSheet({
                     </div>
                   );
                 })}
+              </div>
+            ) : reportCard.isBeforeCreation ? (
+              <div style={{ fontSize: "13px", color: "var(--mu)", fontWeight: 500, padding: "12px 0", textAlign: "center" }}>
+                No habits were active on this date.
               </div>
             ) : reportCard.isToday ? (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--bg)", padding: "10px 14px", borderRadius: "14px", border: "1px solid var(--ln)" }}>

@@ -195,3 +195,33 @@ export function isHabitEditable(date: string, today: string, unlocked?: string[]
 export function isSleepOrMoodEditable(date: string, today: string, unlocked?: string[]): boolean {
   return isHabitEditable(date, today, unlocked);
 }
+
+/**
+ * Habit lifecycle check for any given date:
+ * - A habit is only active starting from its createdAt date (YYYY-MM-DD).
+ * - Days prior to createdAt never show the habit and never count as missed.
+ * - If archived/deleted at archivedAt:
+ *    - On or after archivedAt: shows ONLY if user had completed/logged it on that date (state > 0).
+ *    - Prior to archivedAt: active.
+ * - If user logged/completed it on that date (hasCompletedLog = true), it always displays.
+ */
+export function isHabitActiveOnDate(
+  habit: { createdAt?: string; archivedAt?: string | null; isActive?: boolean },
+  targetDate: string,
+  hasCompletedLog: boolean = false
+): boolean {
+  if (hasCompletedLog) return true;
+  const createdDate = habit.createdAt ? habit.createdAt.slice(0, 10) : "";
+  if (createdDate && targetDate < createdDate) {
+    return false;
+  }
+  const archivedDate = habit.archivedAt ? habit.archivedAt.slice(0, 10) : null;
+  if (archivedDate) {
+    if (targetDate >= archivedDate) {
+      return false;
+    }
+    return true;
+  }
+  return habit.isActive !== false;
+}
+

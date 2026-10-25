@@ -10,6 +10,7 @@ import {
   streakDays,
   isReflectionEditable,
   isHabitEditable,
+  isHabitActiveOnDate,
 } from "./habitRules";
 
 describe("habitRules logic & scoring", () => {
@@ -105,5 +106,25 @@ describe("habitRules logic & scoring", () => {
     expect(isHabitEditable(yesterday, today)).toBe(true);
     expect(isHabitEditable(twoDaysAgo, today)).toBe(false);
     expect(isHabitEditable(tomorrow, today)).toBe(false);
+  });
+
+  it("checks habit lifecycle with isHabitActiveOnDate", () => {
+    const habit = {
+      createdAt: "2026-10-24T10:00:00Z",
+      archivedAt: "2026-10-25T15:00:00Z",
+      isActive: false,
+    };
+
+    // 1. Before creation date: inactive unless already logged
+    expect(isHabitActiveOnDate(habit, "2026-10-23", false)).toBe(false);
+    expect(isHabitActiveOnDate(habit, "2026-10-23", true)).toBe(true);
+
+    // 2. Active between creation and deletion
+    expect(isHabitActiveOnDate(habit, "2026-10-24", false)).toBe(true);
+
+    // 3. On or after deletion date: inactive if uncompleted, active if completed
+    expect(isHabitActiveOnDate(habit, "2026-10-25", false)).toBe(false);
+    expect(isHabitActiveOnDate(habit, "2026-10-25", true)).toBe(true);
+    expect(isHabitActiveOnDate(habit, "2026-10-26", false)).toBe(false);
   });
 });
