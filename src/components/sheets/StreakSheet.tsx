@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { STREAK_BADGES, toMs, fromMs } from "../../lib/habitRules";
+import { STREAK_BADGES, toMs, fromMs, weekStart } from "../../lib/habitRules";
 import { getIconPath } from "../../lib/icons";
 
 export interface HabitStreakItem {
@@ -48,7 +48,7 @@ export function StreakSheet({
   allReflections = [],
   usedFreezeDates = [],
 }: StreakSheetProps) {
-  const [timelineTab, setTimelineTab] = useState<"upcoming" | "past">("upcoming");
+  const [timelineOffset, setTimelineOffset] = useState<number>(0);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [claimingFreeze, setClaimingFreeze] = useState(false);
   const [claimSuccess, setClaimSuccess] = useState<string | null>(null);
@@ -65,7 +65,7 @@ export function StreakSheet({
   );
   const daysToGo = Math.max(0, nextBadge - streak);
 
-  // Generate days based on timelineTab (Today-first on the left for upcoming, reverse for past)
+  // Generate single 7-day strip based on timelineOffset (0 = this week, 1 = previous week, etc.)
   const timelineDays = useMemo(() => {
     const list: {
       date: string;
@@ -80,61 +80,53 @@ export function StreakSheet({
     const DAY_MS = 86400000;
     const freezeSet = new Set(usedFreezeDates);
 
-    if (timelineTab === "upcoming") {
-      // Index 0 is Today (25th on far left), followed by 6 upcoming days (26, 27, 28, 29, 30, 31 locked)
-      for (let i = 0; i < 7; i++) {
-        const d = fromMs(toMs(todayStr) + i * DAY_MS);
-        const dt = new Date(`${d}T00:00:00Z`);
-        const dayName = dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
-        const dayNum = d.slice(8);
+    // Current week start (Monday)
+    const curWeekStartMs = toMs(weekStart(todayStr));
+    const targetWeekStartMs = curWeekStartMs - timelineOffset * 7 * DAY_MS;
 
-        const dayLogs = allHabitLogs.filter((l) => l.date === d);
-        const hasPoints = dayLogs.some((l) => (l.state ?? 0) > 0);
-        const isFrozen = freezeSet.has(d);
-        const isToday = i === 0;
-        const isLocked = i > 0;
-        const isMissed = false;
+    for (let i = 0; i < 7; i++) {
+      const d = fromMs(targetWeekStartMs + i * DAY_MS);
+      const dt = new Date(`${d}T00:00:00Z`);
+      const dayName = dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+      const dayNum = d.slice(8);
 
-        list.push({
-          date: d,
-          dayName,
-          dayNum,
-          hasPoints,
-          isFrozen,
-          isMissed,
-          isToday,
-          isLocked,
-        });
-      }
-    } else {
-      // Past Days History: from Yesterday backwards (Day-1 to Day-7)
-      for (let i = 1; i <= 7; i++) {
-        const d = fromMs(toMs(todayStr) - i * DAY_MS);
-        const dt = new Date(`${d}T00:00:00Z`);
-        const dayName = dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
-        const dayNum = d.slice(8);
+      const isToday = d === todayStr;
+      const isFuture = d > todayStr;
+      const dayLogs = allHabitLogs.filter((l) => l.date === d);
+      const hasPoints = dayLogs.some((l) => (l.state ?? 0) > 0);
+      const isFrozen = freezeSet.has(d);
+      const isLocked = isFuture;
+      const isMissed = !isFuture && !hasPoints && !isFrozen;
 
-        const dayLogs = allHabitLogs.filter((l) => l.date === d);
-        const hasPoints = dayLogs.some((l) => (l.state ?? 0) > 0);
-        const isFrozen = freezeSet.has(d);
-        const isToday = false;
-        const isLocked = false;
-        const isMissed = !hasPoints && !isFrozen;
-
-        list.push({
-          date: d,
-          dayName,
-          dayNum,
-          hasPoints,
-          isFrozen,
-          isMissed,
-          isToday,
-          isLocked,
-        });
-      }
+      list.push({
+        date: d,
+        dayName,
+        dayNum,
+        hasPoints,
+        isFrozen,
+        isMissed,
+        isToday,
+        isLocked,
+      });
     }
     return list;
-  }, [timelineTab, todayStr, allHabitLogs, usedFreezeDates]);
+  }, [timelineOffset, todayStr, allHabitLogs, usedFreezeDates]);
+
+  const timelineHeaderLabel = useMemo(() => {
+    if (timelineOffset === 0) {
+      return "TIMELINE · THIS WEEK";
+    }
+    if (timelineDays.length === 7) {
+      const first = timelineDays[0].date;
+      const last = timelineDays[6].date;
+      const fDt = new Date(`${first}T00:00:00Z`);
+      const lDt = new Date(`${last}T00:00:00Z`);
+      const fStr = fDt.toLocaleDateString("en-US", { day: "numeric", month: "short", timeZone: "UTC" });
+      const lStr = lDt.toLocaleDateString("en-US", { day: "numeric", month: "short", timeZone: "UTC" });
+      return `TIMELINE · ${fStr.toUpperCase()} – ${lStr.toUpperCase()}`;
+    }
+    return "TIMELINE";
+  }, [timelineOffset, timelineDays]);
 
   // Selected Day Report Card details
   const reportCard = useMemo(() => {
@@ -418,68 +410,117 @@ export function StreakSheet({
           </div>
         </div>
 
-        {/* Date-wise Timeline with Tab Toggle */}
+        {/* Single Date-wise Timeline with Previous/Next Navigation */}
         <div style={{ marginTop: "22px" }}>
-          {/* Header Row: Title & Tab Switcher */}
+          {/* Header Row: Title & Action Arrow Buttons (‹ and ›) */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", padding: "0 2px" }}>
             <div style={{ fontSize: "11px", letterSpacing: ".12em", fontWeight: 800, color: "var(--mu)", textTransform: "uppercase" }}>
-              TIMELINE · {timelineTab === "upcoming" ? "TODAY & AHEAD" : "PAST DAYS HISTORY"}
+              {timelineHeaderLabel}
             </div>
 
-            {/* Tab Switcher: Today & Ahead vs Past Days */}
-            <div style={{ display: "flex", gap: "3px", background: "var(--card)", padding: "3px", borderRadius: "99px", border: "1px solid var(--ln)" }}>
+            {/* Navigation Controls: Piche Jaane Wala (‹) & Aage Jaane Wala (›) Action Buttons */}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              {timelineOffset > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimelineOffset(0);
+                    setSelectedDate(todayStr);
+                  }}
+                  style={{
+                    padding: "4px 9px",
+                    borderRadius: "99px",
+                    border: "1px solid var(--ln)",
+                    background: "var(--card)",
+                    color: "var(--prt)",
+                    fontSize: "11px",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  Today
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
-                  setTimelineTab("upcoming");
-                  setSelectedDate(todayStr);
+                  const newOffset = timelineOffset + 1;
+                  setTimelineOffset(newOffset);
+                  // Select Sunday of that past week
+                  const curWeekStartMs = toMs(weekStart(todayStr));
+                  const pastSunday = fromMs(curWeekStartMs - newOffset * 7 * 86400000 + 6 * 86400000);
+                  setSelectedDate(pastSunday);
                 }}
                 style={{
-                  padding: "4px 10px",
-                  borderRadius: "99px",
-                  border: 0,
-                  fontSize: "11px",
-                  fontWeight: 800,
-                  background: timelineTab === "upcoming" ? "var(--prt)" : "transparent",
-                  color: timelineTab === "upcoming" ? "var(--on)" : "var(--mu)",
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  border: "1px solid var(--ln)",
+                  background: "var(--card)",
+                  color: "var(--tx)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   cursor: "pointer",
-                  transition: "all 0.15s ease",
+                  fontSize: "18px",
+                  fontWeight: 800,
+                  transition: "background 0.15s ease",
+                  padding: 0,
+                  lineHeight: 1,
                 }}
+                aria-label="Previous week"
+                title="Previous days (‹)"
               >
-                Today & Ahead
+                ‹
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setTimelineTab("past");
-                  const yDate = fromMs(toMs(todayStr) - 86400000);
-                  setSelectedDate(yDate);
+                  const newOffset = Math.max(0, timelineOffset - 1);
+                  setTimelineOffset(newOffset);
+                  if (newOffset === 0) {
+                    setSelectedDate(todayStr);
+                  } else {
+                    const curWeekStartMs = toMs(weekStart(todayStr));
+                    const pastSunday = fromMs(curWeekStartMs - newOffset * 7 * 86400000 + 6 * 86400000);
+                    setSelectedDate(pastSunday);
+                  }
                 }}
+                disabled={timelineOffset === 0}
                 style={{
-                  padding: "4px 10px",
-                  borderRadius: "99px",
-                  border: 0,
-                  fontSize: "11px",
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  border: "1px solid var(--ln)",
+                  background: "var(--card)",
+                  color: "var(--tx)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: timelineOffset === 0 ? "not-allowed" : "pointer",
+                  opacity: timelineOffset === 0 ? 0.35 : 1,
+                  fontSize: "18px",
                   fontWeight: 800,
-                  background: timelineTab === "past" ? "var(--prt)" : "transparent",
-                  color: timelineTab === "past" ? "var(--on)" : "var(--mu)",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
+                  transition: "background 0.15s ease",
+                  padding: 0,
+                  lineHeight: 1,
                 }}
+                aria-label="Next week"
+                title="Next days (›)"
               >
-                ‹ Past Days
+                ›
               </button>
             </div>
           </div>
 
-          {/* Days Strip */}
+          {/* Days Strip: All 7 days in a single clean row */}
           <div
             style={{
-              display: "flex",
-              gap: "8px",
-              overflowX: "auto",
-              paddingBottom: "8px",
-              scrollbarWidth: "none",
+              display: "grid",
+              gridTemplateColumns: "repeat(7, 1fr)",
+              gap: "6px",
+              paddingBottom: "4px",
             }}
           >
             {timelineDays.map((d) => {
@@ -493,12 +534,15 @@ export function StreakSheet({
                     if (!d.isLocked) setSelectedDate(d.date);
                   }}
                   style={{
-                    minWidth: "48px",
-                    padding: "8px 4px",
+                    padding: "9px 2px",
                     borderRadius: "16px",
                     background: isSelected ? "var(--prt)" : "var(--card)",
                     color: isSelected ? "var(--on)" : "var(--tx)",
-                    border: isSelected ? "1.5px solid var(--pr)" : "1px solid var(--ln)",
+                    border: isSelected
+                      ? "1.5px solid var(--pr)"
+                      : d.isToday
+                      ? "1.5px solid var(--pr)"
+                      : "1px solid var(--ln)",
                     opacity: d.isLocked ? 0.45 : 1,
                     display: "flex",
                     flexDirection: "column",
@@ -516,7 +560,7 @@ export function StreakSheet({
                     {d.dayNum}
                   </div>
 
-                  {/* Status Indicator (Clean, No Cross Buttons!) */}
+                  {/* Status Indicator: strictly 3 states (Flame / Cyan Flame / Dot) per user instruction */}
                   <div
                     style={{
                       marginTop: "6px",
@@ -527,36 +571,31 @@ export function StreakSheet({
                     }}
                   >
                     {d.isLocked ? (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                       </svg>
                     ) : d.hasPoints ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill={isSelected ? "var(--on)" : "var(--fl)"}>
+                      /* Lal / Orange Flame */
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill={isSelected ? "var(--on)" : "var(--fl, #F97316)"} aria-label="Streak active">
                         <path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z" />
                       </svg>
                     ) : d.isFrozen ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill={isSelected ? "var(--on)" : "#0284c7"}>
+                      /* Neela Aag (Cyan Ice Flame) */
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill={isSelected ? "var(--on)" : "#06B6D4"} aria-label="Streak freeze applied">
                         <path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z" />
                       </svg>
-                    ) : d.isToday ? (
-                      <span
-                        style={{
-                          width: "6px",
-                          height: "6px",
-                          borderRadius: "50%",
-                          background: isSelected ? "var(--on)" : "var(--pr)",
-                          boxShadow: "0 0 6px var(--pr)",
-                        }}
-                      />
                     ) : (
+                      /* Dot for missed or nothing done */
                       <span
                         style={{
-                          width: "6px",
-                          height: "6px",
+                          width: "7px",
+                          height: "7px",
                           borderRadius: "50%",
-                          border: `1.5px solid ${isSelected ? "rgba(255,255,255,0.6)" : "var(--tr)"}`,
+                          background: isSelected ? "var(--on)" : "var(--tr, rgba(0,0,0,0.22))",
+                          display: "inline-block",
                         }}
+                        aria-label="No activity"
                       />
                     )}
                   </div>
