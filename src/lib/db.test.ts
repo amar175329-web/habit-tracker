@@ -138,4 +138,25 @@ describe("DailyOS Dexie Database Layer", () => {
     const importedRefl = await newDb.reflections.get("2026-10-24");
     expect(importedRefl?.content).toContain("DailyOS");
   });
+
+  it("unlocks past day with composite id and permits editing", async () => {
+    const pastDate = "2026-10-21";
+    const weekStartStr = "2026-10-19";
+    const editPassId = `${weekStartStr}_${pastDate}`;
+
+    await testDb.edit_passes.put({
+      id: editPassId,
+      week_start: weekStartStr,
+      date: pastDate,
+      used_at: new Date().toISOString(),
+    });
+
+    const passes = await testDb.edit_passes.where("week_start").equals(weekStartStr).toArray();
+    expect(passes.length).toBe(1);
+    expect(passes[0].date).toBe(pastDate);
+
+    const passByDate = await testDb.edit_passes.where("date").equals(pastDate).first();
+    expect(passByDate).toBeDefined();
+    expect(passByDate?.id).toBe(editPassId);
+  });
 });
