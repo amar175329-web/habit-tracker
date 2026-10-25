@@ -6,6 +6,8 @@ import {
   toggleHabit,
   saveMood,
   deleteHabit,
+  getCachedHabits,
+  setCachedHabits,
   type Habit,
 } from "../lib/db";
 import {
@@ -51,19 +53,41 @@ export default function Today() {
   const [feelingsOpen, setFeelingsOpen] = useState(false);
 
   // Reactive Dexie Queries
-  const rawHabits = useLiveQuery(() => db.habits.filter((h) => h.isActive).sortBy("sort"), []) ?? [];
+  const dbHabits = useLiveQuery(() => db.habits.filter((h) => h.isActive).sortBy("sort"), []);
+
+  // Track deleted habit IDs locally for 0ms instantaneous UI feedback
+  const [deletedHabitIds, setDeletedHabitIds] = useState<Set<string>>(new Set());
+
+  // Synchronize localStorage cache whenever dbHabits updates from IndexedDB
+  useEffect(() => {
+    if (dbHabits && dbHabits.length > 0) {
+      setCachedHabits(dbHabits);
+    }
+  }, [dbHabits]);
+
+  // Merge dbHabits and cached habits, eliminating duplicates by ID
   const habits = useMemo(() => {
-    try {
-      const recentRaw = sessionStorage.getItem("last_saved_habit");
-      if (recentRaw) {
-        const recent = JSON.parse(recentRaw) as Habit;
-        if (!rawHabits.some((h) => h.id === recent.id || h.name.trim().toLowerCase() === recent.name.trim().toLowerCase())) {
-          return [recent, ...rawHabits];
-        }
+    const cached = getCachedHabits().filter((h) => h.isActive);
+    const map = new Map<string, Habit>();
+
+    // Seed with cached habits
+    cached.forEach((h) => {
+      if (!deletedHabitIds.has(h.id)) {
+        map.set(h.id, h);
       }
-    } catch {}
-    return rawHabits;
-  }, [rawHabits]);
+    });
+
+    // Merge Dexie habits
+    if (dbHabits) {
+      dbHabits.forEach((h) => {
+        if (!deletedHabitIds.has(h.id)) {
+          map.set(h.id, h);
+        }
+      });
+    }
+
+    return Array.from(map.values()).sort((a, b) => a.sort - b.sort);
+  }, [dbHabits, deletedHabitIds]);
   const currentDayLogs = useLiveQuery(() => db.habit_logs.where("date").equals(date).toArray(), [date]) ?? [];
   const allLogs = useLiveQuery(() => db.habit_logs.toArray(), []) ?? [];
   const currentSleep = useLiveQuery(() => db.sleep_logs.get(date), [date]);
@@ -105,9 +129,12 @@ export default function Today() {
   const [activeMenuHabit, setActiveMenuHabit] = useState<Habit | null>(null);
 
   const handleDeleteHabitFromMenu = async (habitId: string) => {
-    if (confirm("Are you sure you want to delete this habit?")) {
+    setDeletedHabitIds((prev) => new Set(prev).add(habitId));
+    setActiveMenuHabit(null);
+    try {
       await deleteHabit(habitId);
-      setActiveMenuHabit(null);
+    } catch (err) {
+      console.error("Delete error:", err);
     }
   };
 

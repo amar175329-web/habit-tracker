@@ -280,15 +280,15 @@ export async function toggleHabit(
   };
 
   try {
-    await db.transaction("rw", db.habit_logs, db.outbox, async () => {
-      await db.habit_logs.put(row);
+    await db.habit_logs.put(row);
+    try {
       await db.outbox.add({
         table: "habit_logs",
         op: "update",
         row,
         ts: Date.now(),
       });
-    });
+    } catch {}
   } finally {
     setTimeout(() => {
       if (inFlightToggles.get(logId) === nextState) {
@@ -320,15 +320,15 @@ export async function setHabitState(
     updatedAt: now,
   };
 
-  await db.transaction("rw", db.habit_logs, db.outbox, async () => {
-    await db.habit_logs.put(row);
+  await db.habit_logs.put(row);
+  try {
     await db.outbox.add({
       table: "habit_logs",
       op: "update",
       row,
       ts: Date.now(),
     });
-  });
+  } catch {}
 }
 
 export async function saveSleep(
@@ -433,8 +433,39 @@ export async function saveReflection(
   });
 }
 
+const HABITS_CACHE_KEY = "dailyos_habits_cache_v1";
+
+export function getCachedHabits(): Habit[] {
+  if (typeof window === "undefined" || !window.localStorage) return [];
+  try {
+    const raw = window.localStorage.getItem(HABITS_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as Habit[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function setCachedHabits(habits: Habit[]): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(HABITS_CACHE_KEY, JSON.stringify(habits));
+  } catch {}
+}
+
 export async function saveHabit(habit: Habit): Promise<void> {
   await db.habits.put(habit);
+
+  try {
+    const list = getCachedHabits();
+    const idx = list.findIndex((h) => h.id === habit.id);
+    if (idx >= 0) {
+      list[idx] = habit;
+    } else {
+      list.push(habit);
+    }
+    setCachedHabits(list);
+  } catch {}
+
   try {
     await db.outbox.add({
       table: "habits",
@@ -447,6 +478,12 @@ export async function saveHabit(habit: Habit): Promise<void> {
 
 export async function deleteHabit(id: string): Promise<void> {
   await db.habits.delete(id);
+
+  try {
+    const list = getCachedHabits().filter((h) => h.id !== id);
+    setCachedHabits(list);
+  } catch {}
+
   try {
     await db.outbox.add({
       table: "habits",

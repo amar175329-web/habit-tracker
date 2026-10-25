@@ -112,11 +112,12 @@ export default function NewHabit() {
   const [isPressed, setIsPressed] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSave = (e?: React.FormEvent | React.MouseEvent) => {
+  const handleSave = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
+    if (isSaving) return;
 
     // Dismiss soft keyboard immediately on mobile
     (document.activeElement as HTMLElement)?.blur();
@@ -143,43 +144,45 @@ export default function NewHabit() {
       name: trimmedName,
       icon,
       goalDays: isCustomDays ? goalDays : 7,
-      sort: existingHabit?.sort ?? 1,
+      sort: existingHabit?.sort ?? Date.now(),
       isActive: true,
       createdAt: existingHabit?.createdAt ?? new Date().toISOString(),
     };
 
-    // 1. Instantly store in sessionStorage for 0ms optimistic render on Today page
+    // Clean up draft and icon picker keys
     try {
-      sessionStorage.setItem("last_saved_habit", JSON.stringify(newHabit));
       sessionStorage.removeItem(HABIT_DRAFT_KEY);
       sessionStorage.removeItem("selected_icon");
+      sessionStorage.removeItem("last_saved_habit");
     } catch {}
 
-    // 2. Persist to IndexedDB in parallel
-    saveHabit(newHabit).catch(() => {
-      db.habits.put(newHabit).catch(() => {});
-    });
+    // Await saving to IndexedDB & cache (capped at 400ms for safety)
+    try {
+      await Promise.race([
+        saveHabit(newHabit),
+        new Promise((resolve) => setTimeout(resolve, 400)),
+      ]);
+    } catch (err) {
+      console.error("Save error:", err);
+    }
 
-    // 3. Instant zero-delay redirection to Today screen
+    // Smooth client-side SPA navigation to Today screen
     navigate("/", { replace: true });
-
-    // 4. Bulletproof fallback if router navigation was delayed on mobile
-    setTimeout(() => {
-      if (window.location.pathname.includes("new-habit")) {
-        window.location.replace("/");
-      }
-    }, 80);
   };
 
   const handleDelete = async () => {
-    if (editId && confirm("Are you sure you want to delete this habit?")) {
+    if (!editId) return;
+    try {
       await deleteHabit(editId);
-      try {
-        sessionStorage.removeItem(HABIT_DRAFT_KEY);
-        sessionStorage.removeItem("selected_icon");
-      } catch {}
-      navigate("/", { replace: true });
+    } catch (e) {
+      console.error("Delete error:", e);
     }
+    try {
+      sessionStorage.removeItem(HABIT_DRAFT_KEY);
+      sessionStorage.removeItem("selected_icon");
+      sessionStorage.removeItem("last_saved_habit");
+    } catch {}
+    navigate("/", { replace: true });
   };
 
   const handleBack = () => {
