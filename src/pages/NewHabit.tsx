@@ -108,45 +108,75 @@ export default function NewHabit() {
 
   const iconSvgPath = useMemo(() => getIconPath(icon), [icon]);
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleSave = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Dismiss soft keyboard immediately on mobile
+    (document.activeElement as HTMLElement)?.blur();
+
     const trimmedName = name.trim();
     if (!trimmedName) {
-      alert("Please enter a habit name.");
+      setErrorMsg("Please enter a habit name.");
       return;
     }
 
-    // Enforce unique habit name (case-insensitive check)
-    const allHabits = await db.habits.toArray();
-    const normalized = trimmedName.toLowerCase();
-    const duplicate = allHabits.find(
-      (h) => h.isActive && h.id !== editId && h.name.trim().toLowerCase() === normalized
-    );
+    setIsSaving(true);
+    setErrorMsg("");
 
-    if (duplicate) {
-      alert(`A habit named "${trimmedName}" already exists. Each habit must have a unique name.`);
-      return;
-    }
-
-    const id = editId || `h_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const habitCount = await db.habits.count();
-
-    const newHabit: Habit = {
-      id,
-      name: trimmedName,
-      icon,
-      goalDays: isCustomDays ? goalDays : 7,
-      sort: existingHabit?.sort ?? habitCount + 1,
-      isActive: true,
-      createdAt: existingHabit?.createdAt ?? new Date().toISOString(),
-    };
-
-    await saveHabit(newHabit);
     try {
-      sessionStorage.removeItem(HABIT_DRAFT_KEY);
-      sessionStorage.removeItem("selected_icon");
-    } catch {}
-    navigate("/", { replace: true });
+      // Enforce unique habit name (case-insensitive check)
+      const allHabits = await db.habits.toArray();
+      const normalized = trimmedName.toLowerCase();
+      const duplicate = allHabits.find(
+        (h) => h.isActive && h.id !== editId && h.name.trim().toLowerCase() === normalized
+      );
+
+      if (duplicate) {
+        setErrorMsg(`A habit named "${trimmedName}" already exists. Each habit must have a unique name.`);
+        setIsSaving(false);
+        return;
+      }
+
+      const id = editId || `h_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const habitCount = await db.habits.count();
+
+      const newHabit: Habit = {
+        id,
+        name: trimmedName,
+        icon,
+        goalDays: isCustomDays ? goalDays : 7,
+        sort: existingHabit?.sort ?? habitCount + 1,
+        isActive: true,
+        createdAt: existingHabit?.createdAt ?? new Date().toISOString(),
+      };
+
+      await saveHabit(newHabit);
+
+      try {
+        sessionStorage.removeItem(HABIT_DRAFT_KEY);
+        sessionStorage.removeItem("selected_icon");
+      } catch {}
+
+      // Instant redirection to Today screen
+      navigate("/", { replace: true });
+
+      // Immediate fallback to guarantee transition on mobile browsers
+      setTimeout(() => {
+        if (window.location.pathname.includes("new-habit")) {
+          window.location.href = "/";
+        }
+      }, 80);
+    } catch (err: any) {
+      console.error("Failed to save habit:", err);
+      setErrorMsg("Error saving habit: " + (err?.message || String(err)));
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -385,24 +415,50 @@ export default function NewHabit() {
           )}
         </div>
 
+        {errorMsg && (
+          <div
+            style={{
+              marginTop: "14px",
+              padding: "12px 16px",
+              borderRadius: "16px",
+              background: "rgba(239, 68, 68, 0.12)",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              color: "#ef4444",
+              fontSize: "13px",
+              fontWeight: 700,
+              textAlign: "center",
+            }}
+          >
+            {errorMsg}
+          </div>
+        )}
+
         {/* Save Button */}
         <button
-          type="submit"
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving}
           style={{
             width: "100%",
             height: "52px",
             borderRadius: "26px",
-            background: "var(--pr)",
+            background: isSaving ? "var(--tr)" : "var(--pr)",
             color: "var(--on)",
             border: "none",
             fontWeight: 800,
             fontSize: "15px",
             marginTop: "20px",
-            cursor: "pointer",
+            cursor: isSaving ? "not-allowed" : "pointer",
             boxShadow: "0 8px 24px rgba(15, 60, 55, 0.2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: isSaving ? 0.75 : 1,
+            transition: "all 0.15s ease",
+            WebkitTapHighlightColor: "transparent",
           }}
         >
-          {editId ? "Update Habit" : "Save Habit"}
+          {isSaving ? "Saving..." : (editId ? "Update Habit" : "Save Habit")}
         </button>
       </form>
     </div>
