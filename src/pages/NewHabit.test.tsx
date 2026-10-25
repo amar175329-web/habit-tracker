@@ -58,4 +58,41 @@ describe("NewHabit Icon Picker Regression Test", () => {
     });
     expect((nameInput as HTMLInputElement).value).toBe("paani peena");
   });
+
+  it("shows duplicate confirmation modal when habit name is similar to existing habit", async () => {
+    localStorage.setItem(
+      "dailyos_habits_cache_v1",
+      JSON.stringify([
+        { id: "h_1", name: "Morning Gym", icon: "dumbbell", goalDays: 7, sort: 1, isActive: true, createdAt: "2026-10-01" },
+      ])
+    );
+
+    render(
+      <BrowserRouter>
+        <NewHabit />
+      </BrowserRouter>
+    );
+
+    const nameInput = screen.getByPlaceholderText(/Morning Walk/i);
+    await act(async () => {
+      fireEvent.change(nameInput, { target: { value: "Gym" } });
+    });
+
+    const saveBtn = screen.getByText(/Save Habit/i);
+    await act(async () => {
+      fireEvent.click(saveBtn);
+    });
+
+    // Should display confirmation modal with Similar Habit Found
+    expect(screen.getByText("Similar Habit Found")).toBeDefined();
+    expect(screen.getByText(/Morning Gym/i)).toBeDefined();
+
+    // Clicking Cancel keeps user on the form
+    const cancelBtn = screen.getByRole("button", { name: "Cancel" });
+    await act(async () => {
+      fireEvent.click(cancelBtn);
+    });
+
+    expect((nameInput as HTMLInputElement).value).toBe("Gym");
+  });
 });

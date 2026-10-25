@@ -14,6 +14,7 @@ import {
 } from "../lib/db";
 import { autoPickIcon, getIconPath } from "../lib/icons";
 import { IconPickerSheet } from "../components/sheets/IconPickerSheet";
+import { ConfirmModal } from "../components/modals/ConfirmModal";
 
 const HABIT_DRAFT_KEY = "habit_draft_data";
 
@@ -151,44 +152,20 @@ export default function NewHabit() {
   const [isPressed, setIsPressed] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [duplicateModalConfig, setDuplicateModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: React.ReactNode;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+  });
 
-  const handleSave = (e?: React.FormEvent | React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    if (isSaving) return;
-
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      setErrorMsg("Please enter a habit name.");
-      return;
-    }
-
-    // Dismiss soft keyboard immediately on mobile
-    (document.activeElement as HTMLElement)?.blur();
-
-    // Check for duplicate habit name across DB and cache (case-insensitive)
-    // NOTE: Name alone determines uniqueness; icon is NOT included in the duplicate check.
-    const deleted = getDeletedHabitIds();
-    const cachedList = getCachedHabits().filter((h) => h.isActive && !deleted.has(h.id));
-    const dbList = (allDbHabits ?? []).filter((h) => h.isActive && !deleted.has(h.id));
-    const activeMap = new Map<string, Habit>();
-    cachedList.forEach((h) => activeMap.set(h.id, h));
-    dbList.forEach((h) => activeMap.set(h.id, h));
-    const allActive = Array.from(activeMap.values());
-
-    const normalized = trimmedName.toLowerCase();
-    const duplicate = allActive.find(
-      (h) => h.id !== editId && h.name.trim().toLowerCase() === normalized
-    );
-
-    if (duplicate) {
-      setErrorMsg(`A habit named "${trimmedName}" already exists.`);
-      setIsSaving(false);
-      return;
-    }
-
+  const executeSave = (trimmedName: string) => {
     // Haptic feedback for tactile feel on mobile
     try {
       if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -198,6 +175,9 @@ export default function NewHabit() {
 
     setIsSaving(true);
     setErrorMsg("");
+
+    const deleted = getDeletedHabitIds();
+    const cachedList = getCachedHabits().filter((h) => h.isActive && !deleted.has(h.id));
 
     // Monotonically append to the end (last position) across both DB and cache
     const allKnown = [...(allDbHabits ?? []), ...cachedList];
@@ -238,18 +218,89 @@ export default function NewHabit() {
         list.push(newHabit);
       }
       setCachedHabits(list);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
-      }
     } catch {}
 
-    // 2. Smooth, instantaneous client-side SPA navigation to Today screen (0ms redirect!)
+    // Broadcast instant UI update event
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
+    }
+
+    // 2. Perform 0ms optimistic SPA navigation back to Today
     navigate("/", { replace: true });
 
-    // 3. Persist to Dexie and Outbox asynchronously in background (never blocks UI)
+    // 3. Persist to Dexie IndexedDB in background (fire-and-forget)
     saveHabit(newHabit).catch((err) => {
-      console.error("Save error:", err);
+      console.error("Background Dexie habit save error:", err);
     });
+  };
+
+  const handleSave = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (isSaving) return;
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setErrorMsg("Please enter a habit name.");
+      return;
+    }
+
+    // Dismiss soft keyboard immediately on mobile
+    (document.activeElement as HTMLElement)?.blur();
+
+    // Check for duplicate / similar habit name across DB and cache
+    const deleted = getDeletedHabitIds();
+    const cachedList = getCachedHabits().filter((h) => h.isActive && !deleted.has(h.id));
+    const dbList = (allDbHabits ?? []).filter((h) => h.isActive && !deleted.has(h.id));
+    const activeMap = new Map<string, Habit>();
+    cachedList.forEach((h) => activeMap.set(h.id, h));
+    dbList.forEach((h) => activeMap.set(h.id, h));
+    const allActive = Array.from(activeMap.values());
+
+    const normalized = trimmedName.toLowerCase();
+    // 1. Exact match (case-insensitive)
+    const exactMatch = allActive.find(
+      (h) => h.id !== editId && h.name.trim().toLowerCase() === normalized
+    );
+
+    // 2. Similar / partial word match (e.g. "Morning Gym" and "Gym", or "Read" and "Reading")
+    const words1 = trimmedName.toLowerCase().split(/\s+/).filter((w: string) => w.length >= 3);
+    const similarMatch = !exactMatch
+      ? allActive.find((h) => {
+          if (h.id === editId) return false;
+          const otherName = h.name.trim().toLowerCase();
+          if (otherName.includes(normalized) || normalized.includes(otherName)) {
+            return true;
+          }
+          const otherWords = otherName.split(/\s+/).filter((w: string) => w.length >= 3);
+          return words1.some((w: string) => otherWords.includes(w) || otherWords.some((ow: string) => ow.includes(w) || w.includes(ow)));
+        })
+      : null;
+
+    const matchedHabit = exactMatch || similarMatch;
+
+    if (matchedHabit) {
+      setDuplicateModalConfig({
+        isOpen: true,
+        title: exactMatch ? "Habit Already Exists" : "Similar Habit Found",
+        description: (
+          <span>
+            Aapne pehle se <strong>"{matchedHabit.name}"</strong> naam ki habit banayi hui hai. Kya aap phir bhi is naam se nayi habit banana chahte hain?
+          </span>
+        ),
+        confirmLabel: "Yes, Create",
+        cancelLabel: "Cancel",
+        onConfirm: () => {
+          setDuplicateModalConfig((prev) => ({ ...prev, isOpen: false }));
+          executeSave(trimmedName);
+        },
+      });
+      return;
+    }
+
+    executeSave(trimmedName);
   };
 
   const handleDelete = (purgeHistory = false) => {
@@ -754,6 +805,19 @@ export default function NewHabit() {
           setIcon(picked);
           setUserPickedIcon(true);
         }}
+      />
+
+      {/* Duplicate / Similar Habit Confirmation Modal */}
+      <ConfirmModal
+        isOpen={duplicateModalConfig.isOpen}
+        onClose={() => setDuplicateModalConfig((prev) => ({ ...prev, isOpen: false }))}
+        title={duplicateModalConfig.title}
+        description={duplicateModalConfig.description}
+        confirmLabel={duplicateModalConfig.confirmLabel || "Yes, Create"}
+        cancelLabel={duplicateModalConfig.cancelLabel || "Cancel"}
+        onConfirm={duplicateModalConfig.onConfirm}
+        variant="primary"
+        icon="info"
       />
     </div>
   );
