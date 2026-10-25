@@ -11,6 +11,9 @@ export default function Settings() {
   const handleResetData = async () => {
     if (confirm("Are you sure you want to reset all data? This will clear all habits and logs for a completely clean slate.")) {
       await clearAllData();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
+      }
       alert("All data cleared successfully.");
       navigate("/");
     }
@@ -211,7 +214,7 @@ export default function Settings() {
             cursor: "pointer",
           }}
         >
-          Reset All Logs
+          Wipe All Data (Clean Slate)
         </button>
       </div>
     </div>

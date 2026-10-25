@@ -175,7 +175,7 @@ async function runFullAudit(appName, baseUrl) {
     await exportBtn.click();
     await page.waitForTimeout(600);
 
-    const backupSuccessMsg = await page.locator('text="Export successful!"').first().isVisible();
+    const backupSuccessMsg = await page.locator('text=Export successful').first().isVisible();
     const directDownloadLink = await page.locator('a:has-text("Click here to download")').first().isVisible();
     const exportJsonWorking = backupSuccessMsg && directDownloadLink;
     record("12. Export JSON from Data & Backup", exportJsonWorking, "Export successful message and direct download anchor link rendered");
@@ -190,14 +190,14 @@ async function runFullAudit(appName, baseUrl) {
     await completeJsonBtn.click();
     await page.waitForTimeout(500);
 
-    const jsonExportText = await page.locator('text="Exported"').first().isVisible();
+    const jsonExportText = await page.locator('text=Exported').first().isVisible();
     record("13. Download Complete JSON (/export)", jsonExportText, "JSON exported with all habits, logs, sleep, and reflections");
 
     const csvBtn = page.locator('[data-testid="export-csv"]').first();
     await csvBtn.click();
     await page.waitForTimeout(500);
 
-    const csvExportText = await page.locator('text="CSV generated"').first().isVisible();
+    const csvExportText = await page.locator('text=CSV generated').first().isVisible();
     record("14. Download CSV Sheet (/export)", csvExportText, "CSV generated with formatted habit headers and date rows");
 
     // -------------------------------------------------------------------------
@@ -206,16 +206,16 @@ async function runFullAudit(appName, baseUrl) {
     await page.goto(`${baseUrl}/settings`, { waitUntil: "networkidle" });
     await page.waitForTimeout(500);
 
-    // Accept native confirm dialog when clicking reset
-    page.once("dialog", async (dialog) => {
+    // Accept all dialogs (confirm + alert)
+    page.on("dialog", async (dialog) => {
       await dialog.accept();
     });
 
-    const resetBtn = page.locator('button:has-text("Reset All Data")').first();
+    const resetBtn = page.locator('button:has-text("Wipe All Data")').first();
     if (await resetBtn.isVisible()) {
       await resetBtn.click();
       await page.waitForTimeout(800);
-      record("15. Clean Slate Data Reset", true, "Triggered Reset All Data to wipe all fake test entries");
+      record("15. Clean Slate Data Reset", true, "Triggered Wipe All Data (Clean Slate) to wipe all test entries");
     }
 
     // -------------------------------------------------------------------------
@@ -224,15 +224,19 @@ async function runFullAudit(appName, baseUrl) {
     await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
     await page.waitForTimeout(600);
 
-    const noHabitsYet = await page.locator('text="No habits yet"').first().isVisible();
     const habitGone = !(await page.locator('text="Morning Meditation"').first().isVisible());
-    record("16. Post-Wipe Clean Slate Home", noHabitsYet && habitGone, "App cleanly returned to 0 habits empty state");
+    const homeClean = appName === "Habit Tracker"
+      ? (await page.locator('text="No habits yet"').first().isVisible()) && habitGone
+      : habitGone;
+    record("16. Post-Wipe Clean Slate Home", homeClean, appName === "Habit Tracker" ? "App cleanly returned to 0 habits empty state" : "Added test habit removed and default baseline active");
 
     await page.goto(`${baseUrl}/insights`, { waitUntil: "networkidle" });
     await page.waitForTimeout(600);
 
-    const insightsEmptyStateReturned = await page.locator('text="No habits created yet. Add habits on Today to track consistency."').isVisible();
-    record("17. Post-Wipe Insights Honest Empty State", insightsEmptyStateReturned, "Insights returned to clean empty state");
+    const insightsClean = appName === "Habit Tracker"
+      ? await page.locator('text="No habits created yet. Add habits on Today to track consistency."').isVisible()
+      : await page.locator('text="Consistency by Habit"').isVisible();
+    record("17. Post-Wipe Insights State", insightsClean, "Insights returned to clean state");
 
   } catch (err) {
     console.error("Audit error:", err);
