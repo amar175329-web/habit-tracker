@@ -173,6 +173,37 @@ export async function initDatabase(seedZero = true): Promise<void> {
 }
 
 /**
+ * Completely wipe all data across all Dexie tables and legacy localStorage keys
+ * (clean slate: 0 habits, 0 logs, 0 reflections, 0 settings)
+ */
+export async function clearAllData(): Promise<void> {
+  await db.transaction(
+    "rw",
+    [db.habits, db.habit_logs, db.sleep_logs, db.mood_logs, db.reflections, db.settings, db.outbox],
+    async () => {
+      await db.habits.clear();
+      await db.habit_logs.clear();
+      await db.sleep_logs.clear();
+      await db.mood_logs.clear();
+      await db.reflections.clear();
+      await db.settings.clear();
+      await db.outbox.clear();
+    }
+  );
+  if (typeof window !== "undefined" && window.localStorage) {
+    const keepKeys = new Set(["theme"]);
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && !keepKeys.has(k) && !k.startsWith("habittracker_fresh_clean_")) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach((k) => window.localStorage.removeItem(k));
+  }
+}
+
+/**
  * Wipe all user-recorded log entries (habits logs, sleep logs, mood logs, reflections),
  * preserving habit definitions.
  */

@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { App as CapApp } from "@capacitor/app";
 import { ThemeProvider } from "./lib/theme";
 import { queryClient as qc } from "./lib/queryClient";
-import { initDatabase, purgeLegacyStorage, clearAllEntries, deduplicateHabits, db, type MoodLog } from "./lib/db";
+import { initDatabase, purgeLegacyStorage, clearAllData, deduplicateHabits, db, type MoodLog } from "./lib/db";
 import { BottomNav as BottomNavPrimitive } from "./components/primitives/BottomNav";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
@@ -78,10 +78,10 @@ function AppNavigation() {
 
 export default function App() {
   useEffect(() => {
-    // One-time client purge: wipe any lingering past entries
-    const PURGE_KEY = "habittracker_entries_purged_v5";
+    // Fresh client purge: wipe ALL data across all Dexie tables completely for 100% clean slate
+    const PURGE_KEY = "habittracker_fresh_clean_v7";
     if (typeof window !== "undefined" && window.localStorage && !window.localStorage.getItem(PURGE_KEY)) {
-      clearAllEntries().then(() => {
+      clearAllData().then(() => {
         window.localStorage.setItem(PURGE_KEY, "true");
       });
     }
