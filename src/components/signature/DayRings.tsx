@@ -85,27 +85,27 @@ export function DayRings({
                 style={{ transform: "rotate(-90deg)" }}
                 aria-hidden="true"
               >
-                {/* Inactive Track Circle */}
+                {/* Base Clean White Circle with Subtle Border */}
                 <circle
                   cx="15"
                   cy="15"
                   r="11"
-                  fill="none"
-                  strokeWidth="4"
+                  fill="var(--card, #ffffff)"
+                  strokeWidth="2"
                   style={{
-                    stroke: "var(--tr)",
-                    opacity: d.isFuture || isNeutral ? 0.35 : 0.8,
+                    stroke: "var(--ln)",
+                    opacity: d.isFuture || isNeutral ? 0.4 : 0.85,
                   }}
                 />
 
-                {/* Missed Sand Arc */}
+                {/* Missed Sand Arc (only if past day with active habits) */}
                 {showMissed && (
                   <circle
                     cx="15"
                     cy="15"
                     r="11"
                     fill="none"
-                    strokeWidth="4"
+                    strokeWidth="2.5"
                     style={{
                       stroke: "color-mix(in srgb, var(--fl) 32%, var(--card))",
                     }}
@@ -119,7 +119,7 @@ export function DayRings({
                     cy="15"
                     r="11"
                     fill="none"
-                    strokeWidth="4"
+                    strokeWidth="3.5"
                     strokeLinecap="round"
                     style={{
                       stroke: "#0284c7",
@@ -128,14 +128,14 @@ export function DayRings({
                   />
                 )}
 
-                {/* Completed Teal Progress Arc */}
+                {/* Completed Teal Progress Arc / Ring */}
                 {!d.isFuture && !isFrozen && fraction > 0 && (
                   <circle
                     cx="15"
                     cy="15"
                     r="11"
                     fill="none"
-                    strokeWidth="4"
+                    strokeWidth="3.5"
                     strokeLinecap="round"
                     strokeDasharray={`${arcLen} ${CIRCUMFERENCE}`}
                     style={{ stroke: "var(--pr)" }}

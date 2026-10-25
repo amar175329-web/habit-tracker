@@ -67,7 +67,7 @@ export function StreakSheet({
   );
   const daysToGo = Math.max(0, nextBadge - streak);
 
-  // Generate continuous timeline strip: 60 past days + Today + 4 future days
+  // Generate continuous timeline strip: dynamic window covering selectedDate, 60 past days + Today + 4 future days
   const timelineDays = useMemo(() => {
     const list: {
       date: string;
@@ -84,10 +84,12 @@ export function StreakSheet({
     const freezeSet = new Set(usedFreezeDates);
     const todayMs = toMs(todayStr);
 
-    const PAST_DAYS = 60;
+    const selMs = toMs(selectedDate || todayStr);
+    const minMs = Math.min(todayMs - 60 * DAY_MS, selMs - 3 * DAY_MS);
+    const startOffset = Math.round((minMs - todayMs) / DAY_MS);
     const FUTURE_DAYS = 4;
 
-    for (let offset = -PAST_DAYS; offset <= FUTURE_DAYS; offset++) {
+    for (let offset = startOffset; offset <= FUTURE_DAYS; offset++) {
       const d = fromMs(todayMs + offset * DAY_MS);
       const dt = new Date(`${d}T00:00:00Z`);
       const dayName = dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
@@ -151,6 +153,20 @@ export function StreakSheet({
       const cardWidth = todayEl.offsetWidth + 6;
       el.scrollTo({ left: todayEl.offsetLeft - cardWidth * 2, behavior: "smooth" });
     }
+  };
+
+  const handleSelectDate = (newDate: string) => {
+    if (!newDate) return;
+    setSelectedDate(newDate);
+    setTimeout(() => {
+      const el = scrollContainerRef.current;
+      if (!el) return;
+      const targetEl = document.getElementById(`streak-day-${newDate}`) || (newDate === todayStr ? document.getElementById("streak-day-today") : null);
+      if (targetEl) {
+        const cardWidth = targetEl.offsetWidth + 6;
+        el.scrollTo({ left: targetEl.offsetLeft - cardWidth * 2, behavior: "smooth" });
+      }
+    }, 50);
   };
 
   const handlePrevDays = () => {
@@ -485,32 +501,80 @@ export function StreakSheet({
               STREAK TIMELINE
             </div>
 
-            {/* Navigation Controls: Today Jump & Page Buttons (‹ and ›) */}
+            {/* Navigation Controls: Date Picker, Today Jump & Page Buttons (‹ and ›) */}
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              {selectedDate !== todayStr && (
-                <button
-                  type="button"
-                  onClick={handleJumpToToday}
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: "99px",
-                    border: "none",
-                    background: "var(--pr)",
-                    color: "var(--on)",
-                    fontSize: "11.5px",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    transition: "all 0.15s ease",
-                    boxShadow: "0 2px 8px rgba(15, 60, 55, 0.2)",
+              {/* Compact Year-Month-Date Picker Pill */}
+              <label
+                style={{
+                  position: "relative",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "4px 8px",
+                  borderRadius: "99px",
+                  border: "1px solid var(--ln)",
+                  background: "var(--card)",
+                  color: "var(--tx)",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  lineHeight: 1,
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                }}
+                title="Select date (Year, Month, Day)"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--pr)" }}>
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>{selectedDate}</span>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  max={todayStr}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleSelectDate(e.target.value);
+                    }
                   }}
-                  title="Return to Today"
-                >
-                  Today ↺
-                </button>
-              )}
+                  style={{
+                    position: "absolute",
+                    opacity: 0,
+                    width: "100%",
+                    height: "100%",
+                    top: 0,
+                    left: 0,
+                    cursor: "pointer",
+                  }}
+                />
+              </label>
+
+              {/* Today Button - ALWAYS VISIBLE */}
+              <button
+                type="button"
+                onClick={handleJumpToToday}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: "99px",
+                  border: selectedDate === todayStr ? "1.5px solid var(--pr)" : "1px solid transparent",
+                  background: selectedDate === todayStr ? "var(--prt)" : "var(--pr)",
+                  color: "var(--on)",
+                  fontSize: "11.5px",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  transition: "all 0.15s ease",
+                  boxShadow: "0 2px 8px rgba(15, 60, 55, 0.2)",
+                }}
+                title="Return to Today"
+              >
+                Today ↺
+              </button>
+
               <button
                 type="button"
                 onClick={handlePrevDays}
@@ -583,7 +647,7 @@ export function StreakSheet({
               return (
                 <button
                   key={d.date}
-                  id={d.isToday ? "streak-day-today" : undefined}
+                  id={d.isToday ? "streak-day-today" : `streak-day-${d.date}`}
                   type="button"
                   disabled={d.isLocked}
                   onClick={() => {
@@ -615,7 +679,7 @@ export function StreakSheet({
                   }}
                 >
                   <div style={{ fontSize: "10.5px", fontWeight: 700, opacity: isSelected ? 0.9 : 0.7 }}>
-                    {d.dayName}
+                    {d.isToday ? "Today" : d.dayName}
                   </div>
                   <div style={{ fontSize: "14px", fontWeight: 800, fontFamily: "var(--num)", marginTop: "2px" }}>
                     {d.dayNum}

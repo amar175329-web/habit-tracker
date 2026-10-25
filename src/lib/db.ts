@@ -76,11 +76,14 @@ export interface DailyOSExport {
   version: number;
   exportedAt: string;
   habits: Habit[];
+  deletedHabitIds?: string[];
   habit_logs: HabitLog[];
   sleep_logs: SleepLog[];
   mood_logs: MoodLog[];
   reflections: Reflection[];
   settings: Setting[];
+  edit_passes?: EditPass[];
+  streak_freezes?: StreakFreeze[];
 }
 
 export const DEFAULT_HABITS: Habit[] = [
@@ -315,6 +318,7 @@ export function markDateUnlocked(date: string): void {
 }
 
 export async function isDateUnlocked(date: string, today: string): Promise<boolean> {
+  if (date > today) return false;
   if (inMemoryUnlockedDates.has(date)) return true;
   try {
     const stored = getSessionUnlockedDates();
@@ -344,7 +348,7 @@ export async function toggleHabit(
   today: string
 ): Promise<number> {
   let canEdit = isHabitEditable(date, today);
-  if (!canEdit && weekStart(date) === weekStart(today)) {
+  if (!canEdit && date < today && weekStart(date) === weekStart(today)) {
     if (await isDateUnlocked(date, today)) canEdit = true;
   }
   if (!canEdit) {
@@ -405,7 +409,7 @@ export async function setHabitState(
   today: string
 ): Promise<void> {
   let canEdit = isHabitEditable(date, today);
-  if (!canEdit && weekStart(date) === weekStart(today)) {
+  if (!canEdit && date < today && weekStart(date) === weekStart(today)) {
     if (await isDateUnlocked(date, today)) canEdit = true;
   }
   if (!canEdit) {
@@ -441,7 +445,7 @@ export async function saveSleep(
   today: string
 ): Promise<void> {
   let canEdit = isSleepOrMoodEditable(date, today);
-  if (!canEdit && weekStart(date) === weekStart(today)) {
+  if (!canEdit && date < today && weekStart(date) === weekStart(today)) {
     if (await isDateUnlocked(date, today)) canEdit = true;
   }
   if (!canEdit) {
@@ -481,7 +485,7 @@ export async function saveMood(
   today: string
 ): Promise<MoodLog> {
   let canEdit = isSleepOrMoodEditable(date, today);
-  if (!canEdit && weekStart(date) === weekStart(today)) {
+  if (!canEdit && date < today && weekStart(date) === weekStart(today)) {
     if (await isDateUnlocked(date, today)) canEdit = true;
   }
   if (!canEdit) {
@@ -745,30 +749,40 @@ export async function setSetting(key: string, value: string): Promise<void> {
 
 export async function exportAllData(): Promise<DailyOSExport> {
   const deleted = getDeletedHabitIds();
-  const cached = getCachedHabits().filter((h) => h.isActive && !deleted.has(h.id));
-  const dbHabits = await db.habits.filter((h) => h.isActive && !deleted.has(h.id)).toArray().catch(() => []);
+  const cached = getCachedHabits();
+  const dbHabits = await db.habits.toArray().catch(() => []);
   const map = new Map<string, Habit>();
   cached.forEach((h) => map.set(h.id, h));
   dbHabits.forEach((h) => map.set(h.id, h));
-  const habits = Array.from(map.values()).sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 
-  const [habit_logs, sleep_logs, mood_logs, reflections, settings] = await Promise.all([
+  // Preserve all habits (active and soft-deleted)
+  const habits = Array.from(map.values()).map((h) => ({
+    ...h,
+    isActive: deleted.has(h.id) ? false : h.isActive,
+  })).sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+
+  const [habit_logs, sleep_logs, mood_logs, reflections, settings, edit_passes, streak_freezes] = await Promise.all([
     db.habit_logs.toArray().catch(() => []),
     db.sleep_logs.toArray().catch(() => []),
     db.mood_logs.toArray().catch(() => []),
     db.reflections.toArray().catch(() => []),
     db.settings.toArray().catch(() => []),
+    db.edit_passes.toArray().catch(() => []),
+    db.streak_freezes.toArray().catch(() => []),
   ]);
 
   return {
     version: 1,
     exportedAt: new Date().toISOString(),
     habits,
+    deletedHabitIds: Array.from(deleted),
     habit_logs,
     sleep_logs,
     mood_logs,
     reflections,
     settings,
+    edit_passes,
+    streak_freezes,
   };
 }
 
@@ -777,18 +791,24 @@ export async function importAllData(data: DailyOSExport): Promise<void> {
     throw new Error("Invalid backup file: missing version field");
   }
 
-  await db.transaction("rw", [db.habits, db.habit_logs, db.sleep_logs, db.mood_logs, db.reflections, db.settings, db.outbox], async () => {
+  await db.transaction("rw", [db.habits, db.habit_logs, db.sleep_logs, db.mood_logs, db.reflections, db.settings, db.edit_passes, db.streak_freezes, db.outbox], async () => {
     if (data.habits?.length) await db.habits.bulkPut(data.habits);
     if (data.habit_logs?.length) await db.habit_logs.bulkPut(data.habit_logs);
     if (data.sleep_logs?.length) await db.sleep_logs.bulkPut(data.sleep_logs);
     if (data.mood_logs?.length) await db.mood_logs.bulkPut(data.mood_logs);
     if (data.reflections?.length) await db.reflections.bulkPut(data.reflections);
     if (data.settings?.length) await db.settings.bulkPut(data.settings);
+    if (data.edit_passes?.length) await db.edit_passes.bulkPut(data.edit_passes);
+    if (data.streak_freezes?.length) await db.streak_freezes.bulkPut(data.streak_freezes);
   });
 
+  if (data.deletedHabitIds && Array.isArray(data.deletedHabitIds)) {
+    data.deletedHabitIds.forEach((id) => markHabitDeleted(id));
+  }
+
   if (data.habits && Array.isArray(data.habits)) {
-    clearAllDeletedMarks();
-    setCachedHabits(data.habits.filter((h) => h.isActive));
+    const deleted = getDeletedHabitIds();
+    setCachedHabits(data.habits.filter((h) => h.isActive && !deleted.has(h.id)));
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
     }

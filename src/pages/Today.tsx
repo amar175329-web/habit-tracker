@@ -55,6 +55,8 @@ export default function Today() {
 
   const date = paramDate && /^\d{4}-\d{2}-\d{2}$/.test(paramDate) ? paramDate : todayStr;
   const isViewingToday = date === todayStr;
+  const isPastDay = date < todayStr;
+  const isFutureDay = date > todayStr;
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [feelingsOpen, setFeelingsOpen] = useState(false);
@@ -534,6 +536,17 @@ export default function Today() {
   };
 
   const handleToggleHabit = async (habitId: string) => {
+    if (isFutureDay) {
+      setModalConfig({
+        isOpen: true,
+        title: "Future Day Locked",
+        description: "Habits cannot be logged for future days in advance. Edit passes only apply to past days.",
+        confirmLabel: "Understood",
+        variant: "warning",
+        icon: "lock",
+      });
+      return;
+    }
     if (!isCurrentDayEditable) {
       if (date < currentWeekStart) {
         setModalConfig({
@@ -640,7 +653,7 @@ export default function Today() {
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: "19px" }}>Habit Tracker</div>
             <div style={{ fontSize: "12.5px", color: "var(--mu)", fontWeight: 600 }}>
-              {isViewingToday ? formattedDate : `Past Day · ${formattedDate}`}
+              {isViewingToday ? formattedDate : isFutureDay ? `Future Day · ${formattedDate}` : `Past Day · ${formattedDate}`}
             </div>
           </div>
 
@@ -696,8 +709,47 @@ export default function Today() {
           </button>
         </div>
 
-        {/* Past Day View-Only / Unlock Bar (reference today-past-day.html) */}
-        {!isViewingToday && (
+        {/* Action Bar: Future Day vs Past Day */}
+        {isFutureDay ? (
+          <div
+            style={{
+              marginTop: "16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: "var(--card)",
+              border: "1px solid var(--ln)",
+              borderRadius: "20px",
+              padding: "10px 14px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--mu)" }}>
+                Future Day · Locked
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              style={{
+                fontSize: "12.5px",
+                fontWeight: 800,
+                color: "var(--on)",
+                background: "var(--pr)",
+                padding: "8px 14px",
+                borderRadius: "99px",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              Today
+            </button>
+          </div>
+        ) : isPastDay ? (
           <div
             style={{
               marginTop: "16px",
@@ -791,10 +843,10 @@ export default function Today() {
               Today
             </button>
           </div>
-        )}
+        ) : null}
 
         {/* Past Day Frozen Protection Banner */}
-        {!isViewingToday && usedFreezeDates.includes(date) && (
+        {isPastDay && usedFreezeDates.includes(date) && (
           <div
             style={{
               background: "linear-gradient(135deg, rgba(14, 165, 233, 0.16) 0%, rgba(56, 189, 248, 0.06) 100%)",
@@ -837,8 +889,30 @@ export default function Today() {
           </div>
         )}
 
-        {/* Past Day Status Banner (3 Weekly Edit Passes) */}
-        {!isViewingToday && !usedFreezeDates.includes(date) && (
+        {/* Status Banner: Future Day vs Past Day */}
+        {isFutureDay ? (
+          <div
+            style={{
+              background: "var(--card)",
+              border: "1px solid var(--ln)",
+              borderRadius: "18px",
+              padding: "12px 14px",
+              marginTop: "14px",
+              fontSize: "12.5px",
+              fontWeight: 600,
+              color: "var(--mu)",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, flexShrink: 0 }}>
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <span>Future dates are locked and will become active when the day arrives. Edit passes only apply to past days.</span>
+          </div>
+        ) : isPastDay && !usedFreezeDates.includes(date) ? (
           isCurrentDayEditable ? (
             <div
               style={{
@@ -873,7 +947,7 @@ export default function Today() {
               <span>This past day is locked ({passesCount} weekly passes left).</span>
             </div>
           )
-        )}
+        ) : null}
 
         {/* Weekly Momentum Gauge Card */}
         <div
@@ -1132,7 +1206,18 @@ export default function Today() {
           const remaining = Math.max(0, 3 - changeCount);
 
           const handleUnlockPrompt = () => {
-            if (!isViewingToday && !isCurrentDayEditable) {
+            if (isFutureDay) {
+              setModalConfig({
+                isOpen: true,
+                title: "Future Day Locked",
+                description: "Feelings and moods cannot be logged for future days in advance. Edit passes only apply to past days.",
+                confirmLabel: "Understood",
+                variant: "warning",
+                icon: "lock",
+              });
+              return;
+            }
+            if (isPastDay && !isCurrentDayEditable) {
               setModalConfig({
                 isOpen: true,
                 title: "Unlock Past Day?",
@@ -1209,7 +1294,7 @@ export default function Today() {
                         cursor: !isViewingToday && !isCurrentDayEditable ? "pointer" : "default",
                       }}
                     >
-                      🔒 {changeCount >= 3 ? "Locked (3/3)" : "Locked · Unlock ›"}
+                      🔒 {changeCount >= 3 ? "Locked (3/3)" : isFutureDay ? "Future Day" : "Locked · Unlock ›"}
                     </span>
                   ) : changeCount > 0 ? (
                     <span
@@ -1276,7 +1361,9 @@ export default function Today() {
                 >
                   {changeCount >= 3
                     ? "Maximum changes reached for today (3/3 used)."
-                    : !isViewingToday && !isCurrentDayEditable
+                    : isFutureDay
+                    ? "Future day feelings cannot be logged in advance."
+                    : isPastDay && !isCurrentDayEditable
                     ? `Day locked · Tap to unlock with weekly edit pass (${passesCount} left) ›`
                     : "Past day feeling is view-only."}
                 </div>

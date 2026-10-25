@@ -20,6 +20,8 @@ export default function DayDetail() {
   }, []);
 
   const isToday = date === todayStr;
+  const isPastDay = date < todayStr;
+  const isFutureDay = date > todayStr;
   const currentWeekStart = useMemo(() => weekStart(todayStr), [todayStr]);
   const unlockedPasses = useLiveQuery(
     () => db.edit_passes.where("week_start").equals(currentWeekStart).toArray(),
@@ -102,6 +104,7 @@ export default function DayDetail() {
   }, [date]);
 
   const handleToggle = async (habitId: string) => {
+    if (isFutureDay) return;
     if (!editable) return;
     const current = logMap.get(habitId) ?? 0;
     let next = 0;
@@ -166,13 +169,34 @@ export default function DayDetail() {
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: "20px" }}>{formattedDate}</div>
             <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--mu)" }}>
-              {isToday ? "Today" : isUnlocked ? "Unlocked Past Day" : "Past Day"}
+              {isToday ? "Today" : isFutureDay ? "Future Day" : isUnlocked ? "Unlocked Past Day" : "Past Day"}
             </div>
           </div>
         </div>
 
         {/* Notice Banner */}
-        {!isToday && (
+        {isFutureDay ? (
+          <div
+            style={{
+              background: "var(--card)",
+              border: "1px solid var(--ln)",
+              borderRadius: "20px",
+              padding: "14px 16px",
+              marginTop: "14px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, flexShrink: 0 }}>
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--mu)" }}>
+              Future day is locked. Edit passes only apply to past days in the current week.
+            </div>
+          </div>
+        ) : isPastDay ? (
           isUnlocked ? (
             <div
               style={{
@@ -203,7 +227,7 @@ export default function DayDetail() {
             >
               <div>
                 <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--mu)" }}>
-                  This day is locked and view-only.
+                  This past day is locked and view-only.
                 </div>
                 {date >= currentWeekStart && (
                   <div style={{ fontSize: "11px", color: "var(--mu)", marginTop: "2px" }}>
@@ -235,7 +259,7 @@ export default function DayDetail() {
               )}
             </div>
           )
-        )}
+        ) : null}
 
         {/* Habits Card */}
         <div
