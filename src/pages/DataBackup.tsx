@@ -510,6 +510,7 @@ export default function DataBackup() {
         <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
           <button
             type="button"
+            data-testid="export-json"
             onClick={handleExportJSON}
             style={{
               flex: 1,
