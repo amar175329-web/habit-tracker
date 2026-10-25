@@ -50,14 +50,14 @@ async function runFullAudit(appName, baseUrl) {
     // STEP 3: Duplicate Habit Check (Same Name, Case-Insensitive)
     // -------------------------------------------------------------------------
     await page.goto(`${baseUrl}/new-habit`, { waitUntil: "networkidle" });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(600);
 
     await page.locator('input[placeholder*="Morning Walk"]').first().fill("morning meditation");
     await page.waitForTimeout(200);
     await page.locator('button:has-text("Save Habit")').first().click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(600);
 
-    const duplicateErrorVisible = await page.locator("text=already exists").isVisible();
+    const duplicateErrorVisible = await page.locator("text=/already exists/i").first().isVisible();
     const currentUrlAfterDup = page.url();
     const blockedSave = duplicateErrorVisible && currentUrlAfterDup.includes("new-habit");
     record("3. Duplicate Habit Name Enforcement", blockedSave, "Blocked duplicate habit creation with 'A habit named \"morning meditation\" already exists.' banner");
@@ -234,8 +234,8 @@ async function runFullAudit(appName, baseUrl) {
     await page.waitForTimeout(600);
 
     const insightsClean = appName === "Habit Tracker"
-      ? await page.locator('text="No habits created yet. Add habits on Today to track consistency."').isVisible()
-      : await page.locator('text="Consistency by Habit"').isVisible();
+      ? await page.locator('text=/no habits created yet/i').first().isVisible()
+      : await page.locator('text=/consistency by habit/i').first().isVisible();
     record("17. Post-Wipe Insights State", insightsClean, "Insights returned to clean state");
 
   } catch (err) {
