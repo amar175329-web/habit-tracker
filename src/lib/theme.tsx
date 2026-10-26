@@ -60,6 +60,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute("content", "#F2F6F5");
     }
+
+    // Dynamic Android status bar & navigation bar theme synchronization
+    try {
+      if (typeof window !== "undefined" && (window as any).AndroidTheme?.setTheme) {
+        (window as any).AndroidTheme.setTheme(resolvedTheme);
+      }
+    } catch (e) {
+      // ignore
+    }
   }, [resolvedTheme]);
 
   const setTheme = (newTheme: Theme) => {
