@@ -20,9 +20,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'logo.png'],
       manifest: {
-        name: 'DailyOS — Own Your Every Day',
-        short_name: 'DailyOS',
-        description: 'Own Your Every Day — habits, sleep & journal, private and beautiful.',
+        name: 'Habbitrack — Build Consistent Rhythms',
+        short_name: 'Habbitrack',
+        description: 'Habbitrack — habits, streaks, sleep & journal, private and local-first.',
         theme_color: '#0a0a0f',
         background_color: '#0a0a0f',
         display: 'standalone',

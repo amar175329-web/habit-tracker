@@ -782,23 +782,19 @@ export default function Today() {
       <div style={{ padding: "20px clamp(14px, 3.5vw, 24px) 0" }}>
         {/* Top Header */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div
+          <img
+            src="/logo.png"
+            alt="Habbitrack logo"
             style={{
               width: "44px",
               height: "44px",
-              borderRadius: "15px",
-              background: "var(--pr)",
-              color: "var(--on)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              font: "700 22px var(--num)",
+              borderRadius: "14px",
+              objectFit: "cover",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
             }}
-          >
-            H
-          </div>
+          />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 800, fontSize: "19px" }}>Habit Tracker</div>
+            <div style={{ fontWeight: 800, fontSize: "19px" }}>Habbitrack</div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
               <span style={{ fontSize: "12.5px", color: "var(--mu)", fontWeight: 600 }}>
                 {isViewingToday ? formattedDate : isFutureDay ? `Future Day · ${formattedDate}` : `Past Day · ${formattedDate}`}

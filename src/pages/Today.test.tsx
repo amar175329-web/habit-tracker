@@ -23,7 +23,7 @@ function renderToday(initialPath = "/") {
   );
 }
 
-describe("Habit Tracker — First Run Zero Habits", () => {
+describe("Habbitrack — First Run Zero Habits", () => {
   beforeEach(async () => {
     await db.habits.clear();
     await db.habit_logs.clear();
@@ -34,10 +34,10 @@ describe("Habit Tracker — First Run Zero Habits", () => {
     await initDatabase(true); // seedZero = true
   });
 
-  it("renders Habit Tracker header and first-run empty state", async () => {
+  it("renders Habbitrack header and first-run empty state", async () => {
     renderToday("/");
 
-    expect(screen.getByText("Habit Tracker")).toBeInTheDocument();
+    expect(screen.getByText("Habbitrack")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText("No habits yet")).toBeInTheDocument();
