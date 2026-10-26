@@ -79,7 +79,7 @@ function AppNavigation() {
         justifyContent: "center",
       }}
     >
-      <div style={{ width: "100%", maxWidth: "430px", padding: "0 18px calc(18px + env(safe-area-inset-bottom, 0px))", pointerEvents: "auto", boxSizing: "border-box" }}>
+      <div style={{ width: "100%", maxWidth: "640px", padding: "0 18px calc(18px + env(safe-area-inset-bottom, 0px))", pointerEvents: "auto", boxSizing: "border-box" }}>
         <BottomNavPrimitive activeTab={currentTab} onChangeTab={handleTabChange} fixed={false} />
       </div>
     </div>

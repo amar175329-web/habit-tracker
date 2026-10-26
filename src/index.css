@@ -93,14 +93,19 @@ html, body {
   font-family: var(--font);
   margin: 0;
   padding: 0;
+  min-height: 100dvh;
+  width: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
   min-height: 100dvh;
+  width: 100%;
   background-color: var(--bg);
   color: var(--tx);
+  display: flex;
+  flex-direction: column;
 }
 
 .scrollbar-none,

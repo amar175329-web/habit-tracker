@@ -621,7 +621,7 @@ export default function Today() {
     <div
       style={{
         width: "100%",
-        maxWidth: "430px",
+        maxWidth: "640px",
         margin: "0 auto",
         minHeight: "100dvh",
         boxSizing: "border-box",
@@ -1480,7 +1480,7 @@ export default function Today() {
             left: "50%",
             transform: "translateX(-50%)",
             width: "calc(100% - 32px)",
-            maxWidth: "398px",
+            maxWidth: "600px",
             background: "var(--card)",
             border: "1px solid var(--ln)",
             borderRadius: "20px",

@@ -69,7 +69,7 @@ export function MenuSheet({ isOpen, onClose }: MenuSheetProps) {
           left: 0,
           right: 0,
           bottom: 0,
-          maxWidth: "430px",
+          maxWidth: "640px",
           margin: "0 auto",
           background: "var(--card)",
           borderRadius: "32px 32px 0 0",

@@ -102,7 +102,7 @@ export default function Settings() {
     <div
       style={{
         width: "100%",
-        maxWidth: "430px",
+        maxWidth: "640px",
         margin: "0 auto",
         minHeight: "100dvh",
         boxSizing: "border-box",
@@ -493,7 +493,7 @@ export default function Settings() {
             left: "50%",
             transform: "translateX(-50%)",
             width: "calc(100% - 36px)",
-            maxWidth: "394px",
+            maxWidth: "600px",
             background: "var(--card)",
             border: "1px solid var(--ln)",
             borderRadius: "16px",

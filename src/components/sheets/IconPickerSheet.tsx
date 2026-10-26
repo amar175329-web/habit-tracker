@@ -57,7 +57,7 @@ export function IconPickerSheet({
       <div
         style={{
           width: "100%",
-          maxWidth: "430px",
+          maxWidth: "640px",
           margin: "0 auto",
           background: "var(--bg)",
           borderRadius: "32px 32px 0 0",

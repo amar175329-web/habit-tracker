@@ -79,7 +79,7 @@ export default function Calendar() {
     <div
       style={{
         width: "100%",
-        maxWidth: "430px",
+        maxWidth: "640px",
         margin: "0 auto",
         minHeight: "100dvh",
         boxSizing: "border-box",
