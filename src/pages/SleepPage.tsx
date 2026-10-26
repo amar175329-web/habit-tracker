@@ -5,6 +5,7 @@ import { Lock } from "lucide-react";
 import { db, saveSleep } from "../lib/db";
 import { fromMs, toMs, weekStart } from "../lib/habitRules";
 import { SleepDial } from "../components/signature/SleepDial";
+import { LuxuryDatePickerModal } from "../components/modals/LuxuryDatePickerModal";
 
 function parseTimeToMinutes(t: string): number {
   const [h, m] = t.split(":").map(Number);
@@ -40,6 +41,8 @@ export default function SleepPage() {
   }, []);
 
   const [targetDate, setTargetDate] = useState<string>(todayStr);
+  const [viewWeekOffset, setViewWeekOffset] = useState<number>(0);
+  const [datePickerOpen, setDatePickerOpen] = useState<boolean>(false);
 
   const currentSleep = useLiveQuery(() => db.sleep_logs.get(targetDate), [targetDate]);
   const allSleep = useLiveQuery(() => db.sleep_logs.toArray(), []) ?? [];
@@ -48,6 +51,25 @@ export default function SleepPage() {
   const [wakeTime, setWakeTime] = useState("06:30");
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [futureNotice, setFutureNotice] = useState<string | null>(null);
+
+  const currentWeekStart = useMemo(() => weekStart(todayStr), [todayStr]);
+  const displayedWeekStart = useMemo(() => {
+    return fromMs(toMs(currentWeekStart) + viewWeekOffset * 7 * 86400000);
+  }, [currentWeekStart, viewWeekOffset]);
+
+  const weekRangeLabel = useMemo(() => {
+    try {
+      const endMs = toMs(displayedWeekStart) + 6 * 86400000;
+      const endStr = fromMs(endMs);
+      const startD = new Date(`${displayedWeekStart}T00:00:00Z`);
+      const endD = new Date(`${endStr}T00:00:00Z`);
+      const startFmt = startD.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+      const endFmt = endD.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+      return `${startFmt} – ${endFmt}`;
+    } catch {
+      return displayedWeekStart;
+    }
+  }, [displayedWeekStart]);
 
   const targetDateFormatted = useMemo(() => {
     try {
@@ -118,11 +140,12 @@ export default function SleepPage() {
 
   // 7-day week sleep bars with distinct past / today / future states
   const weekSleepBars = useMemo(() => {
-    const start = weekStart(todayStr);
+    const start = displayedWeekStart;
     const labels = ["M", "T", "W", "T", "F", "S", "S"];
     const bars: {
       date: string;
       label: string;
+      dayNum: number;
       hours: number;
       hoursStr: string;
       hasLog: boolean;
@@ -145,10 +168,12 @@ export default function SleepPage() {
       const h = Math.floor(mins / 60);
       const m = mins % 60;
       const hoursStr = mins > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : "-";
+      const dayNum = parseInt(d.slice(8, 10), 10) || (i + 1);
 
       bars.push({
         date: d,
         label: labels[i],
+        dayNum,
         hours,
         hoursStr,
         hasLog,
@@ -159,7 +184,22 @@ export default function SleepPage() {
       });
     }
     return bars;
-  }, [todayStr, allSleep]);
+  }, [displayedWeekStart, todayStr, allSleep]);
+
+  const handlePrevWeek = () => {
+    setViewWeekOffset((prev) => prev - 1);
+  };
+
+  const handleNextWeek = () => {
+    if (viewWeekOffset < 0) {
+      setViewWeekOffset((prev) => prev + 1);
+    }
+  };
+
+  const handleJumpToCurrentWeek = () => {
+    setViewWeekOffset(0);
+    setTargetDate(todayStr);
+  };
 
   return (
     <div
@@ -369,12 +409,112 @@ export default function SleepPage() {
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: "11px", letterSpacing: ".14em", fontWeight: 800, color: "var(--mu)", textTransform: "uppercase" }}>
-            THIS WEEK · 7 TO 9 H TARGET
+          <div>
+            <div style={{ fontSize: "11px", letterSpacing: ".14em", fontWeight: 800, color: "var(--mu)", textTransform: "uppercase" }}>
+              {viewWeekOffset === 0 ? "THIS WEEK" : "PAST WEEK"} · 7 TO 9 H TARGET
+            </div>
+            <div style={{ fontSize: "12.5px", fontWeight: 800, color: "var(--tx)", marginTop: "2px" }}>
+              {weekRangeLabel}
+            </div>
           </div>
-          <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--ind)" }}>
-            7 Days
-          </span>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            {/* In-App Luxury Date Picker Trigger */}
+            <button
+              type="button"
+              onClick={() => setDatePickerOpen(true)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "4px 9px",
+                borderRadius: "99px",
+                border: "1px solid var(--ln)",
+                background: "var(--bg)",
+                color: "var(--tx)",
+                fontSize: "11px",
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+              }}
+              title="Pick date with luxury calendar"
+            >
+              <span>📅</span>
+              <span style={{ fontSize: "9px", opacity: 0.7 }}>▾</span>
+            </button>
+
+            {viewWeekOffset !== 0 && (
+              <button
+                type="button"
+                onClick={handleJumpToCurrentWeek}
+                style={{
+                  padding: "4px 9px",
+                  borderRadius: "99px",
+                  border: "1px solid var(--ind)",
+                  background: "var(--tint, rgba(99, 102, 241, 0.12))",
+                  color: "var(--ind)",
+                  fontSize: "11px",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+                title="Jump to current week"
+              >
+                Today ↺
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handlePrevWeek}
+              style={{
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                border: "1px solid var(--ln)",
+                background: "var(--bg)",
+                color: "var(--tx)",
+                fontSize: "16px",
+                fontWeight: 800,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                padding: 0,
+                lineHeight: 1,
+              }}
+              aria-label="Previous week"
+              title="Previous week"
+            >
+              ‹
+            </button>
+
+            <button
+              type="button"
+              disabled={viewWeekOffset >= 0}
+              onClick={handleNextWeek}
+              style={{
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                border: "1px solid var(--ln)",
+                background: "var(--bg)",
+                color: viewWeekOffset >= 0 ? "var(--tr)" : "var(--tx)",
+                fontSize: "16px",
+                fontWeight: 800,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: viewWeekOffset >= 0 ? "not-allowed" : "pointer",
+                opacity: viewWeekOffset >= 0 ? 0.35 : 1,
+                padding: 0,
+                lineHeight: 1,
+              }}
+              aria-label="Next week"
+              title="Next week"
+            >
+              ›
+            </button>
+          </div>
         </div>
 
         {/* 7-Day Sleep Bars Strip */}
@@ -398,9 +538,9 @@ export default function SleepPage() {
                   padding: "8px 2px 8px",
                   borderRadius: "14px",
                   background: isSelected
-                    ? "color-mix(in srgb, var(--ind) 10%, var(--card))"
+                    ? "color-mix(in srgb, var(--ind) 12%, var(--card))"
                     : b.isToday
-                    ? "color-mix(in srgb, var(--ind) 5%, transparent)"
+                    ? "color-mix(in srgb, var(--ind) 6%, transparent)"
                     : "transparent",
                   border: isSelected
                     ? "1.5px solid var(--ind)"
@@ -498,6 +638,11 @@ export default function SleepPage() {
                   {b.label}
                 </div>
 
+                {/* Day Number */}
+                <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--mu)", opacity: 0.65, marginTop: "1px" }}>
+                  {b.dayNum}
+                </div>
+
                 {/* Duration or Status Readout */}
                 <div
                   style={{
@@ -573,6 +718,20 @@ export default function SleepPage() {
           </div>
         </div>
       </div>
+
+      <LuxuryDatePickerModal
+        isOpen={datePickerOpen}
+        onClose={() => setDatePickerOpen(false)}
+        selectedDate={targetDate}
+        onSelectDate={(chosen) => {
+          setTargetDate(chosen);
+          const chosenWeek = weekStart(chosen);
+          const currWeek = weekStart(todayStr);
+          const diffWeeks = Math.round((toMs(chosenWeek) - toMs(currWeek)) / (7 * 86400000));
+          setViewWeekOffset(diffWeeks);
+        }}
+        todayStr={todayStr}
+      />
     </div>
   );
 }
