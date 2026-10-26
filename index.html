@@ -27,7 +27,7 @@
           }
 
           var savedTheme = localStorage.getItem('dailyos_theme') || localStorage.getItem('theme');
-          var isDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var isDark = savedTheme === 'dark';
           var activeTheme = isDark ? 'dark' : 'light';
           if (isDark) {
             document.documentElement.classList.add('dark');

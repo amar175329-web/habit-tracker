@@ -1,11 +1,11 @@
 package app.dailyos.habits;
 
 import android.content.SharedPreferences;
-import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.ActionMode;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
@@ -23,12 +23,12 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Detect saved theme or system night mode on cold boot immediately
+        // Retrieve saved theme or default to light theme (#F2F6F5)
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        boolean isSystemNight = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-        String initialTheme = prefs.getString(KEY_THEME, isSystemNight ? "dark" : "light");
+        String initialTheme = prefs.getString(KEY_THEME, "light");
 
         applyTheme(initialTheme);
+        setupThemeBridge();
     }
 
     @Override
@@ -40,20 +40,11 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
+        setupThemeBridge();
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String currentTheme = prefs.getString(KEY_THEME, "light");
         applyTheme(currentTheme);
-    }
-
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        String saved = prefs.getString(KEY_THEME, null);
-        if (saved == null) {
-            boolean isNight = (newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-            applyTheme(isNight ? "dark" : "light");
-        }
+        syncThemeFromWeb();
     }
 
     // Suppress floating text selection action modes ("Copy | Select all | Share") window-wide
@@ -77,44 +68,60 @@ public class MainActivity extends BridgeActivity {
             webView.setHapticFeedbackEnabled(false);
 
             // Expose AndroidTheme interface to JavaScript
-            webView.addJavascriptInterface(new Object() {
-                @JavascriptInterface
-                public void setTheme(final String theme) {
-                    runOnUiThread(() -> {
-                        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-                        prefs.edit().putString(KEY_THEME, theme).apply();
-                        applyTheme(theme);
-                    });
-                }
-            }, "AndroidTheme");
+            try {
+                webView.addJavascriptInterface(new Object() {
+                    @JavascriptInterface
+                    public void setTheme(final String theme) {
+                        runOnUiThread(() -> {
+                            if (theme != null && ("dark".equalsIgnoreCase(theme) || "light".equalsIgnoreCase(theme))) {
+                                SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                                prefs.edit().putString(KEY_THEME, theme.toLowerCase()).apply();
+                                applyTheme(theme);
+                            }
+                        });
+                    }
+                }, "AndroidTheme");
+            } catch (Exception ignored) {}
 
-            // Evaluate theme from document after page loads
+            syncThemeFromWeb();
+        }
+    }
+
+    private void syncThemeFromWeb() {
+        if (bridge != null && bridge.getWebView() != null) {
+            final WebView webView = bridge.getWebView();
             webView.postDelayed(() -> {
-                webView.evaluateJavascript(
-                    "(function() { return localStorage.getItem('dailyos_theme') || (document.documentElement.classList.contains('dark') ? 'dark' : 'light'); })()",
-                    value -> {
-                        if (value != null && !value.equals("null")) {
-                            String theme = value.replace("\"", "").trim();
-                            if ("dark".equalsIgnoreCase(theme) || "light".equalsIgnoreCase(theme)) {
-                                runOnUiThread(() -> {
-                                    SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-                                    prefs.edit().putString(KEY_THEME, theme).apply();
-                                    applyTheme(theme);
-                                });
+                try {
+                    webView.evaluateJavascript(
+                        "(function() { return localStorage.getItem('dailyos_theme') || (document.documentElement.classList.contains('dark') ? 'dark' : 'light'); })()",
+                        value -> {
+                            if (value != null && !value.equals("null")) {
+                                String theme = value.replace("\"", "").trim();
+                                if ("dark".equalsIgnoreCase(theme) || "light".equalsIgnoreCase(theme)) {
+                                    runOnUiThread(() -> {
+                                        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                                        prefs.edit().putString(KEY_THEME, theme.toLowerCase()).apply();
+                                        applyTheme(theme);
+                                    });
+                                }
                             }
                         }
-                    }
-                );
+                    );
+                } catch (Exception ignored) {}
             }, 300);
         }
     }
 
-    public void applyTheme(String theme) {
-        boolean isDark = "dark".equalsIgnoreCase(theme);
-        int bgColor = isDark ? Color.parseColor("#0B1112") : Color.parseColor("#F2F6F5");
+    public void applyTheme(final String theme) {
+        runOnUiThread(() -> {
+            boolean isDark = "dark".equalsIgnoreCase(theme);
+            // White Theme: #F2F6F5 background with dark icons/text
+            // Black Theme: #0B1112 background with white icons/text
+            int barColor = isDark ? Color.parseColor("#0B1112") : Color.parseColor("#F2F6F5");
 
-        Window window = getWindow();
-        if (window != null) {
+            Window window = getWindow();
+            if (window == null) return;
+
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
             window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
 
@@ -123,21 +130,43 @@ public class MainActivity extends BridgeActivity {
                 window.setNavigationBarContrastEnforced(false);
             }
 
-            window.setStatusBarColor(bgColor);
-            window.setNavigationBarColor(bgColor);
+            window.setStatusBarColor(barColor);
+            window.setNavigationBarColor(barColor);
 
-            WindowInsetsControllerCompat controller =
-                WindowCompat.getInsetsController(window, window.getDecorView());
-            if (controller != null) {
-                // When status/nav bar background is light (#F2F6F5), icons must be dark (true)
-                // When status/nav bar background is dark (#0B1112), icons must be white (false)
-                controller.setAppearanceLightStatusBars(!isDark);
-                controller.setAppearanceLightNavigationBars(!isDark);
+            View decor = window.getDecorView();
+            if (decor != null) {
+                int flags = decor.getSystemUiVisibility();
+                if (!isDark) {
+                    // Light theme: dark icons on status bar and navigation bar
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                    }
+                } else {
+                    // Dark theme: white/light icons on status bar and navigation bar
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                    }
+                }
+                decor.setSystemUiVisibility(flags);
+
+                try {
+                    WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
+                    if (controller != null) {
+                        controller.setAppearanceLightStatusBars(!isDark);
+                        controller.setAppearanceLightNavigationBars(!isDark);
+                    }
+                } catch (Exception ignored) {}
             }
 
             if (bridge != null && bridge.getWebView() != null) {
-                bridge.getWebView().setBackgroundColor(bgColor);
+                bridge.getWebView().setBackgroundColor(barColor);
             }
-        }
+        });
     }
 }

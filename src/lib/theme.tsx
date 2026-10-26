@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { StatusBar, Style } from "@capacitor/status-bar";
 
 export type Theme = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
@@ -14,6 +15,38 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const THEME_STORAGE_KEY = "dailyos_theme";
 
+// Synchronize status bar and navigation bar to native Android & web metadata
+export async function syncSystemBars(isDark: boolean) {
+  // 1. Native Capacitor StatusBar Plugin
+  try {
+    await StatusBar.setOverlaysWebView({ overlay: false });
+    if (isDark) {
+      await StatusBar.setStyle({ style: Style.Dark }); // Light icons/text for dark background
+      await StatusBar.setBackgroundColor({ color: "#0B1112" });
+    } else {
+      await StatusBar.setStyle({ style: Style.Light }); // Dark icons/text for light background
+      await StatusBar.setBackgroundColor({ color: "#F2F6F5" });
+    }
+  } catch (e) {
+    // Plugin not available in regular web browser
+  }
+
+  // 2. Direct Android JavascriptInterface
+  try {
+    if (typeof window !== "undefined" && (window as any).AndroidTheme?.setTheme) {
+      (window as any).AndroidTheme.setTheme(isDark ? "dark" : "light");
+    }
+  } catch (e) {}
+
+  // 3. Web Meta Theme-Color
+  if (typeof document !== "undefined") {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      meta.setAttribute("content", isDark ? "#0B1112" : "#F2F6F5");
+    }
+  }
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
@@ -21,7 +54,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (saved === "light" || saved === "dark" || saved === "system") {
         return saved as Theme;
       }
-      return "light"; // Light mode is default per design handoff
+      return "light"; // Default to light theme per brand spec
     }
     return "light";
   });
@@ -46,39 +79,28 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
+    const isDark = resolvedTheme === "dark";
     const root = document.documentElement;
-    if (resolvedTheme === "dark") {
+    if (isDark) {
       root.classList.add("dark");
       root.classList.remove("light");
       root.setAttribute("data-theme", "dark");
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute("content", "#0B1112");
     } else {
       root.classList.remove("dark");
       root.classList.add("light");
       root.setAttribute("data-theme", "light");
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute("content", "#F2F6F5");
     }
 
-    // Dynamic Android status bar & navigation bar theme synchronization with guaranteed delivery
-    const syncToAndroid = (themeName: string) => {
-      try {
-        if (typeof window !== "undefined" && (window as any).AndroidTheme?.setTheme) {
-          (window as any).AndroidTheme.setTheme(themeName);
-          return true;
-        }
-      } catch (e) {
-        // ignore
-      }
-      return false;
+    syncSystemBars(isDark);
+    const t1 = setTimeout(() => syncSystemBars(isDark), 80);
+    const t2 = setTimeout(() => syncSystemBars(isDark), 300);
+    const t3 = setTimeout(() => syncSystemBars(isDark), 800);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
     };
-
-    if (!syncToAndroid(resolvedTheme)) {
-      setTimeout(() => syncToAndroid(resolvedTheme), 100);
-      setTimeout(() => syncToAndroid(resolvedTheme), 350);
-      setTimeout(() => syncToAndroid(resolvedTheme), 1000);
-    }
   }, [resolvedTheme]);
 
   const setTheme = (newTheme: Theme) => {

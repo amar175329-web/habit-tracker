@@ -8,10 +8,15 @@ const config: CapacitorConfig = {
     androidScheme: "https",
   },
   plugins: {
+    StatusBar: {
+      overlaysWebView: false,
+      style: "LIGHT",
+      backgroundColor: "#F2F6F5",
+    },
     SplashScreen: {
       launchShowDuration: 1500,
       launchAutoHide: true,
-      backgroundColor: "#0B1112",
+      backgroundColor: "#F2F6F5",
       androidSplashResourceName: "splash",
     },
   },
