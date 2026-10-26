@@ -155,7 +155,7 @@ export function SleepDial({
           ref={svgRef}
           viewBox="0 0 330 300"
           width="100%"
-          style={{ display: "block", touchAction: "none" }}
+          style={{ display: "block", touchAction: "none", maxWidth: "360px", margin: "0 auto" }}
           role="img"
           aria-label={`Sleep dial: ${formatTime12h(bedtime)} to ${formatTime12h(wakeTime)}, duration ${durationText}`}
         >

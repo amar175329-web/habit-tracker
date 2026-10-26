@@ -190,7 +190,7 @@ export function FeelingsSheet({
           right: 0,
           bottom: 0,
           maxHeight: "88vh",
-          maxWidth: "640px",
+          maxWidth: "var(--sheet-max-w, 600px)",
           margin: "0 auto",
           background: "var(--card)",
           borderRadius: "28px 28px 0 0",

@@ -621,7 +621,7 @@ export default function Today() {
     <div
       style={{
         width: "100%",
-        maxWidth: "640px",
+        maxWidth: "var(--container-max-w, 900px)",
         margin: "0 auto",
         minHeight: "100dvh",
         boxSizing: "border-box",
@@ -632,7 +632,7 @@ export default function Today() {
         paddingBottom: "110px",
       }}
     >
-      <div style={{ padding: "20px 18px 0" }}>
+      <div style={{ padding: "20px clamp(14px, 3.5vw, 24px) 0" }}>
         {/* Top Header */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <div
@@ -1160,7 +1160,7 @@ export default function Today() {
             background: "var(--card)",
             border: "1px solid var(--ln)",
             borderRadius: "26px",
-            padding: "16px 18px",
+            padding: "16px clamp(14px, 3.5vw, 24px)",
             marginTop: "16px",
             display: "flex",
             alignItems: "center",

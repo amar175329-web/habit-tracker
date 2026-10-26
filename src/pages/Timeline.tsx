@@ -73,7 +73,7 @@ export default function Timeline() {
     <div
       style={{
         width: "100%",
-        maxWidth: "640px",
+        maxWidth: "var(--container-max-w, 900px)",
         margin: "0 auto",
         minHeight: "100dvh",
         boxSizing: "border-box",
@@ -84,7 +84,7 @@ export default function Timeline() {
         paddingBottom: "110px",
       }}
     >
-      <div style={{ padding: "20px 18px 0" }}>
+      <div style={{ padding: "20px clamp(14px, 3.5vw, 24px) 0" }}>
         {/* Header with Back button */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <button

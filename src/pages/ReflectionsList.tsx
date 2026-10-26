@@ -243,7 +243,7 @@ export default function ReflectionsListPage() {
     <div
       style={{
         width: "100%",
-        maxWidth: "640px",
+        maxWidth: "var(--container-max-w, 900px)",
         margin: "0 auto",
         minHeight: "100dvh",
         boxSizing: "border-box",

@@ -136,7 +136,7 @@ export function MomentumGauge({
       <svg
         viewBox="0 0 330 172"
         width="100%"
-        style={{ display: "block", marginTop: showHeader ? "8px" : "0" }}
+        style={{ display: "block", marginTop: showHeader ? "8px" : "0", maxWidth: "460px", margin: "0 auto" }}
         role="img"
         aria-label={`Weekly momentum ${habitPct}%, ${centerSubtitle}`}
       >

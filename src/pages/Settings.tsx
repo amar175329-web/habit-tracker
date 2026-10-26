@@ -102,7 +102,7 @@ export default function Settings() {
     <div
       style={{
         width: "100%",
-        maxWidth: "640px",
+        maxWidth: "var(--container-max-w, 900px)",
         margin: "0 auto",
         minHeight: "100dvh",
         boxSizing: "border-box",
@@ -110,7 +110,7 @@ export default function Settings() {
         background: "var(--bg)",
         color: "var(--tx)",
         fontFamily: "var(--font)",
-        padding: "20px 18px 40px",
+        padding: "20px clamp(14px, 3.5vw, 24px) 40px",
       }}
     >
       {/* Header */}
@@ -244,7 +244,7 @@ export default function Settings() {
           background: "var(--card)",
           border: "1px solid var(--ln)",
           borderRadius: "26px",
-          padding: "16px 18px",
+          padding: "16px clamp(14px, 3.5vw, 24px)",
           marginTop: "12px",
         }}
       >
@@ -389,7 +389,7 @@ export default function Settings() {
           background: "var(--card)",
           border: "1px solid var(--ln)",
           borderRadius: "26px",
-          padding: "16px 18px",
+          padding: "16px clamp(14px, 3.5vw, 24px)",
           marginTop: "12px",
           display: "flex",
           alignItems: "center",
@@ -412,7 +412,7 @@ export default function Settings() {
           background: "var(--card)",
           border: "1px solid var(--ln)",
           borderRadius: "26px",
-          padding: "16px 18px",
+          padding: "16px clamp(14px, 3.5vw, 24px)",
           marginTop: "12px",
         }}
       >

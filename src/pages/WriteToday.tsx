@@ -137,7 +137,7 @@ export default function WriteToday() {
     <div
       style={{
         width: "100%",
-        maxWidth: "640px",
+        maxWidth: "var(--container-max-w, 900px)",
         margin: "0 auto",
         minHeight: "100dvh",
         boxSizing: "border-box",
@@ -145,7 +145,7 @@ export default function WriteToday() {
         background: "var(--bg)",
         color: "var(--tx)",
         fontFamily: "var(--font)",
-        padding: "20px 18px 40px",
+        padding: "20px clamp(14px, 3.5vw, 24px) 40px",
       }}
     >
       {/* Header */}
