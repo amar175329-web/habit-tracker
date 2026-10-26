@@ -117,7 +117,7 @@ export default function Mind() {
         background: "var(--bg)",
         color: "var(--tx)",
         fontFamily: "var(--font)",
-        paddingBottom: "110px",
+        paddingBottom: "160px",
       }}
     >
       <div style={{ padding: "20px clamp(14px, 3.5vw, 24px) 0" }}>

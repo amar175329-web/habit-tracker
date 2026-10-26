@@ -77,6 +77,8 @@ function AppNavigation() {
         pointerEvents: "none",
         display: "flex",
         justifyContent: "center",
+        paddingTop: "32px",
+        background: "linear-gradient(to top, var(--bg) 75%, transparent 100%)",
       }}
     >
       <div style={{ width: "100%", maxWidth: "var(--nav-max-w, 100%)", padding: "0 var(--content-padding-x, clamp(14px, 3.5vw, 24px)) calc(18px + env(safe-area-inset-bottom, 0px))", pointerEvents: "auto", boxSizing: "border-box" }}>
