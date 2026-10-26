@@ -47,6 +47,21 @@ export default function SleepPage() {
   const [bedtime, setBedtime] = useState("23:00");
   const [wakeTime, setWakeTime] = useState("06:30");
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [futureNotice, setFutureNotice] = useState<string | null>(null);
+
+  const targetDateFormatted = useMemo(() => {
+    try {
+      const dt = new Date(`${targetDate}T00:00:00Z`);
+      return dt.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      });
+    } catch {
+      return targetDate;
+    }
+  }, [targetDate]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -185,9 +200,31 @@ export default function SleepPage() {
           </svg>
         </button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 800, fontSize: "20px" }}>Sleep</div>
-          <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--mu)" }}>
-            Tonight’s log · {new Date().toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" })}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: "20px" }}>Sleep</div>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--mu)" }}>
+                {targetDate === todayStr ? `Last Night’s log · ${targetDateFormatted}` : `Past log · ${targetDateFormatted}`}
+              </div>
+            </div>
+            {targetDate !== todayStr && (
+              <button
+                type="button"
+                onClick={() => setTargetDate(todayStr)}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: "99px",
+                  border: "1px solid var(--ind)",
+                  background: "var(--tint, rgba(99, 102, 241, 0.12))",
+                  color: "var(--ind)",
+                  fontSize: "11px",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                Today ↺
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -348,65 +385,81 @@ export default function SleepPage() {
               <div
                 key={b.date}
                 onClick={() => {
-                  if (!b.isFuture) setTargetDate(b.date);
+                  if (b.isFuture) {
+                    setFutureNotice("Future nights cannot be reported yet 🔒");
+                    setTimeout(() => setFutureNotice(null), 2500);
+                    return;
+                  }
+                  setTargetDate(b.date);
                 }}
                 style={{
                   textAlign: "center",
                   cursor: b.isFuture ? "not-allowed" : "pointer",
-                  padding: "6px 2px 8px",
+                  padding: "8px 2px 8px",
                   borderRadius: "14px",
-                  background: isSelected ? "var(--bg)" : "transparent",
-                  border: isSelected ? "1.5px solid var(--ind)" : "1px solid transparent",
+                  background: isSelected
+                    ? "color-mix(in srgb, var(--ind) 10%, var(--card))"
+                    : b.isToday
+                    ? "color-mix(in srgb, var(--ind) 5%, transparent)"
+                    : "transparent",
+                  border: isSelected
+                    ? "1.5px solid var(--ind)"
+                    : b.isToday
+                    ? "1.5px dashed color-mix(in srgb, var(--ind) 50%, var(--ln))"
+                    : "1px solid transparent",
                   transition: "all 0.15s ease",
-                  opacity: b.isFuture ? 0.45 : 1,
+                  opacity: b.isFuture ? 0.38 : 1,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                 }}
-                title={b.isFuture ? "Future day is locked" : `Select ${b.date}`}
+                title={b.isFuture ? "Future night (Locked)" : b.isToday ? "Last Night (Today)" : `Select ${b.date}`}
               >
                 {/* Bar Area: 74px height */}
                 <div style={{ height: "74px", width: "100%", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
                   {b.isFuture ? (
                     <div
                       style={{
-                        width: "20px",
+                        width: "22px",
                         height: "22px",
-                        borderRadius: "7px",
+                        borderRadius: "8px",
                         border: "1px dashed var(--ln)",
+                        background: "transparent",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         color: "var(--mu)",
-                        opacity: 0.6,
+                        opacity: 0.5,
                       }}
                     >
-                      <Lock size={10} strokeWidth={2.5} />
+                      <Lock size={11} strokeWidth={2.4} />
                     </div>
                   ) : b.hasLog ? (
                     <div
                       style={{
-                        width: "20px",
-                        height: `${Math.min(74, Math.max(16, b.hours * 8.2))}px`,
-                        borderRadius: "7px",
+                        width: "22px",
+                        height: `${Math.min(74, Math.max(20, b.hours * 8.2))}px`,
+                        borderRadius: "8px",
                         background: b.inTarget ? "var(--ind)" : "var(--fl, #F59E0B)",
-                        boxShadow: b.inTarget ? "0 2px 8px rgba(91, 91, 214, 0.3)" : "none",
+                        boxShadow: b.inTarget ? "0 2px 10px rgba(99, 102, 241, 0.35)" : "none",
                         transition: "height 0.2s ease",
                       }}
                     />
                   ) : b.isToday ? (
                     <div
                       style={{
-                        width: "20px",
-                        height: "20px",
-                        borderRadius: "7px",
-                        border: "1.5px dashed var(--ind)",
+                        width: "26px",
+                        height: "26px",
+                        borderRadius: "9px",
+                        border: "1.5px solid var(--ind)",
+                        background: "var(--tint, rgba(99, 102, 241, 0.14))",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         color: "var(--ind)",
-                        fontSize: "12px",
+                        fontSize: "14px",
                         fontWeight: 800,
+                        boxShadow: "0 2px 8px rgba(99, 102, 241, 0.25)",
                       }}
                     >
                       +
@@ -414,13 +467,22 @@ export default function SleepPage() {
                   ) : (
                     <div
                       style={{
-                        width: "20px",
-                        height: "8px",
-                        borderRadius: "4px",
-                        background: "var(--ln)",
-                        opacity: 0.5,
+                        width: "22px",
+                        height: "20px",
+                        borderRadius: "7px",
+                        border: "1px dashed var(--ln)",
+                        background: "rgba(0,0,0,0.03)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "var(--mu)",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        opacity: 0.6,
                       }}
-                    />
+                    >
+                      —
+                    </div>
                   )}
                 </div>
 
@@ -429,7 +491,7 @@ export default function SleepPage() {
                   style={{
                     fontSize: "11px",
                     fontWeight: 800,
-                    color: b.isToday ? "var(--ind)" : "var(--mu)",
+                    color: b.isToday ? "var(--ind)" : isSelected ? "var(--tx)" : "var(--mu)",
                     marginTop: "6px",
                   }}
                 >
@@ -441,7 +503,7 @@ export default function SleepPage() {
                   style={{
                     fontSize: "10px",
                     fontWeight: 700,
-                    color: b.hasLog ? "var(--tx)" : "var(--mu)",
+                    color: b.hasLog ? "var(--tx)" : b.isToday ? "var(--ind)" : "var(--mu)",
                     marginTop: "2px",
                     whiteSpace: "nowrap",
                   }}
@@ -451,7 +513,7 @@ export default function SleepPage() {
                   ) : b.hasLog ? (
                     b.hoursStr
                   ) : b.isToday ? (
-                    <span style={{ color: "var(--ind)", fontWeight: 800 }}>Today</span>
+                    <span style={{ color: "var(--ind)", fontWeight: 800 }}>Last night</span>
                   ) : (
                     "—"
                   )}
@@ -460,6 +522,24 @@ export default function SleepPage() {
             );
           })}
         </div>
+
+        {futureNotice && (
+          <div
+            style={{
+              marginTop: "12px",
+              padding: "8px 12px",
+              borderRadius: "12px",
+              background: "rgba(245, 158, 11, 0.12)",
+              border: "1px solid rgba(245, 158, 11, 0.3)",
+              color: "var(--fl, #F59E0B)",
+              fontSize: "12px",
+              fontWeight: 700,
+              textAlign: "center",
+            }}
+          >
+            {futureNotice}
+          </div>
+        )}
 
         {/* Legend Explaining Colors and States */}
         <div

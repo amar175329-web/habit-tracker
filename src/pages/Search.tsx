@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { Search as SearchIcon, ArrowLeft } from "lucide-react";
+import { Search as SearchIcon, ArrowLeft, Calendar } from "lucide-react";
 import { api } from "../lib/api";
+import { LuxuryDatePickerModal } from "../components/modals/LuxuryDatePickerModal";
 
 async function searchApi(q: string, from?: string, to?: string) {
   const params = new URLSearchParams({ q });
@@ -22,7 +23,16 @@ export default function Search() {
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [datePickerField, setDatePickerField] = useState<"from" | "to" | null>(null);
   const [trigger, setTrigger] = useState<{ q: string; from?: string; to?: string } | null>(null);
+
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, []);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["search", trigger],
@@ -76,21 +86,25 @@ export default function Search() {
           <div className="grid grid-cols-2 gap-3">
             <div className="relative">
               <label className="text-[10px] uppercase font-mono text-zinc-500 mb-1 block">From Date</label>
-              <input
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                className="w-full rounded-xl bg-black/30 border border-white/[0.08] px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500/40"
-              />
+              <button
+                type="button"
+                onClick={() => setDatePickerField("from")}
+                className="w-full rounded-xl bg-black/30 border border-white/[0.08] px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500/40 text-left flex items-center justify-between cursor-pointer"
+              >
+                <span>{from || "Pick start date"}</span>
+                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+              </button>
             </div>
             <div className="relative">
               <label className="text-[10px] uppercase font-mono text-zinc-500 mb-1 block">To Date</label>
-              <input
-                type="date"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className="w-full rounded-xl bg-black/30 border border-white/[0.08] px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500/40"
-              />
+              <button
+                type="button"
+                onClick={() => setDatePickerField("to")}
+                className="w-full rounded-xl bg-black/30 border border-white/[0.08] px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500/40 text-left flex items-center justify-between cursor-pointer"
+              >
+                <span>{to || "Pick end date"}</span>
+                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+              </button>
             </div>
           </div>
 
@@ -145,6 +159,18 @@ export default function Search() {
           </div>
         )}
       </div>
+
+      <LuxuryDatePickerModal
+        isOpen={datePickerField !== null}
+        onClose={() => setDatePickerField(null)}
+        selectedDate={datePickerField === "from" ? from || todayStr : to || todayStr}
+        onSelectDate={(d) => {
+          if (datePickerField === "from") setFrom(d);
+          else if (datePickerField === "to") setTo(d);
+          setDatePickerField(null);
+        }}
+        todayStr={todayStr}
+      />
     </div>
   );
 }
