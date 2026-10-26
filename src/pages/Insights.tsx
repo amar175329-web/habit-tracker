@@ -407,7 +407,7 @@ export default function Insights() {
                   borderRadius: "99px",
                 }}
               >
-                Example
+                Sample data
               </span>
             )}
           </div>

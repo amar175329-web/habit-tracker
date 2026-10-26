@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "app.dailyos.habits",
-  appName: "DailyOS",
+  appId: "app.habittracker.test",
+  appName: "Habit Tracker",
   webDir: "dist",
   server: {
     androidScheme: "https",

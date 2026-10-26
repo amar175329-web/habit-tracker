@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
@@ -14,7 +14,11 @@ import {
   markDateUnlocked,
   getSessionUnlockedDates,
   useFreezeToken,
+  exportAllData,
+  importAllData,
+  setSetting,
   type Habit,
+  type DailyOSExport,
 } from "../lib/db";
 import {
   weekStart,
@@ -615,6 +619,149 @@ export default function Today() {
     }
   };
 
+  // Freeze prompt card (Rule 17): Missed past day of the current week that can be frozen
+  const [dismissedFreezePromptDate, setDismissedFreezePromptDate] = useState<string | null>(null);
+
+  const missedDayToFreeze = useMemo(() => {
+    if (!isViewingToday || availableFreezes <= 0) return null;
+    for (let i = dayRings.length - 1; i >= 0; i--) {
+      const ring = dayRings[i];
+      if (
+        ring.date &&
+        ring.date < todayStr &&
+        ring.isMissed &&
+        !ring.isFrozen &&
+        !ring.isNeutral &&
+        ring.date !== dismissedFreezePromptDate
+      ) {
+        const dObj = new Date(ring.date + "T00:00:00");
+        const dayName = dObj.toLocaleDateString("en-US", { weekday: "long" });
+        return { date: ring.date, dayName };
+      }
+    }
+    return null;
+  }, [isViewingToday, availableFreezes, dayRings, todayStr, dismissedFreezePromptDate]);
+
+  const handleApplyFreeze = async () => {
+    if (!missedDayToFreeze) return;
+    const res = await useFreezeToken(missedDayToFreeze.date);
+    if (res.ok) {
+      window.dispatchEvent(new CustomEvent("dailyos_freezes_updated"));
+      setModalConfig({
+        isOpen: true,
+        title: "Streak Frozen ❄️",
+        description: `${missedDayToFreeze.dayName} has been protected with a streak freeze token. Your streak is intact!`,
+        confirmLabel: "Awesome",
+        variant: "primary",
+        icon: "info",
+      });
+    } else {
+      setModalConfig({
+        isOpen: true,
+        title: "Could Not Freeze",
+        description: res.error || "No freeze tokens left for this month.",
+        confirmLabel: "OK",
+        variant: "warning",
+        icon: "warning",
+      });
+    }
+  };
+
+  // Rule 23: Backup safety card (after 7+ days of logged data without cloud key or backup)
+  const [dismissedBackupSafety, setDismissedBackupSafety] = useState(false);
+  const tursoVerifiedSetting = useLiveQuery(() => db.settings.get("turso_verified"), []);
+  const lastBackupSetting = useLiveQuery(() => db.settings.get("last_backup_time"), []);
+
+  const shouldShowBackupSafety = useMemo(() => {
+    if (dismissedBackupSafety || habits.length === 0 || !isViewingToday) return false;
+    const daysSinceFirstUse = (toMs(todayStr) - toMs(firstUseDate)) / 86400000;
+    if (daysSinceFirstUse < 7) return false;
+    const isCloudVerified = tursoVerifiedSetting?.value === "true";
+    if (isCloudVerified) return false;
+    const lastBackupIso = lastBackupSetting?.value;
+    if (!lastBackupIso) return true;
+    const daysSinceBackup = (toMs(todayStr) - toMs(lastBackupIso.slice(0, 10))) / 86400000;
+    return daysSinceBackup >= 7;
+  }, [dismissedBackupSafety, habits.length, isViewingToday, todayStr, firstUseDate, tursoVerifiedSetting, lastBackupSetting]);
+
+  const handleSaveQuickBackup = async () => {
+    try {
+      const exportData = await exportAllData();
+      const jsonStr = JSON.stringify(exportData, null, 2);
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10);
+      const nowIso = now.toISOString();
+      await setSetting("last_backup_time", nowIso);
+      const filename = `dailyos-backup-${dateStr}.json`;
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setModalConfig({
+        isOpen: true,
+        title: "Backup Saved!",
+        description: `Saved ${filename} to your downloads. You can also connect Turso in Data & Backup for automatic sync.`,
+        confirmLabel: "OK",
+        variant: "primary",
+        icon: "info",
+      });
+    } catch (err: any) {
+      setModalConfig({
+        isOpen: true,
+        title: "Backup Failed",
+        description: err.message || "Failed to export data.",
+        confirmLabel: "OK",
+        variant: "warning",
+        icon: "warning",
+      });
+    }
+  };
+
+  const restoreFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleRestoreFromFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data: DailyOSExport = JSON.parse(text);
+      if (!data || typeof data.version !== "number") {
+        throw new Error("Invalid backup file: version number missing.");
+      }
+      await importAllData(data);
+      window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
+      window.dispatchEvent(new CustomEvent("dailyos_sleep_updated"));
+      window.dispatchEvent(new CustomEvent("dailyos_mood_updated"));
+      setModalConfig({
+        isOpen: true,
+        title: "Backup Restored!",
+        description: `Successfully restored ${data.habits?.length || 0} habits and ${data.habit_logs?.length || 0} log entries.`,
+        confirmLabel: "Great",
+        variant: "primary",
+        icon: "info",
+        onConfirm: () => {
+          window.location.reload();
+        },
+      });
+    } catch (err: any) {
+      setModalConfig({
+        isOpen: true,
+        title: "Restore Failed",
+        description: err.message || "Failed to parse the backup file.",
+        confirmLabel: "OK",
+        variant: "warning",
+        icon: "warning",
+      });
+    } finally {
+      if (restoreFileInputRef.current) restoreFileInputRef.current.value = "";
+    }
+  };
+
   const isLastHabitExpanded = habits.length > 0 && fullWidthHabits.has(habits[habits.length - 1].id);
 
   return (
@@ -949,6 +1096,202 @@ export default function Today() {
           )
         ) : null}
 
+        {/* Streak Freeze Prompt Card (Rule 17 / freeze-prompt.html) */}
+        {missedDayToFreeze && (
+          <div
+            data-testid="freeze-prompt-card"
+            style={{
+              marginTop: "16px",
+              background: "color-mix(in srgb, var(--ice) 16%, var(--card))",
+              border: "1px solid color-mix(in srgb, var(--ice) 40%, transparent)",
+              borderRadius: "24px",
+              padding: "16px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <span
+                style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "50%",
+                  background: "var(--ice)",
+                  color: "var(--on)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flex: "none",
+                }}
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 3v18M4 7.5l16 9M4 16.5l16-9M9 4l3 2 3-2M9 20l3-2 3 2" />
+                </svg>
+              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: "15px" }}>
+                  {missedDayToFreeze.dayName} was missed
+                </div>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "var(--mu)",
+                    marginTop: "2px",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Use a freeze to keep your {currentStreak} day streak going?
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "10px", marginTop: "14px" }}>
+              <button
+                type="button"
+                data-testid="use-freeze-prompt-btn"
+                onClick={handleApplyFreeze}
+                style={{
+                  flex: 1.4,
+                  textAlign: "center",
+                  fontWeight: 800,
+                  fontSize: "13.5px",
+                  color: "var(--on)",
+                  background: "var(--ice)",
+                  borderRadius: "99px",
+                  padding: "12px 0",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Use a freeze · {availableFreezes} left
+              </button>
+              <button
+                type="button"
+                onClick={() => setDismissedFreezePromptDate(missedDayToFreeze.date)}
+                style={{
+                  flex: 1,
+                  textAlign: "center",
+                  fontWeight: 700,
+                  fontSize: "13.5px",
+                  color: "var(--mu)",
+                  background: "var(--card)",
+                  border: "1px solid var(--ln)",
+                  borderRadius: "99px",
+                  padding: "12px 0",
+                  cursor: "pointer",
+                }}
+              >
+                Let it go
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Rule 23: Backup safety card (after 7+ days of data without cloud/backup) */}
+        {shouldShowBackupSafety && (
+          <div
+            data-testid="backup-safety-card"
+            style={{
+              background: "var(--card)",
+              border: "1px solid var(--ln)",
+              borderRadius: "24px",
+              padding: "16px 18px",
+              marginTop: "16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+              <span
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  background: "var(--tint)",
+                  color: "var(--prt)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  fontSize: "18px",
+                }}
+              >
+                🛡️
+              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: "14.5px" }}>
+                  Your data lives only on this phone
+                </div>
+                <div style={{ fontSize: "12.5px", color: "var(--mu)", marginTop: "2px", lineHeight: 1.45 }}>
+                  If you lose or reset your phone, habits and streaks are gone.
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label="Dismiss backup card"
+                onClick={() => setDismissedBackupSafety(true)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--mu)",
+                  fontSize: "16px",
+                  cursor: "pointer",
+                  padding: "4px",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                type="button"
+                onClick={() => navigate("/data-backup")}
+                style={{
+                  flex: 1,
+                  height: "40px",
+                  borderRadius: "20px",
+                  border: "none",
+                  background: "var(--pr)",
+                  color: "var(--on)",
+                  fontFamily: "inherit",
+                  fontWeight: 800,
+                  fontSize: "13px",
+                  cursor: "pointer",
+                }}
+              >
+                Add cloud key
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveQuickBackup}
+                style={{
+                  flex: 1,
+                  height: "40px",
+                  borderRadius: "20px",
+                  border: "1px solid var(--ln)",
+                  background: "var(--bg)",
+                  color: "var(--tx)",
+                  fontFamily: "inherit",
+                  fontWeight: 700,
+                  fontSize: "13px",
+                  cursor: "pointer",
+                }}
+              >
+                Save backup file
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Weekly Momentum Gauge Card */}
         <div
           style={{
@@ -1027,6 +1370,60 @@ export default function Today() {
             >
               + Add habit
             </button>
+
+            {/* Reinstall & Restore Options */}
+            <div style={{ marginTop: "22px", paddingTop: "18px", borderTop: "1px solid var(--ln)" }}>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--mu)", letterSpacing: ".1em" }}>
+                RESTORE FROM A PREVIOUS BACKUP
+              </div>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "center", marginTop: "12px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  data-testid="restore-file-btn"
+                  onClick={() => restoreFileInputRef.current?.click()}
+                  style={{
+                    height: "42px",
+                    padding: "0 18px",
+                    borderRadius: "21px",
+                    border: "1px solid var(--ln)",
+                    background: "var(--bg)",
+                    color: "var(--tx)",
+                    fontFamily: "inherit",
+                    fontWeight: 700,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Restore from backup file
+                </button>
+                <input
+                  ref={restoreFileInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  style={{ display: "none" }}
+                  onChange={handleRestoreFromFile}
+                />
+                <button
+                  type="button"
+                  data-testid="use-cloud-key-btn"
+                  onClick={() => navigate("/data-backup")}
+                  style={{
+                    height: "42px",
+                    padding: "0 18px",
+                    borderRadius: "21px",
+                    border: "1px solid var(--ln)",
+                    background: "var(--bg)",
+                    color: "var(--tx)",
+                    fontFamily: "inherit",
+                    fontWeight: 700,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Use cloud key
+                </button>
+              </div>
+            </div>
           </div>
         ) : displayedHabits.length === 0 ? (
           <div

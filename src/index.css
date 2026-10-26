@@ -28,6 +28,7 @@
   --on: #FFFFFF;
   --co: #E8624A;
   --fl: #D97706;
+  --ice: #2F8FD0;
   --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --num: 'Space Grotesk', ui-monospace, monospace;
   --container-max-w: 100%;
@@ -50,6 +51,7 @@ html.dark {
   --on: #062B27;
   --co: #FF8A70;
   --fl: #FBBF24;
+  --ice: #7CC7F5;
 }
 
 @keyframes habitTipFadeIn {

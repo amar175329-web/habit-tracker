@@ -1,4 +1,5 @@
 import rawIcons from "./icons.json";
+import { pickIcon } from "./matchers";
 
 export interface IconItem {
   name: string;
@@ -83,61 +84,27 @@ export function getIconPath(name: string): string {
 
 export function autoPickIcon(name: string): string {
   if (!name || !name.trim()) return "check";
+  const matched = pickIcon(name, ICONS);
+  if (matched && matched !== "check") return matched;
+
+  // If matchers score is under 40, check expanded Hinglish tokens
   const tokens = name
     .toLowerCase()
     .replace(/[^\w\s\u0900-\u097F]/g, " ")
     .split(/\s+/)
     .filter(Boolean);
 
-  if (tokens.length === 0) return "check";
-
-  // Expand tokens with Hinglish synonyms
-  const expandedTerms = new Set<string>();
   for (const t of tokens) {
-    expandedTerms.add(t);
+    if (ICON_MAP.has(t)) return t;
     const mapped = HINGLISH_MAP[t];
     if (mapped) {
-      mapped.forEach((m) => expandedTerms.add(m));
-    }
-  }
-
-  // Exact direct name match first
-  for (const t of expandedTerms) {
-    if (ICON_MAP.has(t)) {
-      return t;
-    }
-  }
-
-  // Score against keywords and icon names
-  let bestScore = 0;
-  let bestIcon = "check";
-
-  for (const icon of ICONS) {
-    let score = 0;
-    const lowerIconName = icon.name.toLowerCase();
-
-    for (const term of expandedTerms) {
-      if (lowerIconName === term) {
-        score += 10;
-      } else if (lowerIconName.includes(term) || term.includes(lowerIconName)) {
-        score += 5;
-      }
-
-      for (const kw of icon.keywords) {
-        const lowerKw = kw.toLowerCase();
-        if (lowerKw === term) {
-          score += 6;
-        } else if (lowerKw.includes(term) || term.includes(lowerKw)) {
-          score += 2;
-        }
+      for (const m of mapped) {
+        if (ICON_MAP.has(m)) return m;
+        const iconMatch = pickIcon(m, ICONS);
+        if (iconMatch !== "check") return iconMatch;
       }
     }
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestIcon = icon.name;
-    }
   }
 
-  return bestIcon;
+  return "check";
 }

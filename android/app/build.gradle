@@ -10,7 +10,7 @@ android {
     namespace = "app.dailyos.habits"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "app.dailyos.habits"
+        applicationId "app.habittracker.test"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

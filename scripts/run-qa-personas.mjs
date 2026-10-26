@@ -30,23 +30,46 @@ async function createCleanPage(browser, theme = "light", options = {}) {
   });
 
   const page = await context.newPage();
-  await page.goto(BASE_URL);
+  await page.goto(`${BASE_URL}/`);
   
   // Clean storage & set theme
   await page.evaluate(async (t) => {
     localStorage.clear();
     localStorage.setItem("theme", t);
+    localStorage.setItem("habittracker_clean_restart_v12", "true");
+    sessionStorage.clear();
     document.documentElement.className = t;
     document.documentElement.setAttribute("data-theme", t);
-    const dbs = await indexedDB.databases();
-    for (const d of dbs) {
-      if (d.name) indexedDB.deleteDatabase(d.name);
-    }
   }, theme);
 
-  await page.reload();
-  await page.waitForLoadState("domcontentloaded");
-  await page.waitForTimeout(300);
+  await page.evaluate(async () => {
+    return new Promise((resolve) => {
+      const req = indexedDB.open("habittracker_db");
+      req.onsuccess = (e) => {
+        const db = e.target.result;
+        const names = Array.from(db.objectStoreNames);
+        if (names.length > 0) {
+          const tx = db.transaction(names, "readwrite");
+          names.forEach((name) => tx.objectStore(name).clear());
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => {
+            db.close();
+            resolve();
+          };
+        } else {
+          db.close();
+          resolve();
+        }
+      };
+      req.onerror = () => resolve();
+    });
+  });
+
+  await page.waitForLoadState("networkidle").catch(() => {});
+  await page.waitForTimeout(400);
   return { context, page };
 }
 
@@ -109,7 +132,7 @@ async function runTests() {
         const input = page.locator('input[placeholder*="Morning Walk"]').first();
         await input.fill(h);
         await page.locator('button:has-text("Save Habit")').click();
-        await page.waitForSelector('text=Today', { timeout: 5000 });
+        await page.waitForSelector('#habits-section', { timeout: 5000 });
       }
 
       // Rapidly tick first habit on Today
@@ -158,10 +181,10 @@ async function runTests() {
       await page.goto(`${BASE_URL}/new-habit`);
       await page.locator('input[placeholder*="Morning Walk"]').first().fill("Initial Name");
       await page.locator('button:has-text("Save Habit")').click();
-      await page.waitForSelector('text=Today');
+      await page.waitForSelector('#habits-section', { timeout: 5000 });
 
       // Tap flame to open Streak Sheet
-      const flameBtn = page.locator('button:has-text("🔥"), button:has(svg.lucide-flame)').first();
+      const flameBtn = page.locator('button[aria-label="View streaks"], button:has-text("🔥"), button:has(svg.lucide-flame)').first();
       if (await flameBtn.isVisible()) {
         await flameBtn.click();
         await page.waitForTimeout(400);
@@ -209,7 +232,7 @@ async function runTests() {
         const input = page.locator('input[placeholder*="Morning Walk"]').first();
         await input.fill(h);
         await page.locator('button:has-text("Save Habit")').click();
-        await page.waitForSelector('text=Today');
+        await page.waitForSelector('#habits-section', { timeout: 5000 });
       }
 
       // Check for elements
@@ -259,7 +282,7 @@ async function runTests() {
       await page.goto(`${BASE_URL}/new-habit`);
       await page.locator('input[placeholder*="Morning Walk"]').first().fill("Travel Yoga");
       await page.locator('button:has-text("Save Habit")').click();
-      await page.waitForSelector('text=Today');
+      await page.waitForSelector('#habits-section', { timeout: 5000 });
 
       // Go offline
       await context.setOffline(true);
@@ -302,7 +325,7 @@ async function runTests() {
       await page.goto(`${BASE_URL}/new-habit`);
       await page.locator('input[placeholder*="Morning Walk"]').first().fill("Speed Tap");
       await page.locator('button:has-text("Save Habit")').click();
-      await page.waitForSelector('text=Today');
+      await page.waitForSelector('#habits-section', { timeout: 5000 });
 
       const tile = page.locator('text=Speed Tap').first();
       if (await tile.isVisible()) {
@@ -339,7 +362,7 @@ async function runTests() {
       await page.goto(`${BASE_URL}/new-habit`);
       await page.locator('input[placeholder*="Morning Walk"]').first().fill("Private Habit 101");
       await page.locator('button:has-text("Save Habit")').click();
-      await page.waitForSelector('text=Today');
+      await page.waitForSelector('#habits-section', { timeout: 5000 });
 
       await page.goto(`${BASE_URL}/data-backup`);
       const exportBtn = page.locator('button:has-text("Export"), button:has-text("Download")').first();
@@ -359,15 +382,20 @@ async function runTests() {
     {
       const { context, page } = await createCleanPage(browser, "light");
       
-      for (let i = 1; i <= 6; i++) {
+      const powerHabits = ["Workout Gym", "Reading Books", "Meditation Mind", "Coding Project", "Hydrate Water", "Evening Stretch"];
+      for (let i = 0; i < powerHabits.length; i++) {
         await page.goto(`${BASE_URL}/new-habit`);
-        await page.locator('input[placeholder*="Morning Walk"]').first().fill(`Power Habit ${i}`);
+        await page.locator('input[placeholder*="Morning Walk"]').first().fill(powerHabits[i]);
         if (i % 2 === 0) {
           const freqBtn = page.locator('button:has-text("days a week"), button:has-text("Every day")').last();
           if (await freqBtn.isVisible()) await freqBtn.click();
         }
         await page.locator('button:has-text("Save Habit")').click();
-        await page.waitForSelector('text=Today');
+        const confirmBtn = page.locator('button:has-text("Yes, Create")').first();
+        if (await confirmBtn.isVisible({ timeout: 400 }).catch(() => false)) {
+          await confirmBtn.click();
+        }
+        await page.waitForSelector('#habits-section', { timeout: 5000 });
       }
 
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -420,7 +448,7 @@ async function runTests() {
       const xssPayload = '<script>alert("xss")</script><img src=x onerror=alert(1)> Habit';
       await page.locator('input[placeholder*="Morning Walk"]').first().fill(xssPayload);
       await page.locator('button:has-text("Save Habit")').click();
-      await page.waitForSelector('text=Today');
+      await page.waitForSelector('#habits-section', { timeout: 5000 });
 
       console.log("  ✓ XSS payload rendered harmlessly as plain text in DOM");
 

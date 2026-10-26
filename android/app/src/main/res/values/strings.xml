@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">DailyOS</string>
-    <string name="title_activity_main">DailyOS</string>
-    <string name="package_name">app.dailyos.habits</string>
-    <string name="custom_url_scheme">app.dailyos.habits</string>
+    <string name="app_name">Habit Tracker</string>
+    <string name="title_activity_main">Habit Tracker</string>
+    <string name="package_name">app.habittracker.test</string>
+    <string name="custom_url_scheme">app.habittracker.test</string>
 </resources>

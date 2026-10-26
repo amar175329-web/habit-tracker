@@ -30,3 +30,10 @@ Remove committed `.env.local` (live VERCEL_OIDC_TOKEN) from git history and rota
 
 ## Play Store
 Capacitor `android/` project, package id e.g. `app.dailyos.habits`, adaptive icon, splash, `targetSdk` per current Play requirement, release **AAB** (not APK) signed with an upload key (keep the keystore safe), versionCode increments, privacy policy URL, Data safety form (data stays on device; optional user-supplied cloud), safe-area handling, hide 3-finger-gesture overlaps. APK only for local testing. Developer account is paid and created later.
+
+## What happens when the app is deleted (plain answer)
+- App data (IndexedDB) is deleted by Android on uninstall. There is no way around that.
+- Cloud key saved earlier: reinstall, paste the same Turso URL and token, everything comes back.
+- Backup file in Documents/Downloads: it survives the uninstall, but the new install cannot see it by itself. Tap "Restore from file" and pick it once.
+- Google Drive Auto Backup of app data (allowBackup=true): restores by itself only for installs through Play Store or phone setup, not for a side-loaded test APK, so never rely on it.
+- Nothing saved anywhere: the data is gone. That is why the app must remind the user (design rule 23) and the first-run screen of a reinstalled app must offer Restore (cloud key or file) before it offers a fresh start.

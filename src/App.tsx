@@ -24,6 +24,7 @@ import NewHabit from "./pages/NewHabit";
 import IconPicker from "./pages/IconPicker";
 import DataBackup from "./pages/DataBackup";
 import ExportPage from "./pages/Export";
+import MoodSleepHistory from "./pages/MoodSleepHistory";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -46,6 +47,7 @@ function AppNavigation() {
     "/icon-picker",
     "/data-backup",
     "/export",
+    "/mood-sleep-history",
   ];
 
   const shouldHide = hiddenPaths.some((p) => location.pathname.startsWith(p)) || location.pathname.startsWith("/reflection/");
@@ -104,12 +106,21 @@ export default function App() {
     db.mood_logs.filter((m: MoodLog) => !m.changeCount || m.changeCount === 0).delete().catch(() => {});
     initDatabase().catch(() => {});
 
-    // Hardware back-button listener for Android
+    // Hardware back-button listener for Android: closes sheets first, then goes back, then exits
     try {
       const handler = CapApp.addListener("backButton", ({ canGoBack }) => {
-        if (canGoBack) {
+        // 1. Check if any sheet or modal is open
+        const hasOpenSheet = document.querySelector('[data-sheet-open="true"], [data-modal-open="true"], .sheet-open');
+        if (hasOpenSheet) {
+          window.dispatchEvent(new CustomEvent("dailyos_back_pressed"));
+          return;
+        }
+
+        // 2. Otherwise navigate back if possible and not at root
+        if (canGoBack && window.location.pathname !== "/") {
           window.history.back();
         } else {
+          // 3. Exit application
           CapApp.exitApp();
         }
       });
@@ -148,6 +159,7 @@ export default function App() {
               <Route path="/icon-picker" element={<IconPicker />} />
               <Route path="/data-backup" element={<DataBackup />} />
               <Route path="/export" element={<ExportPage />} />
+              <Route path="/mood-sleep-history" element={<MoodSleepHistory />} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

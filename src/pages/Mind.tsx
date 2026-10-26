@@ -329,7 +329,7 @@ export default function Mind() {
                       borderRadius: "99px",
                     }}
                   >
-                    Example
+                    Sample data
                   </span>
                 ) : (
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--prt)" }}>
@@ -430,6 +430,23 @@ export default function Mind() {
                   <span style={{ color: "var(--prt)", fontWeight: 700 }}>Tap to see full pattern.</span>
                 </div>
               )}
+
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate("/mood-sleep-history");
+                }}
+                style={{
+                  marginTop: "14px",
+                  textAlign: "center",
+                  fontSize: "13px",
+                  fontWeight: 800,
+                  color: "var(--ind)",
+                  cursor: "pointer",
+                }}
+              >
+                See full history ›
+              </div>
             </div>
 
             {/* Switch to Reflections Banner */}

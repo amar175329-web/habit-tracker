@@ -1,0 +1,1071 @@
+[
+ {
+  "id": "happy",
+  "label": "Happy",
+  "valence": 2,
+  "category": "Positive",
+  "keywords": [
+   "khush",
+   "prasann",
+   "glad",
+   "joyful",
+   "cheerful",
+   "mast"
+  ]
+ },
+ {
+  "id": "joyful",
+  "label": "Joyful",
+  "valence": 2,
+  "category": "Positive",
+  "keywords": [
+   "anandit",
+   "delighted",
+   "elated"
+  ]
+ },
+ {
+  "id": "grateful",
+  "label": "Grateful",
+  "valence": 2,
+  "category": "Positive",
+  "keywords": [
+   "thankful",
+   "shukriya",
+   "aabhari",
+   "blessed"
+  ]
+ },
+ {
+  "id": "proud",
+  "label": "Proud",
+  "valence": 2,
+  "category": "Positive",
+  "keywords": [
+   "garv",
+   "accomplished",
+   "achieved"
+  ]
+ },
+ {
+  "id": "excited",
+  "label": "Excited",
+  "valence": 2,
+  "category": "Positive",
+  "keywords": [
+   "utsahit",
+   "thrilled",
+   "pumped",
+   "josh"
+  ]
+ },
+ {
+  "id": "hopeful",
+  "label": "Hopeful",
+  "valence": 1,
+  "category": "Positive",
+  "keywords": [
+   "umeed",
+   "optimistic",
+   "positive"
+  ]
+ },
+ {
+  "id": "confident",
+  "label": "Confident",
+  "valence": 2,
+  "category": "Positive",
+  "keywords": [
+   "vishwas",
+   "sure",
+   "bold",
+   "strong"
+  ]
+ },
+ {
+  "id": "motivated",
+  "label": "Motivated",
+  "valence": 2,
+  "category": "Positive",
+  "keywords": [
+   "driven",
+   "inspired",
+   "determined",
+   "josh"
+  ]
+ },
+ {
+  "id": "inspired",
+  "label": "Inspired",
+  "valence": 2,
+  "category": "Positive",
+  "keywords": [
+   "creative",
+   "spark"
+  ]
+ },
+ {
+  "id": "loved",
+  "label": "Loved",
+  "valence": 2,
+  "category": "Positive",
+  "keywords": [
+   "pyaar",
+   "cherished",
+   "adored"
+  ]
+ },
+ {
+  "id": "cheerful",
+  "label": "Cheerful",
+  "valence": 1,
+  "category": "Positive",
+  "keywords": [
+   "bright",
+   "sunny"
+  ]
+ },
+ {
+  "id": "amused",
+  "label": "Amused",
+  "valence": 1,
+  "category": "Positive",
+  "keywords": [
+   "funny",
+   "laughing",
+   "hasi"
+  ]
+ },
+ {
+  "id": "playful",
+  "label": "Playful",
+  "valence": 1,
+  "category": "Positive",
+  "keywords": [
+   "masti",
+   "fun",
+   "silly"
+  ]
+ },
+ {
+  "id": "energetic",
+  "label": "Energetic",
+  "valence": 2,
+  "category": "Positive",
+  "keywords": [
+   "fresh",
+   "charged",
+   "active",
+   "energised"
+  ]
+ },
+ {
+  "id": "fulfilled",
+  "label": "Fulfilled",
+  "valence": 2,
+  "category": "Positive",
+  "keywords": [
+   "satisfied",
+   "complete",
+   "santusht"
+  ]
+ },
+ {
+  "id": "relieved",
+  "label": "Relieved",
+  "valence": 1,
+  "category": "Positive",
+  "keywords": [
+   "rahat",
+   "phew",
+   "lighter"
+  ]
+ },
+ {
+  "id": "lucky",
+  "label": "Lucky",
+  "valence": 1,
+  "category": "Positive",
+  "keywords": [
+   "kismat",
+   "fortunate"
+  ]
+ },
+ {
+  "id": "free",
+  "label": "Free",
+  "valence": 1,
+  "category": "Positive",
+  "keywords": [
+   "azaad",
+   "liberated"
+  ]
+ },
+ {
+  "id": "calm",
+  "label": "Calm",
+  "valence": 1,
+  "category": "Calm",
+  "keywords": [
+   "shant",
+   "peaceful",
+   "quiet"
+  ]
+ },
+ {
+  "id": "relaxed",
+  "label": "Relaxed",
+  "valence": 1,
+  "category": "Calm",
+  "keywords": [
+   "aaraam",
+   "easy",
+   "chill"
+  ]
+ },
+ {
+  "id": "peaceful",
+  "label": "Peaceful",
+  "valence": 1,
+  "category": "Calm",
+  "keywords": [
+   "sukoon",
+   "serene",
+   "tranquil"
+  ]
+ },
+ {
+  "id": "content",
+  "label": "Content",
+  "valence": 1,
+  "category": "Calm",
+  "keywords": [
+   "santosh",
+   "okay",
+   "fine"
+  ]
+ },
+ {
+  "id": "focused",
+  "label": "Focused",
+  "valence": 1,
+  "category": "Calm",
+  "keywords": [
+   "ekagra",
+   "concentrated",
+   "locked in",
+   "dhyan"
+  ]
+ },
+ {
+  "id": "balanced",
+  "label": "Balanced",
+  "valence": 1,
+  "category": "Calm",
+  "keywords": [
+   "stable",
+   "steady"
+  ]
+ },
+ {
+  "id": "comfortable",
+  "label": "Comfortable",
+  "valence": 1,
+  "category": "Calm",
+  "keywords": [
+   "cozy",
+   "safe"
+  ]
+ },
+ {
+  "id": "centered",
+  "label": "Centered",
+  "valence": 1,
+  "category": "Calm",
+  "keywords": [
+   "grounded",
+   "mindful"
+  ]
+ },
+ {
+  "id": "refreshed",
+  "label": "Refreshed",
+  "valence": 1,
+  "category": "Calm",
+  "keywords": [
+   "rested",
+   "recharged",
+   "taroza"
+  ]
+ },
+ {
+  "id": "steady",
+  "label": "Steady",
+  "valence": 0,
+  "category": "Calm",
+  "keywords": [
+   "even",
+   "consistent"
+  ]
+ },
+ {
+  "id": "okay",
+  "label": "Okay",
+  "valence": 0,
+  "category": "Calm",
+  "keywords": [
+   "so so",
+   "average",
+   "theek"
+  ]
+ },
+ {
+  "id": "neutral",
+  "label": "Neutral",
+  "valence": 0,
+  "category": "Calm",
+  "keywords": [
+   "normal",
+   "meh",
+   "fine"
+  ]
+ },
+ {
+  "id": "tired",
+  "label": "Tired",
+  "valence": -1,
+  "category": "Low energy",
+  "keywords": [
+   "thaka",
+   "thakan",
+   "fatigued",
+   "weary"
+  ]
+ },
+ {
+  "id": "exhausted",
+  "label": "Exhausted",
+  "valence": -2,
+  "category": "Low energy",
+  "keywords": [
+   "bahut thaka",
+   "drained",
+   "worn out",
+   "spent"
+  ]
+ },
+ {
+  "id": "sleepy",
+  "label": "Sleepy",
+  "valence": -1,
+  "category": "Low energy",
+  "keywords": [
+   "neend",
+   "drowsy",
+   "yawning"
+  ]
+ },
+ {
+  "id": "bored",
+  "label": "Bored",
+  "valence": -1,
+  "category": "Low energy",
+  "keywords": [
+   "bore",
+   "boring",
+   "dull"
+  ]
+ },
+ {
+  "id": "lazy",
+  "label": "Lazy",
+  "valence": -1,
+  "category": "Low energy",
+  "keywords": [
+   "aalas",
+   "sluggish",
+   "slow"
+  ]
+ },
+ {
+  "id": "drained",
+  "label": "Drained",
+  "valence": -2,
+  "category": "Low energy",
+  "keywords": [
+   "empty tank",
+   "burnt",
+   "burnout",
+   "burned out"
+  ]
+ },
+ {
+  "id": "unmotivated",
+  "label": "Unmotivated",
+  "valence": -1,
+  "category": "Low energy",
+  "keywords": [
+   "demotivated",
+   "no drive",
+   "no motivation"
+  ]
+ },
+ {
+  "id": "numb",
+  "label": "Numb",
+  "valence": -1,
+  "category": "Low energy",
+  "keywords": [
+   "blank",
+   "flat",
+   "nothing"
+  ]
+ },
+ {
+  "id": "foggy",
+  "label": "Foggy",
+  "valence": -1,
+  "category": "Low energy",
+  "keywords": [
+   "brain fog",
+   "hazy",
+   "distracted"
+  ]
+ },
+ {
+  "id": "apathetic",
+  "label": "Apathetic",
+  "valence": -1,
+  "category": "Low energy",
+  "keywords": [
+   "uninterested",
+   "indifferent"
+  ]
+ },
+ {
+  "id": "weak",
+  "label": "Weak",
+  "valence": -1,
+  "category": "Low energy",
+  "keywords": [
+   "kamzor",
+   "fragile"
+  ]
+ },
+ {
+  "id": "restless",
+  "label": "Restless",
+  "valence": -1,
+  "category": "Low energy",
+  "keywords": [
+   "bechain",
+   "fidgety"
+  ]
+ },
+ {
+  "id": "sad",
+  "label": "Sad",
+  "valence": -2,
+  "category": "Sadness",
+  "keywords": [
+   "udaas",
+   "dukhi",
+   "unhappy",
+   "low"
+  ]
+ },
+ {
+  "id": "lonely",
+  "label": "Lonely",
+  "valence": -2,
+  "category": "Sadness",
+  "keywords": [
+   "akela",
+   "alone",
+   "isolated",
+   "tanha"
+  ]
+ },
+ {
+  "id": "down",
+  "label": "Down",
+  "valence": -1,
+  "category": "Sadness",
+  "keywords": [
+   "blue",
+   "gloomy"
+  ]
+ },
+ {
+  "id": "hurt",
+  "label": "Hurt",
+  "valence": -2,
+  "category": "Sadness",
+  "keywords": [
+   "dard",
+   "wounded",
+   "bura laga"
+  ]
+ },
+ {
+  "id": "disappointed",
+  "label": "Disappointed",
+  "valence": -1,
+  "category": "Sadness",
+  "keywords": [
+   "nirash",
+   "let down"
+  ]
+ },
+ {
+  "id": "heartbroken",
+  "label": "Heartbroken",
+  "valence": -2,
+  "category": "Sadness",
+  "keywords": [
+   "dil toota",
+   "devastated"
+  ]
+ },
+ {
+  "id": "grieving",
+  "label": "Grieving",
+  "valence": -2,
+  "category": "Sadness",
+  "keywords": [
+   "shok",
+   "mourning",
+   "loss"
+  ]
+ },
+ {
+  "id": "empty",
+  "label": "Empty",
+  "valence": -2,
+  "category": "Sadness",
+  "keywords": [
+   "hollow",
+   "void"
+  ]
+ },
+ {
+  "id": "hopeless",
+  "label": "Hopeless",
+  "valence": -2,
+  "category": "Sadness",
+  "keywords": [
+   "helpless",
+   "no hope"
+  ]
+ },
+ {
+  "id": "homesick",
+  "label": "Homesick",
+  "valence": -1,
+  "category": "Sadness",
+  "keywords": [
+   "ghar ki yaad",
+   "miss home"
+  ]
+ },
+ {
+  "id": "regretful",
+  "label": "Regretful",
+  "valence": -1,
+  "category": "Sadness",
+  "keywords": [
+   "pachtava",
+   "sorry",
+   "remorse"
+  ]
+ },
+ {
+  "id": "guilty",
+  "label": "Guilty",
+  "valence": -1,
+  "category": "Sadness",
+  "keywords": [
+   "doshi",
+   "ashamed"
+  ]
+ },
+ {
+  "id": "ashamed",
+  "label": "Ashamed",
+  "valence": -2,
+  "category": "Sadness",
+  "keywords": [
+   "sharminda",
+   "embarrassed"
+  ]
+ },
+ {
+  "id": "nostalgic",
+  "label": "Nostalgic",
+  "valence": 0,
+  "category": "Sadness",
+  "keywords": [
+   "yaad",
+   "missing the past"
+  ]
+ },
+ {
+  "id": "melancholy",
+  "label": "Melancholy",
+  "valence": -1,
+  "category": "Sadness",
+  "keywords": [
+   "wistful",
+   "pensive"
+  ]
+ },
+ {
+  "id": "tearful",
+  "label": "Tearful",
+  "valence": -1,
+  "category": "Sadness",
+  "keywords": [
+   "crying",
+   "ro",
+   "rona",
+   "teary"
+  ]
+ },
+ {
+  "id": "anxious",
+  "label": "Anxious",
+  "valence": -2,
+  "category": "Anxiety",
+  "keywords": [
+   "chinta",
+   "tension",
+   "worried",
+   "uneasy"
+  ]
+ },
+ {
+  "id": "worried",
+  "label": "Worried",
+  "valence": -1,
+  "category": "Anxiety",
+  "keywords": [
+   "fikr",
+   "concerned"
+  ]
+ },
+ {
+  "id": "stressed",
+  "label": "Stressed",
+  "valence": -2,
+  "category": "Anxiety",
+  "keywords": [
+   "stress",
+   "pressure",
+   "pressured"
+  ]
+ },
+ {
+  "id": "nervous",
+  "label": "Nervous",
+  "valence": -1,
+  "category": "Anxiety",
+  "keywords": [
+   "ghabrahat",
+   "jittery",
+   "butterflies"
+  ]
+ },
+ {
+  "id": "overwhelmed",
+  "label": "Overwhelmed",
+  "valence": -2,
+  "category": "Anxiety",
+  "keywords": [
+   "too much",
+   "swamped",
+   "buried"
+  ]
+ },
+ {
+  "id": "panicked",
+  "label": "Panicked",
+  "valence": -2,
+  "category": "Anxiety",
+  "keywords": [
+   "panic",
+   "freaking out"
+  ]
+ },
+ {
+  "id": "tense",
+  "label": "Tense",
+  "valence": -1,
+  "category": "Anxiety",
+  "keywords": [
+   "tanav",
+   "tight",
+   "on edge"
+  ]
+ },
+ {
+  "id": "scared",
+  "label": "Scared",
+  "valence": -2,
+  "category": "Anxiety",
+  "keywords": [
+   "dar",
+   "afraid",
+   "fearful"
+  ]
+ },
+ {
+  "id": "insecure",
+  "label": "Insecure",
+  "valence": -1,
+  "category": "Anxiety",
+  "keywords": [
+   "doubtful",
+   "unsure",
+   "self doubt"
+  ]
+ },
+ {
+  "id": "confused",
+  "label": "Confused",
+  "valence": -1,
+  "category": "Anxiety",
+  "keywords": [
+   "uljha",
+   "lost",
+   "unclear"
+  ]
+ },
+ {
+  "id": "pressured",
+  "label": "Pressured",
+  "valence": -1,
+  "category": "Anxiety",
+  "keywords": [
+   "deadline",
+   "expectations"
+  ]
+ },
+ {
+  "id": "angry",
+  "label": "Angry",
+  "valence": -2,
+  "category": "Anger",
+  "keywords": [
+   "gussa",
+   "mad",
+   "furious",
+   "krodh"
+  ]
+ },
+ {
+  "id": "irritated",
+  "label": "Irritated",
+  "valence": -1,
+  "category": "Anger",
+  "keywords": [
+   "chidh",
+   "annoyed",
+   "irritable"
+  ]
+ },
+ {
+  "id": "frustrated",
+  "label": "Frustrated",
+  "valence": -1,
+  "category": "Anger",
+  "keywords": [
+   "jhunjhlahat",
+   "stuck",
+   "fed up"
+  ]
+ },
+ {
+  "id": "annoyed",
+  "label": "Annoyed",
+  "valence": -1,
+  "category": "Anger",
+  "keywords": [
+   "naraz",
+   "bothered"
+  ]
+ },
+ {
+  "id": "resentful",
+  "label": "Resentful",
+  "valence": -2,
+  "category": "Anger",
+  "keywords": [
+   "bitter",
+   "grudge"
+  ]
+ },
+ {
+  "id": "jealous",
+  "label": "Jealous",
+  "valence": -1,
+  "category": "Anger",
+  "keywords": [
+   "jalan",
+   "envious"
+  ]
+ },
+ {
+  "id": "furious",
+  "label": "Furious",
+  "valence": -2,
+  "category": "Anger",
+  "keywords": [
+   "rage",
+   "livid"
+  ]
+ },
+ {
+  "id": "impatient",
+  "label": "Impatient",
+  "valence": -1,
+  "category": "Anger",
+  "keywords": [
+   "jaldi",
+   "restive"
+  ]
+ },
+ {
+  "id": "offended",
+  "label": "Offended",
+  "valence": -1,
+  "category": "Anger",
+  "keywords": [
+   "bura maan gaya",
+   "insulted"
+  ]
+ },
+ {
+  "id": "disgusted",
+  "label": "Disgusted",
+  "valence": -1,
+  "category": "Anger",
+  "keywords": [
+   "ghin",
+   "revolted"
+  ]
+ },
+ {
+  "id": "connected",
+  "label": "Connected",
+  "valence": 2,
+  "category": "Social",
+  "keywords": [
+   "close",
+   "bonded",
+   "together"
+  ]
+ },
+ {
+  "id": "supported",
+  "label": "Supported",
+  "valence": 2,
+  "category": "Social",
+  "keywords": [
+   "cared for",
+   "backed",
+   "saath"
+  ]
+ },
+ {
+  "id": "appreciated",
+  "label": "Appreciated",
+  "valence": 2,
+  "category": "Social",
+  "keywords": [
+   "valued",
+   "recognised",
+   "seen"
+  ]
+ },
+ {
+  "id": "included",
+  "label": "Included",
+  "valence": 1,
+  "category": "Social",
+  "keywords": [
+   "welcome",
+   "belonging"
+  ]
+ },
+ {
+  "id": "respected",
+  "label": "Respected",
+  "valence": 1,
+  "category": "Social",
+  "keywords": [
+   "izzat",
+   "honoured"
+  ]
+ },
+ {
+  "id": "shy",
+  "label": "Shy",
+  "valence": -1,
+  "category": "Social",
+  "keywords": [
+   "sharmila",
+   "reserved",
+   "introvert"
+  ]
+ },
+ {
+  "id": "awkward",
+  "label": "Awkward",
+  "valence": -1,
+  "category": "Social",
+  "keywords": [
+   "uncomfortable",
+   "cringe"
+  ]
+ },
+ {
+  "id": "rejected",
+  "label": "Rejected",
+  "valence": -2,
+  "category": "Social",
+  "keywords": [
+   "ignored",
+   "left out",
+   "thukraya"
+  ]
+ },
+ {
+  "id": "misunderstood",
+  "label": "Misunderstood",
+  "valence": -1,
+  "category": "Social",
+  "keywords": [
+   "not heard",
+   "unheard"
+  ]
+ },
+ {
+  "id": "overstimulated",
+  "label": "Overstimulated",
+  "valence": -1,
+  "category": "Social",
+  "keywords": [
+   "too loud",
+   "crowded"
+  ]
+ },
+ {
+  "id": "curious",
+  "label": "Curious",
+  "valence": 1,
+  "category": "Mixed",
+  "keywords": [
+   "interested",
+   "jigyasa",
+   "wondering"
+  ]
+ },
+ {
+  "id": "surprised",
+  "label": "Surprised",
+  "valence": 0,
+  "category": "Mixed",
+  "keywords": [
+   "shocked",
+   "hairan",
+   "wow"
+  ]
+ },
+ {
+  "id": "determined",
+  "label": "Determined",
+  "valence": 2,
+  "category": "Mixed",
+  "keywords": [
+   "pakka",
+   "resolute",
+   "committed"
+  ]
+ },
+ {
+  "id": "ambitious",
+  "label": "Ambitious",
+  "valence": 1,
+  "category": "Mixed",
+  "keywords": [
+   "goal",
+   "driven",
+   "hungry"
+  ]
+ },
+ {
+  "id": "bittersweet",
+  "label": "Bittersweet",
+  "valence": 0,
+  "category": "Mixed",
+  "keywords": [
+   "mixed feelings",
+   "happy sad"
+  ]
+ },
+ {
+  "id": "conflicted",
+  "label": "Conflicted",
+  "valence": -1,
+  "category": "Mixed",
+  "keywords": [
+   "torn",
+   "dilemma",
+   "confused"
+  ]
+ },
+ {
+  "id": "hungover",
+  "label": "Hungover",
+  "valence": -1,
+  "category": "Mixed",
+  "keywords": [
+   "sar dard",
+   "headache"
+  ]
+ },
+ {
+  "id": "sick",
+  "label": "Sick",
+  "valence": -2,
+  "category": "Mixed",
+  "keywords": [
+   "bimar",
+   "ill",
+   "unwell",
+   "fever"
+  ]
+ },
+ {
+  "id": "sore",
+  "label": "Sore",
+  "valence": -1,
+  "category": "Mixed",
+  "keywords": [
+   "dard",
+   "aching",
+   "muscle pain"
+  ]
+ },
+ {
+  "id": "satisfied",
+  "label": "Satisfied",
+  "valence": 1,
+  "category": "Mixed",
+  "keywords": [
+   "achha",
+   "pleased",
+   "done"
+  ]
+ }
+]

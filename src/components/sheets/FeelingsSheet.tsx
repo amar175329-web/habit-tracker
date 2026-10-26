@@ -1,11 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { saveMood } from "../../lib/db";
-import {
-  classifyEmotion,
-  PRESET_EMOTIONS,
-  getStoredCustomEmotions,
-  saveCustomEmotion,
-} from "../../lib/emotions";
+import { matchFeeling, EMOTIONS_LIST, type EmotionItem } from "../../lib/matchers";
 
 export interface FeelingsSheetProps {
   isOpen: boolean;
@@ -20,12 +15,19 @@ export interface FeelingsSheetProps {
   onSaved?: () => void;
 }
 
-export const MOODS = [
-  { score: 1, label: "Rough", emoji: "⛈️", size: 22, mix: 30 },
-  { score: 2, label: "Low", emoji: "🌧️", size: 28, mix: 45 },
-  { score: 3, label: "Okay", emoji: "🟡", size: 34, mix: 62 },
-  { score: 4, label: "Good", emoji: "😊", size: 40, mix: 80 },
-  { score: 5, label: "Energized", emoji: "⚡", size: 46, mix: 100 },
+const QUICK_PICK_NAMES = [
+  "Happy",
+  "Calm",
+  "Focused",
+  "Grateful",
+  "Tired",
+  "Stressed",
+  "Anxious",
+  "Sad",
+  "Angry",
+  "Bored",
+  "Excited",
+  "Okay",
 ];
 
 export function FeelingsSheet({
@@ -35,207 +37,169 @@ export function FeelingsSheet({
   today,
   initialScore,
   initialEmotions = [],
-  changeCount = 0,
-  maxChanges = 3,
-  isLocked = false,
+  changeCount: _changeCount = 0,
+  maxChanges: _maxChanges = 3,
+  isLocked: _isLocked = false,
   onSaved,
 }: FeelingsSheetProps) {
-  const [score, setScore] = useState<number | undefined>(initialScore);
-  const [categoryTab, setCategoryTab] = useState<number | "all">(initialScore ?? "all");
-  const [selectedEmotions, setSelectedEmotions] = useState<string[]>(initialEmotions);
-  const [customTag, setCustomTag] = useState("");
+  const [typedText, setTypedText] = useState("");
+  const [selectedFeelings, setSelectedFeelings] = useState<Array<{ id: string; label: string; valence: number }>>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const storedCustoms = useMemo(() => getStoredCustomEmotions(), [isOpen]);
-
-  const displayedPresets = useMemo(() => {
-    if (categoryTab === "all") return PRESET_EMOTIONS;
-    return PRESET_EMOTIONS.filter((p) => p.defaultScore === categoryTab);
-  }, [categoryTab]);
-
-  const displayedCustoms = useMemo(() => {
-    if (categoryTab === "all") return storedCustoms;
-    return storedCustoms.filter((p) => p.defaultScore === categoryTab);
-  }, [categoryTab, storedCustoms]);
+  const quickPicks = useMemo(() => {
+    return QUICK_PICK_NAMES.map((name) => {
+      const match = EMOTIONS_LIST.find((e) => e.label.toLowerCase() === name.toLowerCase());
+      return (
+        match || {
+          id: name.toLowerCase(),
+          label: name,
+          valence: 0,
+          category: "General",
+          keywords: [name.toLowerCase()],
+        }
+      );
+    });
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
-      setScore(initialScore);
-      setCategoryTab(initialScore ?? "all");
-      setSelectedEmotions(initialEmotions);
+      setTypedText("");
       setErrorMsg(null);
+      // Map initial emotion strings to { id, label, valence }
+      const initialItems = (initialEmotions || []).map((emo) => {
+        const cleanName = emo.replace(/^[^\w\s]+\s*/, "").trim();
+        const matched = matchFeeling(cleanName, EMOTIONS_LIST, quickPicks);
+        return {
+          id: matched?.id || cleanName.toLowerCase(),
+          label: matched?.label || cleanName,
+          valence: matched?.valence || 0,
+        };
+      });
+      setSelectedFeelings(initialItems);
     }
-  }, [isOpen, initialScore, initialEmotions]);
+  }, [isOpen, initialEmotions, quickPicks]);
 
-  const effectiveLocked = isLocked || changeCount >= maxChanges;
-  const remaining = Math.max(0, maxChanges - changeCount);
+  const matchedResult = useMemo(() => {
+    if (!typedText.trim()) return null;
+    return matchFeeling(typedText, EMOTIONS_LIST, quickPicks);
+  }, [typedText, quickPicks]);
 
   if (!isOpen) return null;
 
-  const isEmotionSelected = (item: { name: string; symbol: string }) => {
-    return selectedEmotions.some(
-      (e) =>
-        e === item.name ||
-        e === `${item.symbol} ${item.name}` ||
-        e.toLowerCase().includes(item.name.toLowerCase())
+  const handleAddMatched = () => {
+    if (!matchedResult) return;
+    const exists = selectedFeelings.some(
+      (f) => f.label.toLowerCase() === matchedResult.label.toLowerCase() || f.id === matchedResult.id
     );
+    if (!exists) {
+      setSelectedFeelings((prev) => [
+        ...prev,
+        { id: matchedResult.id, label: matchedResult.label, valence: matchedResult.valence },
+      ]);
+    }
+    setTypedText("");
   };
 
-  const toggleEmotion = (item: { name: string; symbol: string; defaultScore: 1 | 2 | 3 | 4 | 5 }) => {
-    const formatted = `${item.symbol} ${item.name}`;
-    const exists = isEmotionSelected(item);
-
+  const toggleQuickPick = (item: EmotionItem) => {
+    const exists = selectedFeelings.some(
+      (f) => f.label.toLowerCase() === item.label.toLowerCase() || f.id === item.id
+    );
     if (exists) {
-      setSelectedEmotions((prev) =>
-        prev.filter(
-          (e) =>
-            e !== item.name &&
-            e !== formatted &&
-            !e.toLowerCase().includes(item.name.toLowerCase())
-        )
+      setSelectedFeelings((prev) =>
+        prev.filter((f) => f.label.toLowerCase() !== item.label.toLowerCase() && f.id !== item.id)
       );
     } else {
-      setSelectedEmotions((prev) => [...prev, formatted]);
-      // Auto-set mood score if not yet set so Save is instantly active
-      if (!score) {
-        setScore(item.defaultScore);
-        setCategoryTab(item.defaultScore);
-      }
+      setSelectedFeelings((prev) => [
+        ...prev,
+        { id: item.id, label: item.label, valence: item.valence },
+      ]);
     }
   };
 
-  const handleAddCustom = (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = customTag.trim();
-    if (!clean) return;
-
-    // Multilingual AI Emotion Classifier (Hindi, Hinglish, English)
-    const meta = classifyEmotion(clean);
-    const startsWithEmoji = /\p{Extended_Pictographic}/u.test(clean);
-    const formatted = startsWithEmoji ? clean : `${meta.symbol} ${clean}`;
-
-    // Auto-save to dynamic custom emotion library
-    saveCustomEmotion({
-      name: clean,
-      symbol: meta.symbol,
-      defaultScore: meta.score,
-      keywords: [clean],
-    });
-
-    if (!selectedEmotions.includes(formatted) && !selectedEmotions.includes(clean)) {
-      setSelectedEmotions((prev) => [...prev, formatted]);
-      if (!score) {
-        setScore(meta.score);
-        setCategoryTab(meta.score);
-      }
-    }
-    setCustomTag("");
+  const removeFeeling = (label: string) => {
+    setSelectedFeelings((prev) => prev.filter((f) => f.label.toLowerCase() !== label.toLowerCase()));
   };
 
-  const handleSave = async () => {
-    if (effectiveLocked) {
-      setErrorMsg(`Feeling changes limit reached (${maxChanges}/${maxChanges} used for today).`);
-      return;
-    }
-
-    // Auto-detect score if not yet explicitly chosen
-    let finalScore = score;
-    if (!finalScore) {
-      if (selectedEmotions.length > 0) {
-        const meta = classifyEmotion(selectedEmotions[0]);
-        finalScore = meta.score;
-        setScore(meta.score);
-      } else {
-        finalScore = 3; // Default Okay score
-        setScore(3);
-      }
-    }
-
+  const handleDone = async () => {
     try {
-      await saveMood(date, finalScore, selectedEmotions, today);
-      if (onSaved) onSaved();
+      let finalScore = initialScore || 3;
+      if (selectedFeelings.length > 0) {
+        // Compute average valence (-2..+2) mapped to 1..5:
+        // valence -2 -> 1 (Rough), -1 -> 2 (Low), 0 -> 3 (Okay), 1 -> 4 (Good), 2 -> 5 (Energized)
+        const avgValence =
+          selectedFeelings.reduce((sum, f) => sum + f.valence, 0) / selectedFeelings.length;
+        finalScore = Math.max(1, Math.min(5, Math.round(avgValence + 3)));
+      }
+
+      const labels = selectedFeelings.map((f) => f.label);
+      await saveMood(date, finalScore, labels, today);
+
+      // Trigger cross-component sync
+      window.dispatchEvent(
+        new CustomEvent("dailyos_mood_updated", {
+          detail: { date, score: finalScore, emotions: labels },
+        })
+      );
+
+      onSaved?.();
       onClose();
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to save mood");
+      setErrorMsg(err.message || "Could not save feeling");
     }
   };
 
-  const CATEGORY_TABS: { id: number | "all"; label: string; symbol: string }[] = [
-    { id: "all", label: "All", symbol: "✨" },
-    { id: 5, label: "Energized", symbol: "⚡" },
-    { id: 4, label: "Good", symbol: "😊" },
-    { id: 3, label: "Okay", symbol: "🟡" },
-    { id: 2, label: "Low", symbol: "🌧️" },
-    { id: 1, label: "Rough", symbol: "⛈️" },
-  ];
-
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", justifyContent: "center" }}>
-      {/* Backdrop */}
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        background: "rgba(10, 20, 20, 0.45)",
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+      }}
+      onClick={onClose}
+    >
       <div
-        onClick={onClose}
+        onClick={(e) => e.stopPropagation()}
         style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(10, 20, 20, 0.45)",
-          backdropFilter: "blur(2px)",
-        }}
-      />
-
-      {/* Sheet */}
-      <div
-        style={{
-          position: "fixed",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          maxHeight: "88vh",
-          maxWidth: "var(--sheet-max-w, 600px)",
-          margin: "0 auto",
+          position: "relative",
+          width: "100%",
+          maxWidth: "var(--sheet-max-w, 640px)",
           background: "var(--card)",
-          borderRadius: "28px 28px 0 0",
-          padding: "14px 18px 20px",
-          borderTop: "1px solid var(--ln)",
-          boxShadow: "0 -10px 40px rgba(0, 0, 0, 0.25)",
-          zIndex: 61,
+          borderRadius: "32px 32px 0 0",
+          padding: "16px 20px 28px",
+          color: "var(--tx)",
           boxSizing: "border-box",
-          display: "flex",
-          flexDirection: "column",
+          boxShadow: "0 -10px 40px rgba(0,0,0,0.18)",
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
       >
-        {/* Handle */}
+        {/* Top Handle */}
         <div
           style={{
-            width: "38px",
-            height: "4px",
-            borderRadius: "2px",
+            width: "42px",
+            height: "5px",
+            borderRadius: "3px",
             background: "var(--tr)",
-            margin: "0 auto 12px",
-            flexShrink: 0,
+            margin: "0 auto 14px",
           }}
         />
 
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: "17.5px" }}>What are you feeling?</div>
-            <div style={{ fontSize: "11.5px", color: "var(--mu)", fontWeight: 600, marginTop: "2px" }}>
-              {effectiveLocked
-                ? `Limit reached (3/3 used)`
-                : `English · Hindi · Hinglish · ${remaining} change${remaining > 1 ? "s" : ""} left`}
-            </div>
-          </div>
+        {/* Header Row */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontWeight: 800, fontSize: "19px" }}>How are you feeling?</div>
           <button
             type="button"
-            onClick={handleSave}
-            disabled={effectiveLocked}
+            onClick={handleDone}
             style={{
               fontWeight: 800,
-              color: effectiveLocked ? "var(--mu)" : "var(--prt)",
+              color: "var(--prt)",
               fontSize: "14px",
               background: "none",
               border: "none",
-              cursor: effectiveLocked ? "not-allowed" : "pointer",
+              cursor: "pointer",
               padding: "4px 8px",
             }}
           >
@@ -243,255 +207,196 @@ export function FeelingsSheet({
           </button>
         </div>
 
-        {/* Mood Selection Orbs (Compact 1-row) */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: "12px",
-            padding: "6px 0 10px",
-            borderBottom: "1px solid var(--ln)",
-            flexShrink: 0,
-          }}
-        >
-          {MOODS.map((m) => {
-            const isSelected = score === m.score;
-            return (
-              <button
-                key={m.score}
-                type="button"
-                onClick={() => {
-                  setScore(m.score);
-                  setCategoryTab(m.score);
-                }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  flex: 1,
-                  padding: "4px 0",
-                }}
-              >
-                <div style={{ height: "36px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <i
-                    style={{
-                      display: "block",
-                      borderRadius: "50%",
-                      width: `${Math.min(m.size, 34)}px`,
-                      height: `${Math.min(m.size, 34)}px`,
-                      background: `color-mix(in srgb, var(--co) ${m.mix}%, var(--card))`,
-                      boxShadow: isSelected
-                        ? "0 0 0 3px var(--card), 0 0 0 5px var(--co)"
-                        : "none",
-                      transition: "all 0.15s ease",
-                    }}
-                  />
-                </div>
-                <div
-                  style={{
-                    fontSize: "10.5px",
-                    fontWeight: isSelected ? 800 : 700,
-                    color: isSelected ? "var(--tx)" : "var(--mu)",
-                    marginTop: "4px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "2px",
-                  }}
-                >
-                  <span style={{ fontSize: "11px" }}>{m.emoji}</span>
-                  <span>{m.label}</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Category Tabs: Organized Feelings Navigation */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "5px",
-            marginTop: "10px",
-            overflowX: "auto",
-            scrollbarWidth: "none",
-            flexShrink: 0,
-            paddingBottom: "2px",
-          }}
-        >
-          {CATEGORY_TABS.map((tab) => {
-            const isActive = categoryTab === tab.id;
-            return (
-              <button
-                key={String(tab.id)}
-                type="button"
-                onClick={() => setCategoryTab(tab.id)}
-                style={{
-                  padding: "4px 9px",
-                  borderRadius: "99px",
-                  fontSize: "11.5px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  border: isActive ? "1px solid var(--prt)" : "1px solid var(--ln)",
-                  background: isActive ? "var(--tint)" : "var(--bg)",
-                  color: isActive ? "var(--prt)" : "var(--mu)",
-                  whiteSpace: "nowrap",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                <span>{tab.symbol}</span>
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Emotion Pills (Organized & Compact, Fits Within Viewport) */}
-        <div
-          style={{
-            marginTop: "8px",
-            maxHeight: "125px",
-            overflowY: "auto",
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "6px",
-            padding: "2px 0",
-            flexShrink: 1,
-          }}
-        >
-          {displayedPresets.map((item) => {
-            const active = isEmotionSelected(item);
-            return (
-              <button
-                key={item.name}
-                type="button"
-                onClick={() => toggleEmotion(item)}
-                style={{
-                  padding: "6px 11px",
-                  borderRadius: "99px",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  border: active ? "1.5px solid var(--co)" : "1px solid var(--ln)",
-                  background: active ? "color-mix(in srgb, var(--co) 15%, var(--card))" : "var(--bg)",
-                  color: active ? "var(--co)" : "var(--tx)",
-                  transition: "all 0.15s ease",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "5px",
-                }}
-              >
-                <span style={{ fontSize: "13px" }}>{item.symbol}</span>
-                <span>{item.name}</span>
-              </button>
-            );
-          })}
-          {displayedCustoms.map((item) => {
-            const active = isEmotionSelected(item);
-            return (
-              <button
-                key={item.name}
-                type="button"
-                onClick={() => toggleEmotion(item)}
-                style={{
-                  padding: "6px 11px",
-                  borderRadius: "99px",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  border: active ? "1.5px solid var(--co)" : "1px dashed var(--ln)",
-                  background: active ? "color-mix(in srgb, var(--co) 15%, var(--card))" : "var(--bg)",
-                  color: active ? "var(--co)" : "var(--tx)",
-                  transition: "all 0.15s ease",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "5px",
-                }}
-              >
-                <span style={{ fontSize: "13px" }}>{item.symbol}</span>
-                <span>{item.name}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Multilingual Custom Tag Input (Always Visible on Screen) */}
-        <form onSubmit={handleAddCustom} style={{ display: "flex", gap: "8px", marginTop: "10px", flexShrink: 0 }}>
-          <input
-            type="text"
-            placeholder="English, Hindi (उदास/मस्त), ya Hinglish..."
-            value={customTag}
-            onChange={(e) => setCustomTag(e.target.value)}
+        {errorMsg && (
+          <div
             style={{
-              flex: 1,
-              height: "40px",
-              borderRadius: "20px",
-              border: "1px solid var(--ln)",
-              background: "var(--bg)",
-              padding: "0 14px",
-              fontSize: "13px",
-              color: "var(--tx)",
-              fontFamily: "inherit",
-              outline: "none",
-            }}
-          />
-          <button
-            type="submit"
-            style={{
-              height: "40px",
-              padding: "0 16px",
-              borderRadius: "20px",
-              background: "var(--card)",
-              border: "1px solid var(--ln)",
-              color: "var(--tx)",
-              fontWeight: 800,
-              fontSize: "12.5px",
-              cursor: "pointer",
+              fontSize: "12px",
+              fontWeight: 700,
+              color: "var(--co)",
+              background: "color-mix(in srgb, var(--co) 12%, var(--card))",
+              padding: "8px 12px",
+              borderRadius: "12px",
+              marginTop: "10px",
             }}
           >
-            Add
-          </button>
-        </form>
-
-        {errorMsg && (
-          <div style={{ color: "#EF4444", fontSize: "12px", fontWeight: 700, textAlign: "center", marginTop: "6px", flexShrink: 0 }}>
             {errorMsg}
           </div>
         )}
 
-        {/* Save button - Fixed in Viewport (Zero Scrolling Required) */}
-        <div style={{ marginTop: "10px", flexShrink: 0 }}>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={effectiveLocked}
+        {/* Text Input for Feeling Auto-Matching */}
+        <div
+          style={{
+            height: "50px",
+            borderRadius: "25px",
+            background: "var(--bg)",
+            border: "1.5px solid var(--pr)",
+            display: "flex",
+            alignItems: "center",
+            padding: "0 18px",
+            marginTop: "16px",
+            boxSizing: "border-box",
+          }}
+        >
+          <input
+            type="text"
+            value={typedText}
+            onChange={(e) => setTypedText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAddMatched();
+              }
+            }}
+            placeholder="Type any feeling (e.g. thaka, happy)..."
             style={{
               width: "100%",
-              height: "46px",
-              borderRadius: "23px",
-              background: effectiveLocked ? "var(--ln)" : "var(--pr)",
-              color: effectiveLocked ? "var(--mu)" : "var(--on)",
               border: "none",
-              fontWeight: 800,
-              fontSize: "14.5px",
-              cursor: effectiveLocked ? "not-allowed" : "pointer",
-              boxShadow: effectiveLocked ? "none" : "0 6px 20px rgba(15, 60, 55, 0.2)",
-              transition: "all 0.15s ease",
+              background: "transparent",
+              outline: "none",
+              fontSize: "15px",
+              fontWeight: 600,
+              color: "var(--tx)",
+              fontFamily: "inherit",
+            }}
+          />
+        </div>
+
+        {/* Matched Auto-Card (appears when input is non-empty) */}
+        {matchedResult && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              marginTop: "12px",
+              background: "var(--tint)",
+              borderRadius: "18px",
+              padding: "10px 14px",
             }}
           >
-            {effectiveLocked
-              ? `Limit Reached (${maxChanges}/${maxChanges} used)`
-              : changeCount === 0
-              ? `Save Mood & Feelings (${maxChanges} changes left)`
-              : `Save Mood & Feelings (${remaining} change${remaining > 1 ? "s" : ""} left)`}
-          </button>
+            <span style={{ fontWeight: 800, fontSize: "15px", color: "var(--prt)" }}>
+              {matchedResult.label}
+            </span>
+            <span style={{ flex: 1, fontSize: "12.5px", fontWeight: 600, color: "var(--mu)" }}>
+              {matchedResult.source === "custom"
+                ? "custom feeling"
+                : `matched from “${typedText.trim()}”`}
+            </span>
+            <button
+              type="button"
+              onClick={handleAddMatched}
+              style={{
+                fontSize: "12.5px",
+                fontWeight: 800,
+                color: "var(--on)",
+                background: "var(--pr)",
+                padding: "7px 16px",
+                borderRadius: "99px",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              Add
+            </button>
+          </div>
+        )}
+
+        {/* QUICK PICKS (12 Items) */}
+        <div
+          style={{
+            margin: "20px 2px 10px",
+            fontSize: "11px",
+            letterSpacing: ".14em",
+            fontWeight: 700,
+            color: "var(--mu)",
+            textTransform: "uppercase",
+          }}
+        >
+          QUICK PICKS
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+          {quickPicks.map((item) => {
+            const isSelected = selectedFeelings.some(
+              (f) => f.label.toLowerCase() === item.label.toLowerCase() || f.id === item.id
+            );
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => toggleQuickPick(item)}
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  padding: "8px 14px",
+                  borderRadius: "99px",
+                  border: isSelected ? "1px solid var(--pr)" : "1px solid var(--ln)",
+                  background: isSelected ? "var(--tint)" : "var(--bg)",
+                  color: isSelected ? "var(--prt)" : "var(--mu)",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* TODAY YOU FELT */}
+        {selectedFeelings.length > 0 && (
+          <>
+            <div
+              style={{
+                margin: "20px 2px 10px",
+                fontSize: "11px",
+                letterSpacing: ".14em",
+                fontWeight: 700,
+                color: "var(--mu)",
+                textTransform: "uppercase",
+              }}
+            >
+              TODAY YOU FELT
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {selectedFeelings.map((f) => (
+                <span
+                  key={f.id + f.label}
+                  onClick={() => removeFeeling(f.label)}
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    padding: "8px 14px",
+                    borderRadius: "99px",
+                    background: "var(--tint)",
+                    color: "var(--prt)",
+                    border: "1px solid var(--pr)",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                  title="Tap to remove"
+                >
+                  {f.label}
+                  <span style={{ opacity: 0.6, fontSize: "11px" }}>✕</span>
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Explanatory Footer */}
+        <div
+          style={{
+            fontSize: "12.5px",
+            fontWeight: 600,
+            color: "var(--mu)",
+            marginTop: "20px",
+            lineHeight: 1.5,
+          }}
+        >
+          Type any feeling, in any language. It is matched for you; nothing to scroll through.
         </div>
       </div>
     </div>

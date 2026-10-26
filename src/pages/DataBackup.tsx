@@ -28,6 +28,7 @@ export default function DataBackup() {
   const [downloadLink, setDownloadLink] = useState<{ url: string; filename: string } | null>(null);
 
   // Cloud Turso Settings
+  const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
   const [dbUrl, setDbUrl] = useState("");
   const [authToken, setAuthToken] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
@@ -36,6 +37,8 @@ export default function DataBackup() {
 
   useEffect(() => {
     async function loadSettings() {
+      const savedBackup = await getSetting("last_backup_time", "");
+      if (savedBackup) setLastBackupTime(savedBackup);
       const savedUrl = await getSetting("turso_url", "");
       const savedToken = await getSetting("turso_token", "");
       const savedStatus = await getSetting("turso_verified", "");
@@ -133,6 +136,9 @@ export default function DataBackup() {
       const jsonStr = JSON.stringify(exportData, null, 2);
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10);
+      const nowIso = now.toISOString();
+      await setSetting("last_backup_time", nowIso);
+      setLastBackupTime(nowIso);
       const filename = `dailyos-backup-${dateStr}.json`;
       const blob = new Blob([jsonStr], { type: "application/json" });
 
@@ -276,6 +282,39 @@ export default function DataBackup() {
             }}
           >
             Active
+          </span>
+        </div>
+
+        {/* Visible Storage line for persistence verification */}
+        <div
+          data-testid="storage-status-line"
+          style={{
+            marginTop: "12px",
+            padding: "10px 14px",
+            borderRadius: "14px",
+            background: "var(--bg)",
+            border: "1px solid var(--ln)",
+            fontSize: "12.5px",
+            lineHeight: 1.4,
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            flexWrap: "wrap",
+          }}
+        >
+          <span style={{ fontWeight: 800, color: "var(--prt)" }}>Storage:</span>
+          <span style={{ color: "var(--tx)", fontWeight: 600 }}>
+            {habitsCount} habits · {logsCount} logs · Last backup:{" "}
+            <span style={{ color: "var(--mu)" }}>
+              {lastBackupTime
+                ? new Date(lastBackupTime).toLocaleString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "Never"}
+            </span>
           </span>
         </div>
 

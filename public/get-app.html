@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Download Habit Tracker (Android Test Build)</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap">
+  <style>
+    :root {
+      --bg: #0B1112;
+      --card: #131E20;
+      --tx: #F2F5F5;
+      --mu: #8EA1A2;
+      --pr: #1FA694;
+      --prt: #5FE0CD;
+      --on: #052420;
+      --ln: rgba(255,255,255,0.08);
+      --ice: #2F8FD0;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--tx);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 20px;
+      box-sizing: border-box;
+    }
+    .container {
+      width: 100%;
+      max-width: 440px;
+      background: var(--card);
+      border: 1px solid var(--ln);
+      border-radius: 28px;
+      padding: 32px 24px;
+      box-sizing: border-box;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 99px;
+      background: rgba(31,166,148,0.15);
+      color: var(--prt);
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      color: var(--mu);
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 0 0 24px;
+    }
+    .btn-download {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      height: 56px;
+      background: var(--pr);
+      color: var(--on);
+      font-weight: 800;
+      font-size: 16px;
+      border-radius: 28px;
+      text-decoration: none;
+      box-sizing: border-box;
+      box-shadow: 0 8px 24px rgba(31,166,148,0.3);
+      transition: transform 0.15s ease;
+    }
+    .btn-download:active {
+      transform: scale(0.98);
+    }
+    .meta {
+      display: flex;
+      justify-content: space-between;
+      color: var(--mu);
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 12px;
+      padding: 0 6px;
+    }
+    .steps {
+      margin-top: 28px;
+      border-top: 1px solid var(--ln);
+      padding-top: 24px;
+    }
+    .steps-title {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      color: var(--mu);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+      font-size: 13.5px;
+      line-height: 1.45;
+    }
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      color: var(--prt);
+      font-weight: 800;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .pwa-box {
+      margin-top: 20px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--ln);
+      border-radius: 18px;
+      padding: 14px 16px;
+      font-size: 12.5px;
+      color: var(--mu);
+      line-height: 1.45;
+    }
+    .pwa-box b {
+      color: var(--tx);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">
+      <span>●</span> Test Build · Offline Local-First
+    </div>
+    <h1>Habit Tracker</h1>
+    <div class="sub">
+      Install the phone test APK directly. All your habits, streaks, sleep and mood remain stored securely on your device.
+    </div>
+
+    <a href="/downloads/habit-tracker-debug.apk" class="btn-download" download="habit-tracker-debug.apk">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+      </svg>
+      Download APK (6.1 MB)
+    </a>
+
+    <div class="meta">
+      <span>Version: 1.0.0-test</span>
+      <span>Updated: 2026-10-26</span>
+    </div>
+
+    <div class="steps">
+      <div class="steps-title">5 Steps to Install on Android</div>
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div>Tap <b>Download APK</b> above in Chrome on your phone.</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div>When Android asks, allow Chrome to <b>"Install unknown apps"</b> (one-time permission).</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div>Open the downloaded APK file. If Google Play Protect warns, tap <b>"More details"</b> then <b>"Install anyway"</b> (standard for test builds).</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">4</div>
+        <div>Open the app. You should see <b>"No habits yet"</b> with options to add your first habit or restore from a backup file / cloud key.</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">5</div>
+        <div><b>Fallback option:</b> This website can also be installed as an offline PWA by tapping <b>Chrome menu (⋮) &gt; Install app / Add to Home screen</b>.</div>
+      </div>
+    </div>
+
+    <div class="pwa-box">
+      <b>Web App:</b> You can also use the app directly in your browser at <a href="/" style="color:var(--prt);text-decoration:none;font-weight:700;">Home</a>.
+    </div>
+  </div>
+</body>
+</html>
