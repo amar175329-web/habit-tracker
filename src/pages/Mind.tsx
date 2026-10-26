@@ -209,7 +209,7 @@ export default function Mind() {
               }}
             >
               <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--mu)", letterSpacing: ".08em" }}>
-                MOOD SCALE & REFERENCE
+                High: 4–5 · Low: 1–2 · Okay: 3
               </span>
               <button
                 type="button"
@@ -228,37 +228,6 @@ export default function Mind() {
               </button>
             </div>
 
-            {/* Visual 5-point Mood Scale */}
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
-              {[
-                { score: 1, label: "Rough", emoji: "⛈️" },
-                { score: 2, label: "Low", emoji: "🌧️" },
-                { score: 3, label: "Okay", emoji: "🟡" },
-                { score: 4, label: "Good", emoji: "😊" },
-                { score: 5, label: "Energized", emoji: "⚡" },
-              ].map((m) => (
-                <span
-                  key={m.score}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    color: "var(--tx)",
-                    background: "var(--card)",
-                    border: "1px solid var(--ln)",
-                    borderRadius: "99px",
-                    padding: "4px 8px",
-                  }}
-                >
-                  <span>{m.emoji}</span>
-                  <span style={{ color: "var(--mu)" }}>{m.score}</span>
-                  <span>{m.label}</span>
-                </span>
-              ))}
-            </div>
-
             {/* Last 7 Days Orbs with Mood Names */}
             <div style={{ background: "var(--card)", border: "1px solid var(--ln)", borderRadius: "24px", padding: "16px", marginTop: "12px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -271,14 +240,14 @@ export default function Mind() {
                   const size = d.score ? 14 + d.score * 5 : 16;
                   const moodInfo = d.score
                     ? d.score === 1
-                      ? { name: "Rough", emoji: "⛈️" }
+                      ? { name: "Rough" }
                       : d.score === 2
-                      ? { name: "Low", emoji: "🌧️" }
+                      ? { name: "Low" }
                       : d.score === 3
-                      ? { name: "Okay", emoji: "🟡" }
+                      ? { name: "Okay" }
                       : d.score === 4
-                      ? { name: "Good", emoji: "😊" }
-                      : { name: "Energized", emoji: "⚡" }
+                      ? { name: "Good" }
+                      : { name: "Energized" }
                     : null;
 
                   return (

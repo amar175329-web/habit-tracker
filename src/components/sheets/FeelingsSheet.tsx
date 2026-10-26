@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { saveMood } from "../../lib/db";
 import {
   classifyEmotion,
@@ -47,6 +47,25 @@ export function FeelingsSheet({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const storedCustoms = useMemo(() => getStoredCustomEmotions(), [isOpen]);
+
+  const displayedPresets = useMemo(() => {
+    if (categoryTab === "all") return PRESET_EMOTIONS;
+    return PRESET_EMOTIONS.filter((p) => p.defaultScore === categoryTab);
+  }, [categoryTab]);
+
+  const displayedCustoms = useMemo(() => {
+    if (categoryTab === "all") return storedCustoms;
+    return storedCustoms.filter((p) => p.defaultScore === categoryTab);
+  }, [categoryTab, storedCustoms]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setScore(initialScore);
+      setCategoryTab(initialScore ?? "all");
+      setSelectedEmotions(initialEmotions);
+      setErrorMsg(null);
+    }
+  }, [isOpen, initialScore, initialEmotions]);
 
   const effectiveLocked = isLocked || changeCount >= maxChanges;
   const remaining = Math.max(0, maxChanges - changeCount);
@@ -140,16 +159,6 @@ export function FeelingsSheet({
       setErrorMsg(err.message || "Failed to save mood");
     }
   };
-
-  const displayedPresets = useMemo(() => {
-    if (categoryTab === "all") return PRESET_EMOTIONS;
-    return PRESET_EMOTIONS.filter((p) => p.defaultScore === categoryTab);
-  }, [categoryTab]);
-
-  const displayedCustoms = useMemo(() => {
-    if (categoryTab === "all") return storedCustoms;
-    return storedCustoms.filter((p) => p.defaultScore === categoryTab);
-  }, [categoryTab, storedCustoms]);
 
   const CATEGORY_TABS: { id: number | "all"; label: string; symbol: string }[] = [
     { id: "all", label: "All", symbol: "✨" },
