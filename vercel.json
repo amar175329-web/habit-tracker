@@ -3,9 +3,19 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "headers": [
+    {
+      "source": "/(.*\\.apk)",
+      "headers": [
+        { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+        { "key": "Content-Disposition", "value": "attachment" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/api", "destination": "/api/[[...route]]" },
     { "source": "/api/(.*)", "destination": "/api/[[...route]]" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|.*\\.apk|.*\\.webmanifest|.*\\.js|.*\\.css|.*\\.png|.*\\.svg|.*\\.woff2).*)", "destination": "/index.html" }
   ]
 }
