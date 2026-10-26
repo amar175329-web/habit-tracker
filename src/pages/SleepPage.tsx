@@ -122,8 +122,11 @@ export default function SleepPage() {
     setWakeTime(formatMinutesToTime(current + deltaMin));
   };
 
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const handleSave = async () => {
     try {
+      setErrorMessage(null);
       setSaveSuccess(true);
       await saveSleep(targetDate, bedtime, wakeTime, durationMin, todayStr);
       if (typeof window !== "undefined") {
@@ -134,7 +137,7 @@ export default function SleepPage() {
       }, 350);
     } catch (err: any) {
       setSaveSuccess(false);
-      alert(err.message || "Failed to save sleep");
+      setErrorMessage(err.message || "Failed to save sleep");
     }
   };
 
@@ -371,6 +374,13 @@ export default function SleepPage() {
           ))}
         </div>
       </div>
+
+      {/* Error message banner */}
+      {errorMessage && (
+        <div style={{ color: "var(--co)", fontSize: "13px", fontWeight: 700, textAlign: "center", marginBottom: "10px" }}>
+          {errorMessage}
+        </div>
+      )}
 
       {/* Save Button */}
       <button

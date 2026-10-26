@@ -4,12 +4,10 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../lib/db";
 import { fromMs, toMs } from "../lib/habitRules";
 import { ReflectionsList } from "./ReflectionsList";
-import { MoodSleepCorrelationModal } from "../components/sheets/MoodSleepCorrelationModal";
 
 export default function Mind() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"mood" | "reflections">("mood");
-  const [correlationModalOpen, setCorrelationModalOpen] = useState(false);
 
   const todayStr = useMemo(() => {
     const now = new Date();
@@ -303,7 +301,7 @@ export default function Mind() {
 
             {/* Mood and Sleep Card */}
             <div
-              onClick={() => setCorrelationModalOpen(true)}
+              onClick={() => navigate("/mood-sleep-history")}
               style={{
                 background: "var(--card)",
                 border: "1px solid var(--ln)",
@@ -479,13 +477,6 @@ export default function Mind() {
           </div>
         )}
       </div>
-
-      <MoodSleepCorrelationModal
-        isOpen={correlationModalOpen}
-        onClose={() => setCorrelationModalOpen(false)}
-        allMoods={allMoods}
-        allSleep={allSleep}
-      />
     </div>
   );
 }

@@ -22,6 +22,7 @@ export default function DayDetail() {
   const isToday = date === todayStr;
   const isPastDay = date < todayStr;
   const isFutureDay = date > todayStr;
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const currentWeekStart = useMemo(() => weekStart(todayStr), [todayStr]);
   const unlockedPasses = useLiveQuery(
     () => db.edit_passes.where("week_start").equals(currentWeekStart).toArray(),
@@ -123,7 +124,7 @@ export default function DayDetail() {
         rollback.delete(habitId);
         return rollback;
       });
-      alert(err.message || "Failed to update");
+      setErrorMessage(err.message || "Failed to update");
     }
   };
 
@@ -260,6 +261,23 @@ export default function DayDetail() {
             </div>
           )
         ) : null}
+
+        {errorMessage && (
+          <div
+            style={{
+              background: "color-mix(in srgb, var(--co) 12%, var(--card))",
+              border: "1px solid var(--co)",
+              borderRadius: "16px",
+              padding: "10px 14px",
+              marginTop: "12px",
+              color: "var(--co)",
+              fontSize: "13px",
+              fontWeight: 700,
+            }}
+          >
+            {errorMessage}
+          </div>
+        )}
 
         {/* Habits Card */}
         <div

@@ -10,10 +10,25 @@ import {
   useHabits,
   type DailyOSExport,
 } from "../lib/db";
+import { ConfirmModal } from "../components/modals/ConfirmModal";
 
 export default function DataBackup() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // In-app luxury modal state replacing all browser native alerts
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: React.ReactNode;
+    confirmLabel?: string;
+    variant?: "primary" | "danger" | "warning";
+    icon?: "info" | "warning" | "lock";
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+  });
 
   // Statistics
   const habits = useHabits();
@@ -54,7 +69,14 @@ export default function DataBackup() {
   const handleVerifyAndSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dbUrl.trim() || !authToken.trim()) {
-      alert("Please provide both Database URL and Auth Token.");
+      setModalConfig({
+        isOpen: true,
+        title: "Missing Credentials",
+        description: "Please enter both your Turso Database URL and Auth Token before verifying.",
+        confirmLabel: "Understood",
+        variant: "warning",
+        icon: "warning",
+      });
       return;
     }
 
@@ -107,14 +129,28 @@ export default function DataBackup() {
     const savedToken = await getSetting("turso_token", "");
 
     if (!savedUrl || !savedToken) {
-      alert("Please configure and verify your Turso cloud database first.");
+      setModalConfig({
+        isOpen: true,
+        title: "Cloud Database Required",
+        description: "Please configure and verify your Turso cloud database credentials below before syncing.",
+        confirmLabel: "Got It",
+        variant: "warning",
+        icon: "info",
+      });
       return;
     }
 
     try {
       const items = await db.outbox.toArray();
       if (items.length === 0) {
-        alert("Local database is fully synced (0 pending mutations).");
+        setModalConfig({
+          isOpen: true,
+          title: "All Synced",
+          description: "Your local database is fully up to date with 0 pending mutations.",
+          confirmLabel: "Great",
+          variant: "primary",
+          icon: "info",
+        });
         return;
       }
 
@@ -123,8 +159,23 @@ export default function DataBackup() {
       // For now, clear synchronized items
       await db.outbox.clear();
       setStatusMessage("Sync complete! Cloud and local database are in sync.");
+      setModalConfig({
+        isOpen: true,
+        title: "Sync Successful",
+        description: `Successfully synchronized ${items.length} mutations with your cloud database.`,
+        confirmLabel: "Done",
+        variant: "primary",
+        icon: "info",
+      });
     } catch (err: any) {
-      alert(`Sync failed: ${err.message}`);
+      setModalConfig({
+        isOpen: true,
+        title: "Sync Failed",
+        description: `Could not sync mutations: ${err.message || "Network error"}`,
+        confirmLabel: "Close",
+        variant: "danger",
+        icon: "warning",
+      });
     }
   };
 
@@ -189,7 +240,14 @@ export default function DataBackup() {
       } catch (err: any) {
         console.error(err);
         setFeedback({ type: "error", message: `Import failed: ${err.message}` });
-        alert(`Import failed: ${err.message}`);
+        setModalConfig({
+          isOpen: true,
+          title: "Import Failed",
+          description: `Invalid or corrupt backup file: ${err.message}`,
+          confirmLabel: "Close",
+          variant: "danger",
+          icon: "warning",
+        });
       }
     };
     reader.onerror = () => {
@@ -611,6 +669,16 @@ export default function DataBackup() {
           </span>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        description={modalConfig.description}
+        confirmLabel={modalConfig.confirmLabel}
+        variant={modalConfig.variant}
+        icon={modalConfig.icon}
+        onClose={() => setModalConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

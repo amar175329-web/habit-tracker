@@ -415,9 +415,9 @@ export default function Today() {
     }, todayStr);
   }, [habits, todayStr]);
 
-  // Day rings for Mon..Sun (always shows the entire current week)
+  // Day rings for Mon..Sun: dynamically anchors to the week of the currently viewed date
   const dayRings = useMemo((): DayRingItem[] => {
-    const start = weekStart(todayStr);
+    const start = weekStart(date);
     const labels = ["M", "T", "W", "T", "F", "S", "S"];
     const items: DayRingItem[] = [];
 
@@ -799,8 +799,28 @@ export default function Today() {
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: "19px" }}>Habit Tracker</div>
-            <div style={{ fontSize: "12.5px", color: "var(--mu)", fontWeight: 600 }}>
-              {isViewingToday ? formattedDate : isFutureDay ? `Future Day · ${formattedDate}` : `Past Day · ${formattedDate}`}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+              <span style={{ fontSize: "12.5px", color: "var(--mu)", fontWeight: 600 }}>
+                {isViewingToday ? formattedDate : isFutureDay ? `Future Day · ${formattedDate}` : `Past Day · ${formattedDate}`}
+              </span>
+              {!isViewingToday && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/")}
+                  style={{
+                    background: "var(--tint)",
+                    border: "1px solid var(--pr)",
+                    color: "var(--prt)",
+                    borderRadius: "99px",
+                    padding: "2px 8px",
+                    fontSize: "11px",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  Today ↺
+                </button>
+              )}
             </div>
           </div>
 

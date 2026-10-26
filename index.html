@@ -37,6 +37,15 @@
             if (window.AndroidTheme && window.AndroidTheme.setTheme) {
               window.AndroidTheme.setTheme('dark');
             }
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('light');
+            document.documentElement.setAttribute('data-theme', 'light');
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', '#F2F6F5');
+            if (window.AndroidTheme && window.AndroidTheme.setTheme) {
+              window.AndroidTheme.setTheme('light');
+            }
           }
         } catch (e) {}
       })();
