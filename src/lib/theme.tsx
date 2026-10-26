@@ -61,13 +61,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (meta) meta.setAttribute("content", "#F2F6F5");
     }
 
-    // Dynamic Android status bar & navigation bar theme synchronization
-    try {
-      if (typeof window !== "undefined" && (window as any).AndroidTheme?.setTheme) {
-        (window as any).AndroidTheme.setTheme(resolvedTheme);
+    // Dynamic Android status bar & navigation bar theme synchronization with guaranteed delivery
+    const syncToAndroid = (themeName: string) => {
+      try {
+        if (typeof window !== "undefined" && (window as any).AndroidTheme?.setTheme) {
+          (window as any).AndroidTheme.setTheme(themeName);
+          return true;
+        }
+      } catch (e) {
+        // ignore
       }
-    } catch (e) {
-      // ignore
+      return false;
+    };
+
+    if (!syncToAndroid(resolvedTheme)) {
+      setTimeout(() => syncToAndroid(resolvedTheme), 100);
+      setTimeout(() => syncToAndroid(resolvedTheme), 350);
+      setTimeout(() => syncToAndroid(resolvedTheme), 1000);
     }
   }, [resolvedTheme]);
 

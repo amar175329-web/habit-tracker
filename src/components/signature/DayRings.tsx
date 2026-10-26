@@ -85,16 +85,17 @@ export function DayRings({
                 style={{ transform: "rotate(-90deg)" }}
                 aria-hidden="true"
               >
-                {/* Base Clean White Circle with Subtle Border */}
+                {/* Base Clean Circle with Subtle High-Contrast Border */}
                 <circle
                   cx="15"
                   cy="15"
                   r="11"
+                  className="day-ring-base"
                   fill="var(--card, #ffffff)"
                   strokeWidth="2"
                   style={{
                     stroke: "var(--ln)",
-                    opacity: d.isFuture || isNeutral ? 0.4 : 0.85,
+                    opacity: d.isFuture || isNeutral ? 0.35 : 0.85,
                   }}
                 />
 

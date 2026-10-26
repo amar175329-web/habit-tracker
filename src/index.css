@@ -48,10 +48,15 @@ html.dark {
   --tint: #133634;
   --ind: #9A9AF5;
   --tr: #2B3E3F;
-  --on: #062B27;
+  --on: #0B1112;
   --co: #FF8A70;
   --fl: #FBBF24;
   --ice: #7CC7F5;
+}
+
+html.dark .day-ring-base {
+  stroke: rgba(255, 255, 255, 0.18) !important;
+  fill: rgba(255, 255, 255, 0.05) !important;
 }
 
 @keyframes habitTipFadeIn {
@@ -84,13 +89,40 @@ html.dark {
 }
 
 /* -------------------------------------------------------------------------
-   BASE STYLES & RESET
+   BASE STYLES & APP-WIDE ZERO TEXT SELECTION / CALLOUT SUPPRESSION
+   Eradicates ugly white selection boxes, accidental highlighting, and
+   native "Copy | Select all | Share" menus across all mobile & web views.
    ------------------------------------------------------------------------- */
-* {
+*, *::before, *::after {
   scrollbar-width: thin;
   scrollbar-color: var(--tr) transparent;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  -khtml-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
   box-sizing: border-box;
+}
+
+/* Allow text editing strictly in real text input & textarea elements */
+input, textarea, [contenteditable="true"] {
+  -webkit-touch-callout: default !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Completely prevent any white/blue text selection highlight box */
+::selection {
+  background: transparent !important;
+  color: inherit !important;
+}
+::-moz-selection {
+  background: transparent !important;
+  color: inherit !important;
 }
 
 html, body {

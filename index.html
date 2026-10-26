@@ -28,25 +28,48 @@
 
           var savedTheme = localStorage.getItem('dailyos_theme') || localStorage.getItem('theme');
           var isDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var activeTheme = isDark ? 'dark' : 'light';
           if (isDark) {
             document.documentElement.classList.add('dark');
             document.documentElement.classList.remove('light');
             document.documentElement.setAttribute('data-theme', 'dark');
             var meta = document.querySelector('meta[name="theme-color"]');
             if (meta) meta.setAttribute('content', '#0B1112');
-            if (window.AndroidTheme && window.AndroidTheme.setTheme) {
-              window.AndroidTheme.setTheme('dark');
-            }
           } else {
             document.documentElement.classList.remove('dark');
             document.documentElement.classList.add('light');
             document.documentElement.setAttribute('data-theme', 'light');
             var meta = document.querySelector('meta[name="theme-color"]');
             if (meta) meta.setAttribute('content', '#F2F6F5');
+          }
+
+          function pingAndroid() {
             if (window.AndroidTheme && window.AndroidTheme.setTheme) {
-              window.AndroidTheme.setTheme('light');
+              window.AndroidTheme.setTheme(activeTheme);
             }
           }
+          pingAndroid();
+          window.addEventListener('DOMContentLoaded', pingAndroid);
+          window.addEventListener('load', pingAndroid);
+
+          // Completely suppress native contextmenu & selection action bar popups across app
+          document.addEventListener('contextmenu', function(e) {
+            var target = e.target;
+            if (!target || !target.closest('input, textarea, [contenteditable="true"]')) {
+              e.preventDefault();
+            }
+          }, { passive: false });
+
+          document.addEventListener('selectionchange', function() {
+            var active = document.activeElement;
+            var isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+            if (!isInput) {
+              var sel = window.getSelection();
+              if (sel && sel.removeAllRanges) {
+                sel.removeAllRanges();
+              }
+            }
+          });
         } catch (e) {}
       })();
     </script>

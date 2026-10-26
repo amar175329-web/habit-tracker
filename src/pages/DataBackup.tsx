@@ -131,10 +131,10 @@ export default function DataBackup() {
     if (!savedUrl || !savedToken) {
       setModalConfig({
         isOpen: true,
-        title: "Cloud Database Required",
-        description: "Please configure and verify your Turso cloud database credentials below before syncing.",
-        confirmLabel: "Got It",
-        variant: "warning",
+        title: "Cloud Sync Setup",
+        description: "Configure and test your Turso cloud database credentials below to enable encrypted multi-device backup.",
+        confirmLabel: "Understood",
+        variant: "primary",
         icon: "info",
       });
       return;
