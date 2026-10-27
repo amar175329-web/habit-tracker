@@ -39,12 +39,12 @@
         <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 
-    <!-- Light Launch Theme: #F2F6F5 with transparent icon so Android 12+ never draws a circular distorted icon or app label -->
+    <!-- Light Launch Theme: #F2F6F5 with authentic Habbitrack splash icon -->
     <style name="AppTheme.NoActionBarLaunch" parent="AppTheme.NoActionBar">
         <item name="android:background">@drawable/splash</item>
         <item name="android:windowBackground">@drawable/splash</item>
         <item name="android:windowSplashScreenBackground" tools:targetApi="31">#F2F6F5</item>
-        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@drawable/transparent_icon</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@drawable/splash_icon_light</item>
         <item name="android:windowSplashScreenAnimationDuration" tools:targetApi="31">0</item>
         <item name="android:statusBarColor">#F2F6F5</item>
         <item name="android:windowLightStatusBar">true</item>
@@ -54,12 +54,12 @@
         <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 
-    <!-- Dark Launch Theme: #060E0E with transparent icon -->
+    <!-- Dark Launch Theme: #060E0E with authentic dark Habbitrack splash icon -->
     <style name="AppTheme.NoActionBarLaunch.Dark" parent="AppTheme.NoActionBar.Dark">
         <item name="android:background">@drawable/splash_dark</item>
         <item name="android:windowBackground">@drawable/splash_dark</item>
         <item name="android:windowSplashScreenBackground" tools:targetApi="31">#060E0E</item>
-        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@drawable/transparent_icon</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@drawable/splash_icon_dark</item>
         <item name="android:windowSplashScreenAnimationDuration" tools:targetApi="31">0</item>
         <item name="android:statusBarColor">#060E0E</item>
         <item name="android:windowLightStatusBar">false</item>

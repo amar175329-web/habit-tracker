@@ -179,30 +179,22 @@ public class MainActivity extends BridgeActivity {
 
             ImageView iv = new ImageView(this);
             iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            iv.setAdjustViewBounds(true);
-            int logoRes = isDark ? R.drawable.splash_master_dark : R.drawable.splash_master_light;
+            iv.setAdjustViewBounds(false);
+            int logoRes = isDark ? R.drawable.splash_icon_dark : R.drawable.splash_icon_light;
             iv.setImageResource(logoRes);
 
             DisplayMetrics dm = getResources().getDisplayMetrics();
-            int targetWidth = (int) (dm.widthPixels * 0.62f);
+            int iconBoxSize = (int) (160 * dm.density);
 
             FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                targetWidth,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+                iconBoxSize,
+                iconBoxSize,
                 Gravity.CENTER
             );
             overlay.addView(iv, lp);
 
-            // Subtle pop animation (scale 0.95 -> 1.0) with immediate visibility (alpha 1.0f)
-            // ensuring the authentic logo is visible instantly with zero blank screen on launch
-            iv.setScaleX(0.95f);
-            iv.setScaleY(0.95f);
+            // Immediate visibility matching the native OS splash screen 1:1 with zero resize or jump
             iv.setAlpha(1.0f);
-            iv.animate()
-                .scaleX(1.0f)
-                .scaleY(1.0f)
-                .setDuration(350)
-                .start();
 
             ViewGroup root = findViewById(android.R.id.content);
             if (root != null) {
@@ -225,7 +217,8 @@ public class MainActivity extends BridgeActivity {
             if (splashDismissed || splashDismissScheduled) return;
 
             long elapsed = System.currentTimeMillis() - launchStartTime;
-            long minDuration = 1500; // Minimum 1.5s per Requirement 5
+            // Real-time instantaneous transition into the app as soon as web is rendered
+            long minDuration = 200;
             if (elapsed < minDuration) {
                 splashDismissScheduled = true;
                 long remaining = minDuration - elapsed;
@@ -247,7 +240,7 @@ public class MainActivity extends BridgeActivity {
             if (splashOverlay != null) {
                 splashOverlay.animate()
                     .alpha(0f)
-                    .setDuration(400) // ~400ms fade per Requirement 5
+                    .setDuration(260)
                     .withEndAction(() -> {
                         try {
                             if (splashOverlay != null && splashOverlay.getParent() != null) {
