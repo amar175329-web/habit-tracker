@@ -42,7 +42,7 @@
     <!-- Light Launch Theme: #F2F6F5 with zero logo / zero splash -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#F2F6F5</item>
-        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/transparent_icon</item>
         <item name="windowSplashScreenAnimationDuration">0</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
         <item name="android:windowBackground">#F2F6F5</item>
@@ -51,13 +51,14 @@
         <item name="android:navigationBarColor">#F2F6F5</item>
         <item name="android:windowLightNavigationBar">true</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowDisablePreview">true</item>
         <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 
     <!-- Dark Launch Theme: #0B1112 with zero logo / zero splash -->
     <style name="AppTheme.NoActionBarLaunch.Dark" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#0B1112</item>
-        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/transparent_icon</item>
         <item name="windowSplashScreenAnimationDuration">0</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar.Dark</item>
         <item name="android:windowBackground">#0B1112</item>
@@ -66,6 +67,7 @@
         <item name="android:navigationBarColor">#0B1112</item>
         <item name="android:windowLightNavigationBar">false</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowDisablePreview">true</item>
         <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 </resources>
