@@ -67,7 +67,14 @@ public class MainActivity extends BridgeActivity {
             prefs.edit().putString(KEY_THEME, "light").putBoolean("default_white_v13", true).apply();
         }
         String initialTheme = prefs.getString(KEY_THEME, "light");
-        int initialStyle = "dark".equalsIgnoreCase(initialTheme)
+        boolean isDark = "dark".equalsIgnoreCase(initialTheme);
+        try {
+            androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
+                isDark ? androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES : androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+            );
+        } catch (Exception ignored) {}
+
+        int initialStyle = isDark
             ? R.style.AppTheme_NoActionBar_Dark
             : R.style.AppTheme_NoActionBar;
 
@@ -134,6 +141,11 @@ public class MainActivity extends BridgeActivity {
         if (!"dark".equals(t) && !"light".equals(t)) return;
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         prefs.edit().putString(KEY_THEME, t).apply();
+        try {
+            androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
+                "dark".equals(t) ? androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES : androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+            );
+        } catch (Exception ignored) {}
         applyTheme(t);
     }
 
