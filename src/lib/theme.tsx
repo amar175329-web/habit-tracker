@@ -57,32 +57,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(THEME_STORAGE_KEY);
-      if (saved === "light" || saved === "dark") {
-        return saved as Theme;
+      if (saved === "dark") {
+        return "dark";
       }
+      // Strict default is ALWAYS White / Light theme (#F2F6F5)
       localStorage.setItem(THEME_STORAGE_KEY, "light");
-      return "light"; // Default to light theme per brand spec
+      return "light";
     }
     return "light";
   });
 
-  const [systemIsDark, setSystemIsDark] = useState<boolean>(() => {
-    if (typeof window !== "undefined" && window.matchMedia) {
-      return window.matchMedia("(prefers-color-scheme: dark)").matches;
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => setSystemIsDark(e.matches);
-    media.addEventListener("change", handler);
-    return () => media.removeEventListener("change", handler);
-  }, []);
-
-  const resolvedTheme: ResolvedTheme =
-    theme === "system" ? (systemIsDark ? "dark" : "light") : theme;
+  // Strict default is ALWAYS white/light unless the user explicitly selected "dark" in the app
+  const resolvedTheme: ResolvedTheme = theme === "dark" ? "dark" : "light";
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -109,8 +95,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [resolvedTheme]);
 
   const setTheme = (newTheme: Theme) => {
-    const nextResolved: ResolvedTheme =
-      newTheme === "system" ? (systemIsDark ? "dark" : "light") : newTheme;
+    const nextResolved: ResolvedTheme = newTheme === "dark" ? "dark" : "light";
     const isDark = nextResolved === "dark";
 
     // 1. IMMEDIATELY update DOM root classes synchronously on click (0ms)

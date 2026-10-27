@@ -158,31 +158,21 @@ public class MainActivity extends BridgeActivity {
             ImageView iv = new ImageView(this);
             iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
             iv.setAdjustViewBounds(true);
-            int logoRes = isDark ? R.drawable.splash_dark_logo : R.drawable.splash_light_logo;
+            int logoRes = isDark ? R.drawable.splash_logo_dark : R.drawable.splash_logo;
             iv.setImageResource(logoRes);
 
             DisplayMetrics dm = getResources().getDisplayMetrics();
-            int screenWidth = dm.widthPixels;
-            int logoWidth = (int) (screenWidth * 0.62f);
+            int iconSize = (int) (192 * dm.density);
 
             FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                logoWidth,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+                iconSize,
+                iconSize,
                 Gravity.CENTER
             );
             overlay.addView(iv, lp);
 
-            // Pop animation: fade in and scale from 0.92 to 1.0 (over 600ms)
-            iv.setAlpha(0f);
-            iv.setScaleX(0.92f);
-            iv.setScaleY(0.92f);
-            iv.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .setDuration(600)
-                .setInterpolator(new DecelerateInterpolator())
-                .start();
+            // Continuous seamless match from OS splash: starts fully visible at alpha 1f with zero jump or double logo
+            iv.setAlpha(1f);
 
             ViewGroup root = findViewById(android.R.id.content);
             if (root != null) {
@@ -277,7 +267,8 @@ public class MainActivity extends BridgeActivity {
 
     public String getSavedTheme() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        return prefs.getString(KEY_THEME, "light");
+        String saved = prefs.getString(KEY_THEME, "light");
+        return "dark".equalsIgnoreCase(saved) ? "dark" : "light";
     }
 
     public void saveAndApplyTheme(String theme) {
@@ -344,7 +335,7 @@ public class MainActivity extends BridgeActivity {
             webView.post(() -> {
                 try {
                     webView.evaluateJavascript(
-                        "(function() { try { var d = document.documentElement; if (d.classList.contains('dark') || d.getAttribute('data-theme') === 'dark') return 'dark'; if (d.classList.contains('light') || d.getAttribute('data-theme') === 'light') return 'light'; var s = localStorage.getItem('dailyos_theme'); if (s === 'dark' || s === 'light') return s; } catch(e){} return 'light'; })()",
+                        "(function() { try { var s = localStorage.getItem('dailyos_theme'); if (s === 'dark') return 'dark'; return 'light'; } catch(e){} return 'light'; })()",
                         value -> {
                             if (value != null && !value.equals("null")) {
                                 String theme = value.replace("\"", "").replace("'", "").trim().toLowerCase();
