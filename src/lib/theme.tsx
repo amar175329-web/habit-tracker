@@ -25,16 +25,16 @@ export async function syncSystemBars(isDark: boolean) {
   const themeName = isDark ? "dark" : "light";
   const barColor = isDark ? "#0B1112" : "#F2F6F5";
 
-  // 1. Native Custom Capacitor Plugin (Direct Bridge call)
-  try {
-    await AppTheme.setTheme({ theme: themeName });
-  } catch (e) {}
-
-  // 2. Direct Android JavascriptInterface
+  // 1. Direct Android JavascriptInterface (0ms synchronous)
   try {
     if (typeof window !== "undefined" && (window as any).AndroidTheme?.setTheme) {
       (window as any).AndroidTheme.setTheme(themeName);
     }
+  } catch (e) {}
+
+  // 2. Native Custom Capacitor Plugin (Direct Bridge call)
+  try {
+    await AppTheme.setTheme({ theme: themeName });
   } catch (e) {}
 
   // 3. Native Capacitor StatusBar Plugin
@@ -52,7 +52,17 @@ export async function syncSystemBars(isDark: boolean) {
     // Plugin not available in regular web browser
   }
 
-  // 4. Web Meta Theme-Color
+  // 4. Re-assert via Native Bridge so MainActivity.applyTheme has final authority
+  try {
+    await AppTheme.setTheme({ theme: themeName });
+  } catch (e) {}
+  try {
+    if (typeof window !== "undefined" && (window as any).AndroidTheme?.setTheme) {
+      (window as any).AndroidTheme.setTheme(themeName);
+    }
+  } catch (e) {}
+
+  // 5. Web Meta Theme-Color
   if (typeof document !== "undefined") {
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {

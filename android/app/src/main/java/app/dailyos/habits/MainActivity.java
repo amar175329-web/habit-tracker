@@ -44,22 +44,25 @@ public class MainActivity extends BridgeActivity {
         @Override
         public void run() {
             syncThemeFromWeb();
-            themePollHandler.postDelayed(this, 300);
+            themePollHandler.postDelayed(this, 250);
         }
     };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        setTheme(R.style.AppTheme_NoActionBar);
-        registerPlugin(AppThemePlugin.class);
-        super.onCreate(savedInstanceState);
-
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String initialTheme = prefs.getString(KEY_THEME, "light");
+        int initialStyle = "dark".equalsIgnoreCase(initialTheme)
+            ? R.style.AppTheme_NoActionBar_Dark
+            : R.style.AppTheme_NoActionBar;
 
-        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
-            "dark".equalsIgnoreCase(initialTheme) ? androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES : androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
-        );
+        setTheme(initialStyle);
+        try {
+            getTheme().applyStyle(initialStyle, true);
+        } catch (Exception ignored) {}
+
+        registerPlugin(AppThemePlugin.class);
+        super.onCreate(savedInstanceState);
 
         applyTheme(initialTheme);
         setupThemeBridge();
@@ -67,9 +70,9 @@ public class MainActivity extends BridgeActivity {
         View decor = getWindow() != null ? getWindow().getDecorView() : null;
         if (decor != null) {
             decor.post(() -> applyTheme(getSavedTheme()));
-            decor.postDelayed(() -> applyTheme(getSavedTheme()), 100);
-            decor.postDelayed(() -> applyTheme(getSavedTheme()), 300);
-            decor.postDelayed(() -> syncThemeFromWeb(), 500);
+            decor.postDelayed(() -> applyTheme(getSavedTheme()), 80);
+            decor.postDelayed(() -> applyTheme(getSavedTheme()), 250);
+            decor.postDelayed(() -> syncThemeFromWeb(), 450);
         }
     }
 
@@ -77,6 +80,7 @@ public class MainActivity extends BridgeActivity {
     public void onStart() {
         super.onStart();
         setupThemeBridge();
+        applyTheme(getSavedTheme());
         themePollHandler.removeCallbacks(themePollRunnable);
         themePollHandler.post(themePollRunnable);
     }
@@ -115,9 +119,6 @@ public class MainActivity extends BridgeActivity {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         prefs.edit().putString(KEY_THEME, t).apply();
         applyTheme(t);
-        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
-            "dark".equalsIgnoreCase(t) ? androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES : androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
-        );
     }
 
     // Suppress floating text selection action modes ("Copy | Select all | Share") window-wide
@@ -161,14 +162,32 @@ public class MainActivity extends BridgeActivity {
             webView.post(() -> {
                 try {
                     webView.evaluateJavascript(
-                        "(function() { try { var d = document.documentElement; if (d.classList.contains('dark') || d.getAttribute('data-theme') === 'dark' || localStorage.getItem('dailyos_theme') === 'dark') return 'dark'; if (d.classList.contains('light') || d.getAttribute('data-theme') === 'light' || localStorage.getItem('dailyos_theme') === 'light') return 'light'; } catch(e){} return 'light'; })()",
+                        "(function() { try { var d = document.documentElement; if (d.classList.contains('dark') || d.getAttribute('data-theme') === 'dark') return 'dark'; if (d.classList.contains('light') || d.getAttribute('data-theme') === 'light') return 'light'; var s = localStorage.getItem('dailyos_theme'); if (s === 'dark' || s === 'light') return s; } catch(e){} return 'light'; })()",
                         value -> {
                             if (value != null && !value.equals("null")) {
                                 String theme = value.replace("\"", "").replace("'", "").trim().toLowerCase();
                                 if ("dark".equals(theme) || "light".equals(theme)) {
                                     SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
                                     String current = prefs.getString(KEY_THEME, "");
-                                    if (!theme.equals(current)) {
+                                    int expectedColor = "dark".equals(theme)
+                                        ? Color.parseColor("#0B1112")
+                                        : Color.parseColor("#F2F6F5");
+                                    boolean colorMismatch = false;
+                                    Window w = getWindow();
+                                    if (w != null) {
+                                        if (w.getStatusBarColor() != expectedColor || w.getNavigationBarColor() != expectedColor) {
+                                            colorMismatch = true;
+                                        }
+                                        View d = w.getDecorView();
+                                        if (d != null && d.getBackground() instanceof ColorDrawable) {
+                                            if (((ColorDrawable) d.getBackground()).getColor() != expectedColor) {
+                                                colorMismatch = true;
+                                            }
+                                        } else if (d != null) {
+                                            colorMismatch = true;
+                                        }
+                                    }
+                                    if (!theme.equals(current) || colorMismatch) {
                                         prefs.edit().putString(KEY_THEME, theme).apply();
                                         applyTheme(theme);
                                     }
@@ -184,9 +203,32 @@ public class MainActivity extends BridgeActivity {
     public void applyTheme(final String theme) {
         runOnUiThread(() -> {
             boolean isDark = "dark".equalsIgnoreCase(theme);
-            // White Theme: #F2F6F5 background with dark icons/text
-            // Black Theme: #0B1112 background with white icons/text
+            // White Theme: #F2F6F5 background with dark charcoal icons
+            // Black Theme: #0B1112 background with crisp white icons
             int barColor = isDark ? Color.parseColor("#0B1112") : Color.parseColor("#F2F6F5");
+            int styleRes = isDark ? R.style.AppTheme_NoActionBar_Dark : R.style.AppTheme_NoActionBar;
+
+            try {
+                setTheme(styleRes);
+                getTheme().applyStyle(styleRes, true);
+                if (getApplication() != null && getApplication().getTheme() != null) {
+                    getApplication().setTheme(styleRes);
+                    getApplication().getTheme().applyStyle(styleRes, true);
+                }
+            } catch (Exception ignored) {}
+
+            // Synchronize Capacitor 8's internal SystemBars plugin so it never overwrites decorView with stale theme color
+            try {
+                if (bridge != null) {
+                    com.getcapacitor.PluginHandle handle = bridge.getPlugin("SystemBars");
+                    if (handle != null && handle.getInstance() != null) {
+                        Object sysBars = handle.getInstance();
+                        java.lang.reflect.Method m = sysBars.getClass().getDeclaredMethod("setStyle", String.class, String.class);
+                        m.setAccessible(true);
+                        m.invoke(sysBars, isDark ? "DARK" : "LIGHT", "");
+                    }
+                }
+            } catch (Exception ignored) {}
 
             Window window = getWindow();
             if (window == null) return;
@@ -254,4 +296,3 @@ public class MainActivity extends BridgeActivity {
         }
     }
 }
-
