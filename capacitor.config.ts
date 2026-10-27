@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "app.habittracker.test",
-  appName: "Habbitrack",
+  appName: "Habit Tracker",
   webDir: "dist",
   server: {
     androidScheme: "https",
@@ -15,8 +15,6 @@ const config: CapacitorConfig = {
       launchShowDuration: 0,
       launchAutoHide: true,
       backgroundColor: "#F2F6F5",
-      androidSplashResourceName: "splash",
-      androidScaleType: "CENTER_CROP",
       showSpinner: false,
     },
   },

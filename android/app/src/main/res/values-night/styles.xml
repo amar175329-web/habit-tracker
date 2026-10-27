@@ -39,13 +39,12 @@
         <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 
-    <!-- When Night Mode is active, launch theme is pure Black (#0B1112) with dark splash -->
+    <!-- When Night Mode is active, launch theme is pure Black (#0B1112) with zero logo / zero splash -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#0B1112</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo_dark</item>
-        <item name="windowSplashScreenIconBackgroundColor">#0B1112</item>
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="windowSplashScreenAnimationDuration">0</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar.Dark</item>
-        <item name="android:background">@drawable/splash_dark</item>
         <item name="android:windowBackground">#0B1112</item>
         <item name="android:statusBarColor">#0B1112</item>
         <item name="android:windowLightStatusBar">false</item>
@@ -57,10 +56,9 @@
 
     <style name="AppTheme.NoActionBarLaunch.Dark" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#0B1112</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo_dark</item>
-        <item name="windowSplashScreenIconBackgroundColor">#0B1112</item>
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="windowSplashScreenAnimationDuration">0</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar.Dark</item>
-        <item name="android:background">@drawable/splash_dark</item>
         <item name="android:windowBackground">#0B1112</item>
         <item name="android:statusBarColor">#0B1112</item>
         <item name="android:windowLightStatusBar">false</item>

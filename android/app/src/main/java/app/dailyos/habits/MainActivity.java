@@ -93,13 +93,13 @@ public class MainActivity extends BridgeActivity {
             );
         } catch (Exception ignored) {}
 
-        int initialStyle = isDark
-            ? R.style.AppTheme_NoActionBarLaunch_Dark
-            : R.style.AppTheme_NoActionBarLaunch;
+        int targetTheme = isDark
+            ? R.style.AppTheme_NoActionBar_Dark
+            : R.style.AppTheme_NoActionBar;
 
-        setTheme(initialStyle);
+        setTheme(targetTheme);
         try {
-            getTheme().applyStyle(initialStyle, true);
+            getTheme().applyStyle(targetTheme, true);
         } catch (Exception ignored) {}
 
         registerPlugin(AppThemePlugin.class);
@@ -119,7 +119,6 @@ public class MainActivity extends BridgeActivity {
 
         applyTheme(initialTheme);
         setupThemeBridge();
-        attachSplashOverlay(isDark, themeColor);
 
         View decor = getWindow() != null ? getWindow().getDecorView() : null;
         if (decor != null) {
@@ -132,56 +131,15 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void attachSplashOverlay(boolean isDark, int themeColor) {
-        try {
-            ImageView iv = new ImageView(this);
-            iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            int drawableRes = isDark ? R.drawable.splash_dark : R.drawable.splash;
-            iv.setImageResource(drawableRes);
-            iv.setBackgroundColor(themeColor);
-
-            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            );
-
-            ViewGroup root = findViewById(android.R.id.content);
-            if (root != null) {
-                splashOverlay = iv;
-                root.addView(iv, lp);
-            }
-        } catch (Exception ignored) {}
-
-        // Fallback dismissal in 800ms max so app never hangs
-        new Handler(Looper.getMainLooper()).postDelayed(this::dismissSplash, 800);
+        // Zero splash overlay: launch directly into WebView without any logo, text or splash screen
     }
 
     public void onWebRenderComplete() {
-        runOnUiThread(() -> {
-            if (splashDismissed) return;
-            // Instant real-time transition as soon as web UI mounts and renders
-            dismissSplash();
-        });
+        // Direct launch complete
     }
 
     public void dismissSplash() {
-        runOnUiThread(() -> {
-            if (splashDismissed) return;
-            splashDismissed = true;
-            if (splashOverlay != null) {
-                splashOverlay.animate()
-                    .alpha(0f)
-                    .setDuration(90)
-                    .withEndAction(() -> {
-                        try {
-                            if (splashOverlay != null && splashOverlay.getParent() != null) {
-                                ((ViewGroup) splashOverlay.getParent()).removeView(splashOverlay);
-                                splashOverlay = null;
-                            }
-                        } catch (Exception ignored) {}
-                    })
-                    .start();
-            }
-        });
+        // Direct launch complete
     }
 
     @Override
