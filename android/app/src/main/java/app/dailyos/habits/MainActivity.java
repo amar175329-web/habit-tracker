@@ -44,9 +44,21 @@ public class MainActivity extends BridgeActivity {
         @Override
         public void run() {
             syncThemeFromWeb();
-            themePollHandler.postDelayed(this, 250);
+            themePollHandler.postDelayed(this, 60);
         }
     };
+
+    @Override
+    protected void load() {
+        try {
+            WebView wv = findViewById(com.getcapacitor.android.R.id.webview);
+            if (wv != null) {
+                registerThemeInterface(wv);
+            }
+        } catch (Exception ignored) {}
+        super.load();
+        setupThemeBridge();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,9 +85,10 @@ public class MainActivity extends BridgeActivity {
         View decor = getWindow() != null ? getWindow().getDecorView() : null;
         if (decor != null) {
             decor.post(() -> applyTheme(getSavedTheme()));
+            decor.postDelayed(() -> applyTheme(getSavedTheme()), 30);
             decor.postDelayed(() -> applyTheme(getSavedTheme()), 80);
-            decor.postDelayed(() -> applyTheme(getSavedTheme()), 250);
-            decor.postDelayed(() -> syncThemeFromWeb(), 450);
+            decor.postDelayed(() -> applyTheme(getSavedTheme()), 200);
+            decor.postDelayed(() -> syncThemeFromWeb(), 350);
         }
     }
 
@@ -135,26 +148,27 @@ public class MainActivity extends BridgeActivity {
         return null;
     }
 
+    private void registerThemeInterface(WebView webView) {
+        if (webView == null) return;
+        webView.clearCache(true);
+        webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
+        webView.setLongClickable(false);
+        webView.setOnLongClickListener(v -> true);
+        webView.setHapticFeedbackEnabled(false);
+
+        try {
+            webView.addJavascriptInterface(new Object() {
+                @JavascriptInterface
+                public void setTheme(final String theme) {
+                    saveAndApplyTheme(theme);
+                }
+            }, "AndroidTheme");
+        } catch (Exception ignored) {}
+    }
+
     private void setupThemeBridge() {
         if (bridge != null && bridge.getWebView() != null) {
-            final WebView webView = bridge.getWebView();
-
-            webView.clearCache(true);
-            webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
-
-            webView.setLongClickable(false);
-            webView.setOnLongClickListener(v -> true);
-            webView.setHapticFeedbackEnabled(false);
-
-            try {
-                webView.addJavascriptInterface(new Object() {
-                    @JavascriptInterface
-                    public void setTheme(final String theme) {
-                        saveAndApplyTheme(theme);
-                    }
-                }, "AndroidTheme");
-            } catch (Exception ignored) {}
-
+            registerThemeInterface(bridge.getWebView());
             syncThemeFromWeb();
         }
     }
@@ -219,6 +233,58 @@ public class MainActivity extends BridgeActivity {
             int barColor = isDark ? Color.parseColor("#0B1112") : Color.parseColor("#F2F6F5");
             int styleRes = isDark ? R.style.AppTheme_NoActionBar_Dark : R.style.AppTheme_NoActionBar;
 
+            // 1. FAST PATH (VSYNC Frame 0): Apply native window colors & system bar icons IMMEDIATELY
+            Window window = getWindow();
+            if (window != null) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+                window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    window.setStatusBarContrastEnforced(false);
+                    window.setNavigationBarContrastEnforced(false);
+                }
+
+                window.setStatusBarColor(barColor);
+                window.setNavigationBarColor(barColor);
+                window.setBackgroundDrawable(new ColorDrawable(barColor));
+
+                View decor = window.getDecorView();
+                if (decor != null) {
+                    setHierarchyBackgroundColor(decor, barColor);
+                    try {
+                        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
+                        if (controller != null) {
+                            // Light theme: dark icons on status bar and navigation bar (appearanceLight = true)
+                            // Dark theme: white/light icons on status bar and navigation bar (appearanceLight = false)
+                            controller.setAppearanceLightStatusBars(!isDark);
+                            controller.setAppearanceLightNavigationBars(!isDark);
+                        }
+                    } catch (Exception ignored) {}
+
+                    try {
+                        int flags = decor.getSystemUiVisibility();
+                        if (isDark) {
+                            flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                            }
+                        } else {
+                            flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                            }
+                        }
+                        decor.setSystemUiVisibility(flags);
+                        decor.postInvalidateOnAnimation();
+                    } catch (Exception ignored) {}
+                }
+
+                if (bridge != null && bridge.getWebView() != null) {
+                    bridge.getWebView().setBackgroundColor(barColor);
+                }
+            }
+
+            // 2. BACKGROUND PATH: Update styles & synchronize SystemBars plugin
             try {
                 setTheme(styleRes);
                 getTheme().applyStyle(styleRes, true);
@@ -228,7 +294,6 @@ public class MainActivity extends BridgeActivity {
                 }
             } catch (Exception ignored) {}
 
-            // Synchronize Capacitor 8's internal SystemBars plugin so it never overwrites decorView with stale theme color
             try {
                 if (bridge != null) {
                     com.getcapacitor.PluginHandle handle = bridge.getPlugin("SystemBars");
@@ -240,56 +305,6 @@ public class MainActivity extends BridgeActivity {
                     }
                 }
             } catch (Exception ignored) {}
-
-            Window window = getWindow();
-            if (window == null) return;
-
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                window.setStatusBarContrastEnforced(false);
-                window.setNavigationBarContrastEnforced(false);
-            }
-
-            window.setStatusBarColor(barColor);
-            window.setNavigationBarColor(barColor);
-            window.setBackgroundDrawable(new ColorDrawable(barColor));
-
-            View decor = window.getDecorView();
-            if (decor != null) {
-                setHierarchyBackgroundColor(decor, barColor);
-                try {
-                    WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
-                    if (controller != null) {
-                        // Light theme: dark icons on status bar and navigation bar (appearanceLight = true)
-                        // Dark theme: white/light icons on status bar and navigation bar (appearanceLight = false)
-                        controller.setAppearanceLightStatusBars(!isDark);
-                        controller.setAppearanceLightNavigationBars(!isDark);
-                    }
-                } catch (Exception ignored) {}
-
-                try {
-                    int flags = decor.getSystemUiVisibility();
-                    if (isDark) {
-                        flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-                        }
-                    } else {
-                        flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-                        }
-                    }
-                    decor.setSystemUiVisibility(flags);
-                    decor.invalidate();
-                } catch (Exception ignored) {}
-            }
-
-            if (bridge != null && bridge.getWebView() != null) {
-                bridge.getWebView().setBackgroundColor(barColor);
-            }
         });
     }
 

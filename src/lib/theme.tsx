@@ -20,55 +20,37 @@ const AppTheme = registerPlugin<{
   setTheme: (options: { theme: string }) => Promise<void>;
 }>("AppTheme");
 
-// Synchronize status bar and navigation bar to native Android & web metadata
-export async function syncSystemBars(isDark: boolean) {
+// 0ms Real-Time Synchronizer: executes in the exact same tick/frame as UI click
+export function fastSyncSystemBars(isDark: boolean) {
   const themeName = isDark ? "dark" : "light";
   const barColor = isDark ? "#0B1112" : "#F2F6F5";
 
-  // 1. Direct Android JavascriptInterface (0ms synchronous)
+  // 1. Direct synchronous Android JNI call (instant, 0ms)
   try {
     if (typeof window !== "undefined" && (window as any).AndroidTheme?.setTheme) {
       (window as any).AndroidTheme.setTheme(themeName);
     }
   } catch (e) {}
 
-  // 2. Native Custom Capacitor Plugin (Direct Bridge call)
+  // 2. Parallel non-blocking Capacitor plugin bridge calls
   try {
-    await AppTheme.setTheme({ theme: themeName });
+    AppTheme.setTheme({ theme: themeName }).catch(() => {});
+    StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {});
+    StatusBar.setBackgroundColor({ color: barColor }).catch(() => {});
   } catch (e) {}
 
-  // 3. Native Capacitor StatusBar Plugin
-  try {
-    if (isDark) {
-      // Dark mode: white/light icons on dark background (#0B1112)
-      await StatusBar.setStyle({ style: Style.Dark });
-      await StatusBar.setBackgroundColor({ color: "#0B1112" });
-    } else {
-      // Light mode: dark icons on white background (#F2F6F5)
-      await StatusBar.setStyle({ style: Style.Light });
-      await StatusBar.setBackgroundColor({ color: "#F2F6F5" });
-    }
-  } catch (e) {
-    // Plugin not available in regular web browser
-  }
-
-  // 4. Re-assert via Native Bridge so MainActivity.applyTheme has final authority
-  try {
-    await AppTheme.setTheme({ theme: themeName });
-  } catch (e) {}
-  try {
-    if (typeof window !== "undefined" && (window as any).AndroidTheme?.setTheme) {
-      (window as any).AndroidTheme.setTheme(themeName);
-    }
-  } catch (e) {}
-
-  // 5. Web Meta Theme-Color
+  // 3. Web Meta Theme-Color
   if (typeof document !== "undefined") {
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
       meta.setAttribute("content", barColor);
     }
   }
+}
+
+// Fallback async system bars sync for mounting / life-cycle
+export async function syncSystemBars(isDark: boolean) {
+  fastSyncSystemBars(isDark);
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -116,27 +98,51 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.setAttribute("data-theme", "light");
     }
 
-    syncSystemBars(isDark);
-    const t1 = setTimeout(() => syncSystemBars(isDark), 80);
-    const t2 = setTimeout(() => syncSystemBars(isDark), 300);
-    const t3 = setTimeout(() => syncSystemBars(isDark), 800);
+    fastSyncSystemBars(isDark);
+    const t1 = setTimeout(() => fastSyncSystemBars(isDark), 40);
+    const t2 = setTimeout(() => fastSyncSystemBars(isDark), 150);
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
-      clearTimeout(t3);
     };
   }, [resolvedTheme]);
 
   const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
+    const nextResolved: ResolvedTheme =
+      newTheme === "system" ? (systemIsDark ? "dark" : "light") : newTheme;
+    const isDark = nextResolved === "dark";
+
+    // 1. IMMEDIATELY update DOM root classes synchronously on click (0ms)
+    if (typeof document !== "undefined") {
+      const root = document.documentElement;
+      if (isDark) {
+        root.classList.add("dark");
+        root.classList.remove("light");
+        root.setAttribute("data-theme", "dark");
+      } else {
+        root.classList.remove("dark");
+        root.classList.add("light");
+        root.setAttribute("data-theme", "light");
+      }
+    }
+
+    // 2. IMMEDIATELY trigger native status bar & nav bar sync (0ms)
+    fastSyncSystemBars(isDark);
+
+    // 3. Update localStorage synchronously
     if (typeof window !== "undefined") {
       localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+      localStorage.setItem("theme", newTheme);
     }
+
+    // 4. Update React state
+    setThemeState(newTheme);
   };
 
   const toggleTheme = () => {
-    setTheme(resolvedTheme === "dark" ? "light" : "dark");
+    const nextTheme: ResolvedTheme = resolvedTheme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
   };
 
   return (
