@@ -57,6 +57,10 @@ public class MainActivity extends BridgeActivity {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String initialTheme = prefs.getString(KEY_THEME, "light");
 
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
+            "dark".equalsIgnoreCase(initialTheme) ? androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES : androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+        );
+
         applyTheme(initialTheme);
         setupThemeBridge();
 
@@ -111,6 +115,9 @@ public class MainActivity extends BridgeActivity {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         prefs.edit().putString(KEY_THEME, t).apply();
         applyTheme(t);
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
+            "dark".equalsIgnoreCase(t) ? androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES : androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+        );
     }
 
     // Suppress floating text selection action modes ("Copy | Select all | Share") window-wide
