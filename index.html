@@ -12,6 +12,22 @@
     <script>
       (function() {
         try {
+          // Immediately unregister all ServiceWorkers and wipe stale CacheStorage
+          if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              for (var i = 0; i < registrations.length; i++) {
+                registrations[i].unregister();
+              }
+            });
+          }
+          if (typeof window !== 'undefined' && 'caches' in window) {
+            caches.keys().then(function(names) {
+              for (var i = 0; i < names.length; i++) {
+                caches.delete(names[i]);
+              }
+            });
+          }
+
           var PURGE_KEY = 'habittracker_clean_restart_v12';
           if (!localStorage.getItem(PURGE_KEY)) {
             var theme = localStorage.getItem('theme') || localStorage.getItem('dailyos_theme');

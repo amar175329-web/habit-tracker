@@ -75,6 +75,10 @@ public class MainActivity extends BridgeActivity {
         if (bridge != null && bridge.getWebView() != null) {
             final WebView webView = bridge.getWebView();
 
+            // Always load latest bundled assets and eradicate stale WebView caches
+            webView.clearCache(true);
+            webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
+
             // Disable long click and contextual copy/share popups across WebView
             webView.setLongClickable(false);
             webView.setOnLongClickListener(v -> true);
