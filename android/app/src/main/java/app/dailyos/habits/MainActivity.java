@@ -170,21 +170,29 @@ public class MainActivity extends BridgeActivity {
             ImageView iv = new ImageView(this);
             iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
             iv.setAdjustViewBounds(true);
-            int logoRes = isDark ? R.drawable.splash_icon_dark : R.drawable.splash_icon_light;
+            int logoRes = isDark ? R.drawable.splash_master_dark : R.drawable.splash_master_light;
             iv.setImageResource(logoRes);
 
             DisplayMetrics dm = getResources().getDisplayMetrics();
-            int iconSize = (int) (160 * dm.density);
+            int targetWidth = (int) (dm.widthPixels * 0.62f);
 
             FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                iconSize,
-                iconSize,
+                targetWidth,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.CENTER
             );
             overlay.addView(iv, lp);
 
-            // Single continuous logo matching Frame 0: starts fully visible at alpha 1f with zero jump or double logo
-            iv.setAlpha(1f);
+            // Subtle pop animation (scale 0.92 -> 1.0, alpha 0 -> 1 over 600ms) matching splash_preview.html
+            iv.setScaleX(0.92f);
+            iv.setScaleY(0.92f);
+            iv.setAlpha(0f);
+            iv.animate()
+                .scaleX(1.0f)
+                .scaleY(1.0f)
+                .alpha(1.0f)
+                .setDuration(600)
+                .start();
 
             ViewGroup root = findViewById(android.R.id.content);
             if (root != null) {
