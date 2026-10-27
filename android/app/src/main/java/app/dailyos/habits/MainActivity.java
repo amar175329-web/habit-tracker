@@ -158,11 +158,11 @@ public class MainActivity extends BridgeActivity {
             ImageView iv = new ImageView(this);
             iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
             iv.setAdjustViewBounds(true);
-            int logoRes = isDark ? R.drawable.splash_logo_dark : R.drawable.splash_logo;
+            int logoRes = isDark ? R.drawable.splash_icon_dark : R.drawable.splash_icon_light;
             iv.setImageResource(logoRes);
 
             DisplayMetrics dm = getResources().getDisplayMetrics();
-            int iconSize = (int) (192 * dm.density);
+            int iconSize = (int) (160 * dm.density);
 
             FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
                 iconSize,
