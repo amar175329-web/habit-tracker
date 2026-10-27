@@ -14,7 +14,6 @@
         <item name="colorPrimary">#0D7B6C</item>
         <item name="colorPrimaryDark">#F2F6F5</item>
         <item name="colorAccent">#0D7B6C</item>
-        <item name="android:background">#F2F6F5</item>
         <item name="android:windowBackground">#F2F6F5</item>
         <item name="android:statusBarColor">#F2F6F5</item>
         <item name="android:windowLightStatusBar">true</item>
@@ -31,7 +30,6 @@
         <item name="colorPrimary">#2DD4BF</item>
         <item name="colorPrimaryDark">#0B1112</item>
         <item name="colorAccent">#2DD4BF</item>
-        <item name="android:background">#0B1112</item>
         <item name="android:windowBackground">#0B1112</item>
         <item name="android:statusBarColor">#0B1112</item>
         <item name="android:windowLightStatusBar">false</item>

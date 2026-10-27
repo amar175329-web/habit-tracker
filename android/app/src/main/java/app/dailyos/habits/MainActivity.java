@@ -186,6 +186,14 @@ public class MainActivity extends BridgeActivity {
                                         } else if (d != null) {
                                             colorMismatch = true;
                                         }
+                                        if (d instanceof android.view.ViewGroup && ((android.view.ViewGroup) d).getChildCount() > 0) {
+                                            View c0 = ((android.view.ViewGroup) d).getChildAt(0);
+                                            if (c0 != null && c0.getBackground() instanceof ColorDrawable) {
+                                                if (((ColorDrawable) c0.getBackground()).getColor() != expectedColor) {
+                                                    colorMismatch = true;
+                                                }
+                                            }
+                                        }
                                     }
                                     if (!theme.equals(current) || colorMismatch) {
                                         prefs.edit().putString(KEY_THEME, theme).apply();
@@ -247,7 +255,7 @@ public class MainActivity extends BridgeActivity {
 
             View decor = window.getDecorView();
             if (decor != null) {
-                decor.setBackgroundColor(barColor);
+                setHierarchyBackgroundColor(decor, barColor);
                 try {
                     WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
                     if (controller != null) {
@@ -280,6 +288,23 @@ public class MainActivity extends BridgeActivity {
                 bridge.getWebView().setBackgroundColor(barColor);
             }
         });
+    }
+
+    private void setHierarchyBackgroundColor(View view, int color) {
+        if (view == null) return;
+        try {
+            view.setBackgroundColor(color);
+            if (view instanceof androidx.coordinatorlayout.widget.CoordinatorLayout) {
+                ((androidx.coordinatorlayout.widget.CoordinatorLayout) view).setStatusBarBackgroundColor(color);
+            }
+            view.invalidate();
+        } catch (Exception ignored) {}
+        if (view instanceof android.view.ViewGroup && !(view instanceof WebView)) {
+            android.view.ViewGroup group = (android.view.ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                setHierarchyBackgroundColor(group.getChildAt(i), color);
+            }
+        }
     }
 
     @Override
