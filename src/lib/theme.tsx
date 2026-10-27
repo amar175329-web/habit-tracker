@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { registerPlugin } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 
 export type Theme = "light" | "dark" | "system";
@@ -15,30 +16,29 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const THEME_STORAGE_KEY = "dailyos_theme";
 
-// Ensure overlay is disabled once on native boot without resetting colors repeatedly
-let overlaysInitialized = false;
-async function initOverlaysOnce() {
-  if (overlaysInitialized) return;
-  overlaysInitialized = true;
-  try {
-    await StatusBar.setOverlaysWebView({ overlay: false });
-  } catch {}
-}
+const AppTheme = registerPlugin<{
+  setTheme: (options: { theme: string }) => Promise<void>;
+}>("AppTheme");
 
 // Synchronize status bar and navigation bar to native Android & web metadata
 export async function syncSystemBars(isDark: boolean) {
+  const themeName = isDark ? "dark" : "light";
   const barColor = isDark ? "#0B1112" : "#F2F6F5";
 
-  // 1. Direct Android JavascriptInterface (instant, synchronous UI thread)
+  // 1. Native Custom Capacitor Plugin (Direct Bridge call)
+  try {
+    await AppTheme.setTheme({ theme: themeName });
+  } catch (e) {}
+
+  // 2. Direct Android JavascriptInterface
   try {
     if (typeof window !== "undefined" && (window as any).AndroidTheme?.setTheme) {
-      (window as any).AndroidTheme.setTheme(isDark ? "dark" : "light");
+      (window as any).AndroidTheme.setTheme(themeName);
     }
   } catch (e) {}
 
-  // 2. Native Capacitor StatusBar Plugin
+  // 3. Native Capacitor StatusBar Plugin
   try {
-    await initOverlaysOnce();
     if (isDark) {
       // Dark mode: white/light icons on dark background (#0B1112)
       await StatusBar.setStyle({ style: Style.Dark });
@@ -52,7 +52,7 @@ export async function syncSystemBars(isDark: boolean) {
     // Plugin not available in regular web browser
   }
 
-  // 3. Web Meta Theme-Color
+  // 4. Web Meta Theme-Color
   if (typeof document !== "undefined") {
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {

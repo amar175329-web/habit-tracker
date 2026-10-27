@@ -67,6 +67,11 @@
             if (window.AndroidTheme && window.AndroidTheme.setTheme) {
               window.AndroidTheme.setTheme(t);
             }
+            try {
+              if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AppTheme) {
+                window.Capacitor.Plugins.AppTheme.setTheme({ theme: t });
+              }
+            } catch (e) {}
           }
           syncAndroidTheme();
           window.addEventListener('DOMContentLoaded', syncAndroidTheme);
