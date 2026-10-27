@@ -29,6 +29,14 @@ public class MainActivity extends BridgeActivity {
 
         applyTheme(initialTheme);
         setupThemeBridge();
+
+        View decor = getWindow() != null ? getWindow().getDecorView() : null;
+        if (decor != null) {
+            decor.post(() -> applyTheme(initialTheme));
+            decor.postDelayed(() -> applyTheme(initialTheme), 150);
+            decor.postDelayed(() -> applyTheme(initialTheme), 450);
+            decor.postDelayed(() -> applyTheme(initialTheme), 1000);
+        }
     }
 
     @Override
@@ -44,6 +52,11 @@ public class MainActivity extends BridgeActivity {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String currentTheme = prefs.getString(KEY_THEME, "light");
         applyTheme(currentTheme);
+        View decor = getWindow() != null ? getWindow().getDecorView() : null;
+        if (decor != null) {
+            decor.postDelayed(() -> applyTheme(currentTheme), 150);
+            decor.postDelayed(() -> applyTheme(currentTheme), 500);
+        }
         syncThemeFromWeb();
     }
 
@@ -135,6 +148,14 @@ public class MainActivity extends BridgeActivity {
 
             View decor = window.getDecorView();
             if (decor != null) {
+                try {
+                    WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
+                    if (controller != null) {
+                        controller.setAppearanceLightStatusBars(!isDark);
+                        controller.setAppearanceLightNavigationBars(!isDark);
+                    }
+                } catch (Exception ignored) {}
+
                 int flags = decor.getSystemUiVisibility();
                 if (!isDark) {
                     // Light theme: dark icons on status bar and navigation bar
@@ -154,14 +175,6 @@ public class MainActivity extends BridgeActivity {
                     }
                 }
                 decor.setSystemUiVisibility(flags);
-
-                try {
-                    WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
-                    if (controller != null) {
-                        controller.setAppearanceLightStatusBars(!isDark);
-                        controller.setAppearanceLightNavigationBars(!isDark);
-                    }
-                } catch (Exception ignored) {}
             }
 
             if (bridge != null && bridge.getWebView() != null) {
