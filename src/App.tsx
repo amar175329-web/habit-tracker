@@ -107,6 +107,21 @@ export default function App() {
     db.mood_logs.filter((m: MoodLog) => !m.changeCount || m.changeCount === 0).delete().catch(() => {});
     initDatabase().catch(() => {});
 
+    // Notify native Android splash overlay that React has mounted and painted
+    if (typeof window !== "undefined") {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          try {
+            if ((window as any).notifyAppReady) {
+              (window as any).notifyAppReady();
+            } else if ((window as any).AndroidTheme?.onAppReady) {
+              (window as any).AndroidTheme.onAppReady();
+            }
+          } catch (e) {}
+        });
+      });
+    }
+
     // Hardware back-button listener for Android: closes sheets first, then goes back, then exits
     try {
       const handler = CapApp.addListener("backButton", ({ canGoBack }) => {

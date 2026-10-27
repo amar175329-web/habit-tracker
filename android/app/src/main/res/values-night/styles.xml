@@ -39,17 +39,18 @@
         <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 
+    <!-- Launch theme is default White (#F2F6F5). User MUST explicitly select Black theme in-app to get Black theme -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#0B1112</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo_dark</item>
-        <item name="windowSplashScreenIconBackgroundColor">#0B1112</item>
-        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar.Dark</item>
+        <item name="windowSplashScreenBackground">#F2F6F5</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <item name="windowSplashScreenIconBackgroundColor">#F2F6F5</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
         <item name="android:background">@drawable/splash</item>
-        <item name="android:windowBackground">#0B1112</item>
-        <item name="android:statusBarColor">#0B1112</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:navigationBarColor">#0B1112</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowBackground">#F2F6F5</item>
+        <item name="android:statusBarColor">#F2F6F5</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">#F2F6F5</item>
+        <item name="android:windowLightNavigationBar">true</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>

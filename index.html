@@ -9,6 +9,15 @@
     <meta name="theme-color" content="#F2F6F5" />
     <meta name="description" content="Habbitrack — Build consistent habits and rhythm, completely private and local-first." />
     <title>Habbitrack — Build Consistent Rhythms</title>
+    <style id="splash-critical-css">
+      html, body, #root {
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+        padding: 0;
+        background-color: #F2F6F5;
+      }
+    </style>
     <script>
       (function() {
         try {
@@ -28,30 +37,25 @@
             });
           }
 
-          var PURGE_KEY = 'habittracker_clean_restart_v13';
-          if (!localStorage.getItem(PURGE_KEY)) {
-            localStorage.clear();
-            localStorage.setItem('theme', 'light');
-            localStorage.setItem('dailyos_theme', 'light');
-            localStorage.setItem(PURGE_KEY, 'true');
-            sessionStorage.clear();
-          }
-
-          var savedTheme = localStorage.getItem('dailyos_theme') || localStorage.getItem('theme');
+          var savedTheme = 'light';
+          try {
+            savedTheme = localStorage.getItem('dailyos_theme') || localStorage.getItem('theme') || 'light';
+          } catch(e) {}
           var isDark = savedTheme === 'dark';
-          var activeTheme = isDark ? 'dark' : 'light';
-          if (isDark) {
-            document.documentElement.classList.add('dark');
-            document.documentElement.classList.remove('light');
-            document.documentElement.setAttribute('data-theme', 'dark');
-            var meta = document.querySelector('meta[name="theme-color"]');
-            if (meta) meta.setAttribute('content', '#0B1112');
-          } else {
-            document.documentElement.classList.remove('dark');
-            document.documentElement.classList.add('light');
-            document.documentElement.setAttribute('data-theme', 'light');
-            var meta = document.querySelector('meta[name="theme-color"]');
-            if (meta) meta.setAttribute('content', '#F2F6F5');
+          var bg = isDark ? '#0B1112' : '#F2F6F5';
+          var text = isDark ? '#F5F5F5' : '#0B1112';
+
+          document.documentElement.className = isDark ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+          document.documentElement.style.backgroundColor = bg;
+          document.documentElement.style.color = text;
+
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', bg);
+
+          var s = document.getElementById('splash-critical-css');
+          if (s) {
+            s.innerHTML = 'html, body, #root { width: 100%; min-height: 100%; margin: 0; padding: 0; background-color: ' + bg + ' !important; color: ' + text + ' !important; }';
           }
 
           function syncAndroidTheme() {
@@ -72,6 +76,23 @@
           window.addEventListener('DOMContentLoaded', syncAndroidTheme);
           window.addEventListener('load', syncAndroidTheme);
           window.addEventListener('storage', syncAndroidTheme);
+
+          function notifyAppReady() {
+            try {
+              if (window.AndroidTheme && window.AndroidTheme.onAppReady) {
+                window.AndroidTheme.onAppReady();
+              }
+              if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AppTheme && window.Capacitor.Plugins.AppTheme.onAppReady) {
+                window.Capacitor.Plugins.AppTheme.onAppReady();
+              }
+            } catch(e) {}
+          }
+          window.notifyAppReady = notifyAppReady;
+          window.addEventListener('load', function() {
+            requestAnimationFrame(function() {
+              requestAnimationFrame(notifyAppReady);
+            });
+          });
 
           // Watch for theme mutations on root HTML element
           if (window.MutationObserver) {

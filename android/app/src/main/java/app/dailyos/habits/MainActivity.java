@@ -9,10 +9,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.ActionMode;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
@@ -26,6 +29,10 @@ public class MainActivity extends BridgeActivity {
     public static final String PREFS_NAME = "dailyos_theme_prefs";
     public static final String KEY_THEME = "dailyos_saved_theme";
 
+    private View splashOverlay = null;
+    private boolean splashDismissed = false;
+    private long launchStartTime = 0;
+
     @CapacitorPlugin(name = "AppTheme")
     public static class AppThemePlugin extends Plugin {
         @PluginMethod
@@ -34,6 +41,15 @@ public class MainActivity extends BridgeActivity {
             MainActivity activity = (MainActivity) getActivity();
             if (activity != null) {
                 activity.saveAndApplyTheme(theme);
+            }
+            call.resolve();
+        }
+
+        @PluginMethod
+        public void onAppReady(PluginCall call) {
+            MainActivity activity = (MainActivity) getActivity();
+            if (activity != null) {
+                activity.onWebRenderComplete();
             }
             call.resolve();
         }
@@ -62,12 +78,15 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        launchStartTime = System.currentTimeMillis();
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        if (!prefs.getBoolean("default_white_v13", false)) {
-            prefs.edit().putString(KEY_THEME, "light").putBoolean("default_white_v13", true).apply();
-        }
         String initialTheme = prefs.getString(KEY_THEME, "light");
+        if (initialTheme == null || (!"dark".equals(initialTheme) && !"light".equals(initialTheme))) {
+            initialTheme = "light";
+        }
         boolean isDark = "dark".equalsIgnoreCase(initialTheme);
+        int themeColor = isDark ? Color.parseColor("#0B1112") : Color.parseColor("#F2F6F5");
+
         try {
             androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
                 isDark ? androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES : androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
@@ -86,8 +105,21 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AppThemePlugin.class);
         super.onCreate(savedInstanceState);
 
+        // Configure native window backgrounds immediately so zero white screen can show
+        Window window = getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(themeColor));
+            window.setStatusBarColor(themeColor);
+            window.setNavigationBarColor(themeColor);
+            View decor = window.getDecorView();
+            if (decor != null) {
+                decor.setBackgroundColor(themeColor);
+            }
+        }
+
         applyTheme(initialTheme);
         setupThemeBridge();
+        attachSplashOverlay(isDark, themeColor);
 
         View decor = getWindow() != null ? getWindow().getDecorView() : null;
         if (decor != null) {
@@ -97,6 +129,62 @@ public class MainActivity extends BridgeActivity {
             decor.postDelayed(() -> applyTheme(getSavedTheme()), 200);
             decor.postDelayed(() -> syncThemeFromWeb(), 350);
         }
+    }
+
+    private void attachSplashOverlay(boolean isDark, int themeColor) {
+        try {
+            ImageView iv = new ImageView(this);
+            iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            int drawableRes = isDark ? R.drawable.splash_dark : R.drawable.splash;
+            iv.setImageResource(drawableRes);
+            iv.setBackgroundColor(themeColor);
+
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            );
+
+            ViewGroup root = findViewById(android.R.id.content);
+            if (root != null) {
+                splashOverlay = iv;
+                root.addView(iv, lp);
+            }
+        } catch (Exception ignored) {}
+
+        // Fallback dismissal in 2500ms max so app never hangs
+        new Handler(Looper.getMainLooper()).postDelayed(this::dismissSplash, 2500);
+    }
+
+    public void onWebRenderComplete() {
+        runOnUiThread(() -> {
+            if (splashDismissed) return;
+            long elapsed = System.currentTimeMillis() - launchStartTime;
+            long minDisplayMs = 1500; // Exact 1.5 seconds brand display
+            long remaining = Math.max(0, minDisplayMs - elapsed);
+
+            new Handler(Looper.getMainLooper()).postDelayed(this::dismissSplash, remaining);
+        });
+    }
+
+    public void dismissSplash() {
+        runOnUiThread(() -> {
+            if (splashDismissed) return;
+            splashDismissed = true;
+            if (splashOverlay != null) {
+                splashOverlay.animate()
+                    .alpha(0f)
+                    .setDuration(120)
+                    .withEndAction(() -> {
+                        try {
+                            if (splashOverlay != null && splashOverlay.getParent() != null) {
+                                ((ViewGroup) splashOverlay.getParent()).removeView(splashOverlay);
+                                splashOverlay = null;
+                            }
+                        } catch (Exception ignored) {}
+                    })
+                    .start();
+            }
+        });
     }
 
     @Override
@@ -173,6 +261,11 @@ public class MainActivity extends BridgeActivity {
                 @JavascriptInterface
                 public void setTheme(final String theme) {
                     saveAndApplyTheme(theme);
+                }
+
+                @JavascriptInterface
+                public void onAppReady() {
+                    onWebRenderComplete();
                 }
             }, "AndroidTheme");
         } catch (Exception ignored) {}
