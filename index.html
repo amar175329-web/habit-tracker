@@ -43,14 +43,27 @@
             if (meta) meta.setAttribute('content', '#F2F6F5');
           }
 
-          function pingAndroid() {
+          function syncAndroidTheme() {
+            var dark = document.documentElement.classList.contains('dark') ||
+                       document.documentElement.getAttribute('data-theme') === 'dark' ||
+                       localStorage.getItem('dailyos_theme') === 'dark';
+            var t = dark ? 'dark' : 'light';
             if (window.AndroidTheme && window.AndroidTheme.setTheme) {
-              window.AndroidTheme.setTheme(activeTheme);
+              window.AndroidTheme.setTheme(t);
             }
           }
-          pingAndroid();
-          window.addEventListener('DOMContentLoaded', pingAndroid);
-          window.addEventListener('load', pingAndroid);
+          syncAndroidTheme();
+          window.addEventListener('DOMContentLoaded', syncAndroidTheme);
+          window.addEventListener('load', syncAndroidTheme);
+          window.addEventListener('storage', syncAndroidTheme);
+
+          // Watch for theme mutations on root HTML element
+          if (window.MutationObserver) {
+            var themeObserver = new MutationObserver(function() {
+              syncAndroidTheme();
+            });
+            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+          }
 
           // Completely suppress native contextmenu & selection action bar popups across app
           document.addEventListener('contextmenu', function(e) {

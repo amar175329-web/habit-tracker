@@ -91,8 +91,8 @@ export function TopBar() {
           <div className="relative flex items-center justify-center">
             <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-emerald-400/20 via-zinc-900 to-black p-0.5 ring-1 ring-white/10 group-hover:ring-emerald-500/50 shadow-lg shadow-black/60 transition-all duration-300">
               <img
-                src="/icon-192.png"
-                alt="DailyOS"
+                src="/logo.png"
+                alt="Habbitrack"
                 className="h-full w-full rounded-[14px] object-cover"
               />
             </div>
@@ -104,7 +104,7 @@ export function TopBar() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5 group-hover:text-emerald-300 transition-colors">
-                DailyOS
+                Habbitrack
               </span>
               <span className="text-[9px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 font-semibold">
                 v2.0

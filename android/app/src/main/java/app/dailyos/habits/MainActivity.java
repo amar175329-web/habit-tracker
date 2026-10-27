@@ -106,7 +106,7 @@ public class MainActivity extends BridgeActivity {
             webView.postDelayed(() -> {
                 try {
                     webView.evaluateJavascript(
-                        "(function() { return localStorage.getItem('dailyos_theme') || (document.documentElement.classList.contains('dark') ? 'dark' : 'light'); })()",
+                        "(function() { return (document.documentElement.classList.contains('dark') || localStorage.getItem('dailyos_theme') === 'dark') ? 'dark' : 'light'; })()",
                         value -> {
                             if (value != null && !value.equals("null")) {
                                 String theme = value.replace("\"", "").trim();
@@ -151,30 +151,12 @@ public class MainActivity extends BridgeActivity {
                 try {
                     WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
                     if (controller != null) {
+                        // Light theme: dark icons on status bar and navigation bar
+                        // Dark theme: white/light icons on status bar and navigation bar
                         controller.setAppearanceLightStatusBars(!isDark);
                         controller.setAppearanceLightNavigationBars(!isDark);
                     }
                 } catch (Exception ignored) {}
-
-                int flags = decor.getSystemUiVisibility();
-                if (!isDark) {
-                    // Light theme: dark icons on status bar and navigation bar
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                    }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-                    }
-                } else {
-                    // Dark theme: white/light icons on status bar and navigation bar
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                    }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-                    }
-                }
-                decor.setSystemUiVisibility(flags);
             }
 
             if (bridge != null && bridge.getWebView() != null) {

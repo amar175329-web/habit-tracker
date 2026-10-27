@@ -40,7 +40,7 @@ export default function Login() {
             <div className="absolute inset-0 rounded-2xl bg-emerald-500/20 blur-md" />
             <img
               src="/logo.png"
-              alt="DailyOS logo"
+              alt="Habbitrack logo"
               className="relative mx-auto h-16 w-16 rounded-2xl object-cover border border-white/[0.12] shadow-lg"
             />
           </div>
@@ -48,7 +48,7 @@ export default function Login() {
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-2">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-[10px] tracking-[0.2em] text-emerald-400 uppercase font-mono font-semibold">
-                DailyOS Vault
+                Habbitrack Vault
               </span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white">Own Your Every Day</h1>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Download Habbitrack & DailyOS (Android Builds)</title>
+  <title>Download Habbitrack & DailyOS (Android Builds v1.0.2)</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap">
   <style>
     :root {
@@ -92,6 +92,19 @@
       border: 1px solid var(--ln);
       box-shadow: none;
     }
+    .feature-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--ln);
+      border-radius: 16px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      font-size: 13px;
+      color: var(--tx);
+      line-height: 1.45;
+    }
+    .feature-card b {
+      color: var(--prt);
+    }
     .meta {
       display: flex;
       justify-content: space-between;
@@ -155,16 +168,23 @@
 <body>
   <div class="container">
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
-      <img src="/logo.png" alt="Habbitrack Logo" style="width:52px;height:52px;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,0.4);object-fit:cover;">
+      <img src="/logo.png" alt="Habbitrack 3D Logo" style="width:54px;height:54px;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,0.5);object-fit:cover;">
       <div>
         <div class="badge" style="margin-bottom:4px;">
-          <span>●</span> Build v1.0.1 · White Status Bar · Local-First
+          <span>●</span> Build v1.0.2 · Dynamic Status Bar
         </div>
         <h1 style="margin:0;font-size:24px;">Habbitrack & DailyOS</h1>
       </div>
     </div>
     <div class="sub">
-      Install directly on your Android phone. Pure white status bar by default, brand 3D mint squircle logo, and 100% private on-device storage.
+      Install the official Android release directly. Pure white status bar by default, instant dynamic switch to pure black in dark mode, and 3D mint squircle logo.
+    </div>
+
+    <div class="feature-card">
+      ✨ <b>v1.0.2 Updates:</b><br>
+      • <b>White Theme:</b> Status bar is pure white (<code>#F2F6F5</code>) with dark icons.<br>
+      • <b>Dark Theme:</b> Status bar dynamically switches to pure black (<code>#0B1112</code>) with white icons.<br>
+      • <b>Full 3D Logo:</b> Applied across home screen launcher, app headers & icons.
     </div>
 
     <!-- Habbitrack Download Button -->
@@ -172,7 +192,7 @@
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
       </svg>
-      Download Habbitrack APK (5.7 MB)
+      Download Habbitrack APK (v1.0.2)
     </a>
 
     <!-- DailyOS Download Button -->
@@ -180,35 +200,32 @@
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
       </svg>
-      Download DailyOS APK (6.1 MB)
+      Download DailyOS APK (v1.0.2)
     </a>
 
     <div class="meta">
-      <span>Version: 1.0.1 (Lightweight)</span>
+      <span>Version: 1.0.2</span>
+      <span>Size: ~5.8 MB</span>
       <span>Updated: 2026-10-27</span>
     </div>
 
     <div class="steps">
-      <div class="steps-title">5 Steps to Install on Android</div>
+      <div class="steps-title">Installation Guide</div>
       <div class="step-item">
         <div class="step-num">1</div>
-        <div>Tap <b>Download Habbitrack APK</b> above in Chrome on your phone.</div>
+        <div>Tap <b>Download Habbitrack APK</b> above in Chrome on your Android device.</div>
       </div>
       <div class="step-item">
         <div class="step-num">2</div>
-        <div>When Android asks, allow Chrome to <b>"Install unknown apps"</b> (one-time permission).</div>
+        <div>If asked, permit Chrome to <b>"Install unknown apps"</b>.</div>
       </div>
       <div class="step-item">
         <div class="step-num">3</div>
-        <div>Open the downloaded APK file. If Google Play Protect warns, tap <b>"More details"</b> then <b>"Install anyway"</b> (standard for test builds).</div>
+        <div>If Play Protect shows a notice, tap <b>"More details"</b> &gt; <b>"Install anyway"</b> (standard for test APKs).</div>
       </div>
       <div class="step-item">
         <div class="step-num">4</div>
-        <div>Open the app. The top status bar will automatically match the white theme with crisp dark notification/clock icons.</div>
-      </div>
-      <div class="step-item">
-        <div class="step-num">5</div>
-        <div><b>Fallback option:</b> You can also install as an offline PWA by tapping <b>Chrome menu (⋮) &gt; Install app / Add to Home screen</b>.</div>
+        <div>Launch the app. Status bar is pure white. When you toggle dark mode in the side menu (<code>...</code>), the top bar dynamically turns pitch black!</div>
       </div>
     </div>
 

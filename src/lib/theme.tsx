@@ -15,34 +15,48 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const THEME_STORAGE_KEY = "dailyos_theme";
 
-// Synchronize status bar and navigation bar to native Android & web metadata
-export async function syncSystemBars(isDark: boolean) {
-  // 1. Native Capacitor StatusBar Plugin
+// Ensure overlay is disabled once on native boot without resetting colors repeatedly
+let overlaysInitialized = false;
+async function initOverlaysOnce() {
+  if (overlaysInitialized) return;
+  overlaysInitialized = true;
   try {
     await StatusBar.setOverlaysWebView({ overlay: false });
-    if (isDark) {
-      await StatusBar.setStyle({ style: Style.Dark }); // Light icons/text for dark background
-      await StatusBar.setBackgroundColor({ color: "#0B1112" });
-    } else {
-      await StatusBar.setStyle({ style: Style.Light }); // Dark icons/text for light background
-      await StatusBar.setBackgroundColor({ color: "#F2F6F5" });
-    }
-  } catch (e) {
-    // Plugin not available in regular web browser
-  }
+  } catch {}
+}
 
-  // 2. Direct Android JavascriptInterface
+// Synchronize status bar and navigation bar to native Android & web metadata
+export async function syncSystemBars(isDark: boolean) {
+  const barColor = isDark ? "#0B1112" : "#F2F6F5";
+
+  // 1. Direct Android JavascriptInterface (instant, synchronous UI thread)
   try {
     if (typeof window !== "undefined" && (window as any).AndroidTheme?.setTheme) {
       (window as any).AndroidTheme.setTheme(isDark ? "dark" : "light");
     }
   } catch (e) {}
 
+  // 2. Native Capacitor StatusBar Plugin
+  try {
+    await initOverlaysOnce();
+    if (isDark) {
+      // Dark mode: white/light icons on dark background (#0B1112)
+      await StatusBar.setStyle({ style: Style.Dark });
+      await StatusBar.setBackgroundColor({ color: "#0B1112" });
+    } else {
+      // Light mode: dark icons on white background (#F2F6F5)
+      await StatusBar.setStyle({ style: Style.Light });
+      await StatusBar.setBackgroundColor({ color: "#F2F6F5" });
+    }
+  } catch (e) {
+    // Plugin not available in regular web browser
+  }
+
   // 3. Web Meta Theme-Color
   if (typeof document !== "undefined") {
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
-      meta.setAttribute("content", isDark ? "#0B1112" : "#F2F6F5");
+      meta.setAttribute("content", barColor);
     }
   }
 }
