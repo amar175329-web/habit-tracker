@@ -94,8 +94,8 @@ public class MainActivity extends BridgeActivity {
         } catch (Exception ignored) {}
 
         int initialStyle = isDark
-            ? R.style.AppTheme_NoActionBar_Dark
-            : R.style.AppTheme_NoActionBar;
+            ? R.style.AppTheme_NoActionBarLaunch_Dark
+            : R.style.AppTheme_NoActionBarLaunch;
 
         setTheme(initialStyle);
         try {
@@ -134,7 +134,7 @@ public class MainActivity extends BridgeActivity {
     private void attachSplashOverlay(boolean isDark, int themeColor) {
         try {
             ImageView iv = new ImageView(this);
-            iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
             int drawableRes = isDark ? R.drawable.splash_dark : R.drawable.splash;
             iv.setImageResource(drawableRes);
             iv.setBackgroundColor(themeColor);
@@ -151,18 +151,15 @@ public class MainActivity extends BridgeActivity {
             }
         } catch (Exception ignored) {}
 
-        // Fallback dismissal in 2500ms max so app never hangs
-        new Handler(Looper.getMainLooper()).postDelayed(this::dismissSplash, 2500);
+        // Fallback dismissal in 800ms max so app never hangs
+        new Handler(Looper.getMainLooper()).postDelayed(this::dismissSplash, 800);
     }
 
     public void onWebRenderComplete() {
         runOnUiThread(() -> {
             if (splashDismissed) return;
-            long elapsed = System.currentTimeMillis() - launchStartTime;
-            long minDisplayMs = 1500; // Exact 1.5 seconds brand display
-            long remaining = Math.max(0, minDisplayMs - elapsed);
-
-            new Handler(Looper.getMainLooper()).postDelayed(this::dismissSplash, remaining);
+            // Instant real-time transition as soon as web UI mounts and renders
+            dismissSplash();
         });
     }
 
@@ -173,7 +170,7 @@ public class MainActivity extends BridgeActivity {
             if (splashOverlay != null) {
                 splashOverlay.animate()
                     .alpha(0f)
-                    .setDuration(120)
+                    .setDuration(90)
                     .withEndAction(() -> {
                         try {
                             if (splashOverlay != null && splashOverlay.getParent() != null) {
