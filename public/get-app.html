@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Download Habbitrack (Android Test Build)</title>
+  <title>Download Habbitrack & DailyOS (Android Builds)</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap">
   <style>
     :root {
@@ -33,7 +33,7 @@
     }
     .container {
       width: 100%;
-      max-width: 440px;
+      max-width: 460px;
       background: var(--card);
       border: 1px solid var(--ln);
       border-radius: 28px;
@@ -81,9 +81,16 @@
       box-sizing: border-box;
       box-shadow: 0 8px 24px rgba(31,166,148,0.3);
       transition: transform 0.15s ease;
+      margin-bottom: 12px;
     }
     .btn-download:active {
       transform: scale(0.98);
+    }
+    .btn-download.secondary {
+      background: rgba(255,255,255,0.08);
+      color: var(--tx);
+      border: 1px solid var(--ln);
+      box-shadow: none;
     }
     .meta {
       display: flex;
@@ -91,11 +98,12 @@
       color: var(--mu);
       font-size: 12px;
       font-weight: 600;
-      margin-top: 12px;
+      margin-top: 6px;
+      margin-bottom: 18px;
       padding: 0 6px;
     }
     .steps {
-      margin-top: 28px;
+      margin-top: 24px;
       border-top: 1px solid var(--ln);
       padding-top: 24px;
     }
@@ -150,32 +158,41 @@
       <img src="/logo.png" alt="Habbitrack Logo" style="width:52px;height:52px;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,0.4);object-fit:cover;">
       <div>
         <div class="badge" style="margin-bottom:4px;">
-          <span>●</span> Test Build · Offline Local-First
+          <span>●</span> Build v1.0.1 · White Status Bar · Local-First
         </div>
-        <h1 style="margin:0;font-size:24px;">Habbitrack</h1>
+        <h1 style="margin:0;font-size:24px;">Habbitrack & DailyOS</h1>
       </div>
     </div>
     <div class="sub">
-      Install Habbitrack on your Android phone. All your habits, streaks, sleep, and mood remain stored 100% securely on your device.
+      Install directly on your Android phone. Pure white status bar by default, brand 3D mint squircle logo, and 100% private on-device storage.
     </div>
 
+    <!-- Habbitrack Download Button -->
     <a href="/habbitrack.apk" class="btn-download" download="habbitrack.apk">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
       </svg>
-      Download Habbitrack APK
+      Download Habbitrack APK (5.7 MB)
+    </a>
+
+    <!-- DailyOS Download Button -->
+    <a href="/dailyos.apk" class="btn-download secondary" download="dailyos.apk">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+      </svg>
+      Download DailyOS APK (6.1 MB)
     </a>
 
     <div class="meta">
-      <span>Version: 1.0.0-test</span>
-      <span>Updated: 2026-10-26</span>
+      <span>Version: 1.0.1 (Lightweight)</span>
+      <span>Updated: 2026-10-27</span>
     </div>
 
     <div class="steps">
       <div class="steps-title">5 Steps to Install on Android</div>
       <div class="step-item">
         <div class="step-num">1</div>
-        <div>Tap <b>Download APK</b> above in Chrome on your phone.</div>
+        <div>Tap <b>Download Habbitrack APK</b> above in Chrome on your phone.</div>
       </div>
       <div class="step-item">
         <div class="step-num">2</div>
@@ -187,11 +204,11 @@
       </div>
       <div class="step-item">
         <div class="step-num">4</div>
-        <div>Open the app. You should see <b>"No habits yet"</b> with options to add your first habit or restore from a backup file / cloud key.</div>
+        <div>Open the app. The top status bar will automatically match the white theme with crisp dark notification/clock icons.</div>
       </div>
       <div class="step-item">
         <div class="step-num">5</div>
-        <div><b>Fallback option:</b> This website can also be installed as an offline PWA by tapping <b>Chrome menu (⋮) &gt; Install app / Add to Home screen</b>.</div>
+        <div><b>Fallback option:</b> You can also install as an offline PWA by tapping <b>Chrome menu (⋮) &gt; Install app / Add to Home screen</b>.</div>
       </div>
     </div>
 
