@@ -95,6 +95,16 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AppThemePlugin.class);
         super.onCreate(savedInstanceState);
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                getSplashScreen().setSplashScreenTheme(
+                    isDark
+                        ? R.style.AppTheme_NoActionBarLaunch_Dark
+                        : R.style.AppTheme_NoActionBarLaunch
+                );
+            } catch (Exception ignored) {}
+        }
+
         // Override BridgeActivity's hardcoded setTheme if dark
         if (isDark) {
             setTheme(targetTheme);
@@ -183,15 +193,15 @@ public class MainActivity extends BridgeActivity {
             );
             overlay.addView(iv, lp);
 
-            // Subtle pop animation (scale 0.92 -> 1.0, alpha 0 -> 1 over 600ms) matching splash_preview.html
-            iv.setScaleX(0.92f);
-            iv.setScaleY(0.92f);
-            iv.setAlpha(0f);
+            // Subtle pop animation (scale 0.95 -> 1.0) with immediate visibility (alpha 1.0f)
+            // ensuring the authentic logo is visible instantly with zero blank screen on launch
+            iv.setScaleX(0.95f);
+            iv.setScaleY(0.95f);
+            iv.setAlpha(1.0f);
             iv.animate()
                 .scaleX(1.0f)
                 .scaleY(1.0f)
-                .alpha(1.0f)
-                .setDuration(600)
+                .setDuration(350)
                 .start();
 
             ViewGroup root = findViewById(android.R.id.content);
@@ -285,6 +295,15 @@ public class MainActivity extends BridgeActivity {
         if (!"dark".equals(t) && !"light".equals(t)) return;
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         prefs.edit().putString(KEY_THEME, t).apply();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                getSplashScreen().setSplashScreenTheme(
+                    "dark".equals(t)
+                        ? R.style.AppTheme_NoActionBarLaunch_Dark
+                        : R.style.AppTheme_NoActionBarLaunch
+                );
+            } catch (Exception ignored) {}
+        }
         applyTheme(t);
     }
 
@@ -346,6 +365,15 @@ public class MainActivity extends BridgeActivity {
                                     String current = prefs.getString(KEY_THEME, "");
                                     if (!theme.equals(current)) {
                                         prefs.edit().putString(KEY_THEME, theme).apply();
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                            try {
+                                                getSplashScreen().setSplashScreenTheme(
+                                                    "dark".equals(theme)
+                                                        ? R.style.AppTheme_NoActionBarLaunch_Dark
+                                                        : R.style.AppTheme_NoActionBarLaunch
+                                                );
+                                            } catch (Exception ignored) {}
+                                        }
                                         applyTheme(theme);
                                     }
                                 }
