@@ -14,7 +14,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
-import android.view.animation.DecelerateInterpolator;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
@@ -60,15 +59,6 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    private final Handler themePollHandler = new Handler(Looper.getMainLooper());
-    private final Runnable themePollRunnable = new Runnable() {
-        @Override
-        public void run() {
-            syncThemeFromWeb();
-            themePollHandler.postDelayed(this, 60);
-        }
-    };
-
     @Override
     protected void load() {
         try {
@@ -90,14 +80,8 @@ public class MainActivity extends BridgeActivity {
             initialTheme = "light";
         }
         boolean isDark = "dark".equalsIgnoreCase(initialTheme);
-        // Solid background per user requirement: #F2F6F5 for white, #060E0E for black
+        // Solid background: #F2F6F5 for white, #060E0E for black
         int splashBgColor = isDark ? Color.parseColor("#060E0E") : Color.parseColor("#F2F6F5");
-
-        try {
-            androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
-                isDark ? androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES : androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
-            );
-        } catch (Exception ignored) {}
 
         int targetTheme = isDark
             ? R.style.AppTheme_NoActionBar_Dark
@@ -110,6 +94,18 @@ public class MainActivity extends BridgeActivity {
 
         registerPlugin(AppThemePlugin.class);
         super.onCreate(savedInstanceState);
+
+        // Override BridgeActivity's hardcoded setTheme if dark
+        if (isDark) {
+            setTheme(targetTheme);
+            try {
+                getTheme().applyStyle(targetTheme, true);
+                if (getApplication() != null && getApplication().getTheme() != null) {
+                    getApplication().setTheme(targetTheme);
+                    getApplication().getTheme().applyStyle(targetTheme, true);
+                }
+            } catch (Exception ignored) {}
+        }
 
         // Configure native window backgrounds and edge-to-edge transparent system bars immediately
         Window window = getWindow();
@@ -136,6 +132,22 @@ public class MainActivity extends BridgeActivity {
                         controller.setAppearanceLightStatusBars(!isDark);
                         controller.setAppearanceLightNavigationBars(!isDark);
                     }
+                } catch (Exception ignored) {}
+
+                try {
+                    int flags = decor.getSystemUiVisibility();
+                    if (isDark) {
+                        flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                        }
+                    } else {
+                        flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                        }
+                    }
+                    decor.setSystemUiVisibility(flags);
                 } catch (Exception ignored) {}
             }
         }
@@ -171,7 +183,7 @@ public class MainActivity extends BridgeActivity {
             );
             overlay.addView(iv, lp);
 
-            // Continuous seamless match from OS splash: starts fully visible at alpha 1f with zero jump or double logo
+            // Single continuous logo matching Frame 0: starts fully visible at alpha 1f with zero jump or double logo
             iv.setAlpha(1f);
 
             ViewGroup root = findViewById(android.R.id.content);
@@ -238,31 +250,19 @@ public class MainActivity extends BridgeActivity {
     public void onStart() {
         super.onStart();
         setupThemeBridge();
-        applyTheme(getSavedTheme());
-        themePollHandler.removeCallbacks(themePollRunnable);
-        themePollHandler.post(themePollRunnable);
+        if (splashDismissed) {
+            applyTheme(getSavedTheme());
+        }
     }
 
     @Override
     public void onResume() {
         super.onResume();
         setupThemeBridge();
-        applyTheme(getSavedTheme());
-        themePollHandler.removeCallbacks(themePollRunnable);
-        themePollHandler.post(themePollRunnable);
+        if (splashDismissed) {
+            applyTheme(getSavedTheme());
+        }
         syncThemeFromWeb();
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        themePollHandler.removeCallbacks(themePollRunnable);
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        themePollHandler.removeCallbacks(themePollRunnable);
     }
 
     public String getSavedTheme() {
@@ -277,11 +277,6 @@ public class MainActivity extends BridgeActivity {
         if (!"dark".equals(t) && !"light".equals(t)) return;
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         prefs.edit().putString(KEY_THEME, t).apply();
-        try {
-            androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
-                "dark".equals(t) ? androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES : androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
-            );
-        } catch (Exception ignored) {}
         applyTheme(t);
     }
 
@@ -322,7 +317,6 @@ public class MainActivity extends BridgeActivity {
     private void setupThemeBridge() {
         if (bridge != null && bridge.getWebView() != null) {
             registerThemeInterface(bridge.getWebView());
-            syncThemeFromWeb();
         }
     }
 
@@ -342,33 +336,7 @@ public class MainActivity extends BridgeActivity {
                                 if ("dark".equals(theme) || "light".equals(theme)) {
                                     SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
                                     String current = prefs.getString(KEY_THEME, "");
-                                    int expectedColor = "dark".equals(theme)
-                                        ? Color.parseColor("#0B1112")
-                                        : Color.parseColor("#F2F6F5");
-                                    boolean colorMismatch = false;
-                                    Window w = getWindow();
-                                    if (w != null) {
-                                        if (w.getStatusBarColor() != expectedColor || w.getNavigationBarColor() != expectedColor) {
-                                            colorMismatch = true;
-                                        }
-                                        View d = w.getDecorView();
-                                        if (d != null && d.getBackground() instanceof ColorDrawable) {
-                                            if (((ColorDrawable) d.getBackground()).getColor() != expectedColor) {
-                                                colorMismatch = true;
-                                            }
-                                        } else if (d != null) {
-                                            colorMismatch = true;
-                                        }
-                                        if (d instanceof android.view.ViewGroup && ((android.view.ViewGroup) d).getChildCount() > 0) {
-                                            View c0 = ((android.view.ViewGroup) d).getChildAt(0);
-                                            if (c0 != null && c0.getBackground() instanceof ColorDrawable) {
-                                                if (((ColorDrawable) c0.getBackground()).getColor() != expectedColor) {
-                                                    colorMismatch = true;
-                                                }
-                                            }
-                                        }
-                                    }
-                                    if (!theme.equals(current) || colorMismatch) {
+                                    if (!theme.equals(current)) {
                                         prefs.edit().putString(KEY_THEME, theme).apply();
                                         applyTheme(theme);
                                     }
@@ -487,13 +455,15 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onConfigurationChanged(android.content.res.Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        applyTheme(getSavedTheme());
+        if (splashDismissed) {
+            applyTheme(getSavedTheme());
+        }
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) {
+        if (hasFocus && splashDismissed) {
             applyTheme(getSavedTheme());
         }
     }
