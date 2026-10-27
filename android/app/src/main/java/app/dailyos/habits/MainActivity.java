@@ -215,12 +215,43 @@ public class MainActivity extends BridgeActivity {
                         controller.setAppearanceLightNavigationBars(!isDark);
                     }
                 } catch (Exception ignored) {}
+
+                try {
+                    int flags = decor.getSystemUiVisibility();
+                    if (isDark) {
+                        flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                        }
+                    } else {
+                        flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                        }
+                    }
+                    decor.setSystemUiVisibility(flags);
+                    decor.invalidate();
+                } catch (Exception ignored) {}
             }
 
             if (bridge != null && bridge.getWebView() != null) {
                 bridge.getWebView().setBackgroundColor(barColor);
             }
         });
+    }
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        applyTheme(getSavedTheme());
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            applyTheme(getSavedTheme());
+        }
     }
 }
 
