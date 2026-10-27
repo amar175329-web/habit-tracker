@@ -7,11 +7,14 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.DisplayMetrics;
 import android.view.ActionMode;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.animation.DecelerateInterpolator;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
@@ -31,6 +34,8 @@ public class MainActivity extends BridgeActivity {
 
     private View splashOverlay = null;
     private boolean splashDismissed = false;
+    private boolean splashDismissScheduled = false;
+    private boolean isWebReady = false;
     private long launchStartTime = 0;
 
     @CapacitorPlugin(name = "AppTheme")
@@ -85,7 +90,8 @@ public class MainActivity extends BridgeActivity {
             initialTheme = "light";
         }
         boolean isDark = "dark".equalsIgnoreCase(initialTheme);
-        int themeColor = isDark ? Color.parseColor("#0B1112") : Color.parseColor("#F2F6F5");
+        // Solid background per user requirement: #F2F6F5 for white, #060E0E for black
+        int splashBgColor = isDark ? Color.parseColor("#060E0E") : Color.parseColor("#F2F6F5");
 
         try {
             androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
@@ -105,41 +111,137 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AppThemePlugin.class);
         super.onCreate(savedInstanceState);
 
-        // Configure native window backgrounds immediately so zero white screen can show
+        // Configure native window backgrounds and edge-to-edge transparent system bars immediately
         Window window = getWindow();
         if (window != null) {
-            window.setBackgroundDrawable(new ColorDrawable(themeColor));
-            window.setStatusBarColor(themeColor);
-            window.setNavigationBarColor(themeColor);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.setStatusBarContrastEnforced(false);
+                window.setNavigationBarContrastEnforced(false);
+            }
+
+            window.setBackgroundDrawable(new ColorDrawable(splashBgColor));
+            window.setStatusBarColor(splashBgColor);
+            window.setNavigationBarColor(splashBgColor);
+
             View decor = window.getDecorView();
             if (decor != null) {
-                decor.setBackgroundColor(themeColor);
+                decor.setBackgroundColor(splashBgColor);
+                try {
+                    WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
+                    if (controller != null) {
+                        // Light theme: dark icons, Dark theme: light icons
+                        controller.setAppearanceLightStatusBars(!isDark);
+                        controller.setAppearanceLightNavigationBars(!isDark);
+                    }
+                } catch (Exception ignored) {}
             }
         }
 
-        applyTheme(initialTheme);
         setupThemeBridge();
-
-        View decor = getWindow() != null ? getWindow().getDecorView() : null;
-        if (decor != null) {
-            decor.post(() -> applyTheme(getSavedTheme()));
-            decor.postDelayed(() -> applyTheme(getSavedTheme()), 30);
-            decor.postDelayed(() -> applyTheme(getSavedTheme()), 80);
-            decor.postDelayed(() -> applyTheme(getSavedTheme()), 200);
-            decor.postDelayed(() -> syncThemeFromWeb(), 350);
-        }
+        attachSplashOverlay(isDark, splashBgColor);
     }
 
     private void attachSplashOverlay(boolean isDark, int themeColor) {
-        // Zero splash overlay: launch directly into WebView without any logo, text or splash screen
+        try {
+            FrameLayout overlay = new FrameLayout(this);
+            overlay.setBackgroundColor(themeColor);
+            overlay.setClickable(true);
+            overlay.setFocusable(true);
+            overlay.setLayoutParams(new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            ));
+
+            ImageView iv = new ImageView(this);
+            iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            iv.setAdjustViewBounds(true);
+            int logoRes = isDark ? R.drawable.splash_dark_logo : R.drawable.splash_light_logo;
+            iv.setImageResource(logoRes);
+
+            DisplayMetrics dm = getResources().getDisplayMetrics();
+            int screenWidth = dm.widthPixels;
+            int logoWidth = (int) (screenWidth * 0.62f);
+
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                logoWidth,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER
+            );
+            overlay.addView(iv, lp);
+
+            // Pop animation: fade in and scale from 0.92 to 1.0 (over 600ms)
+            iv.setAlpha(0f);
+            iv.setScaleX(0.92f);
+            iv.setScaleY(0.92f);
+            iv.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(600)
+                .setInterpolator(new DecelerateInterpolator())
+                .start();
+
+            ViewGroup root = findViewById(android.R.id.content);
+            if (root != null) {
+                splashOverlay = overlay;
+                root.addView(overlay);
+            }
+        } catch (Exception ignored) {}
+
+        // Fallback safety timeout: force dismiss after 4500ms if webView hangs
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (!splashDismissed) {
+                dismissSplash();
+            }
+        }, 4500);
     }
 
     public void onWebRenderComplete() {
-        // Direct launch complete
+        runOnUiThread(() -> {
+            isWebReady = true;
+            if (splashDismissed || splashDismissScheduled) return;
+
+            long elapsed = System.currentTimeMillis() - launchStartTime;
+            long minDuration = 1500; // Minimum 1.5s per Requirement 5
+            if (elapsed < minDuration) {
+                splashDismissScheduled = true;
+                long remaining = minDuration - elapsed;
+                new Handler(Looper.getMainLooper()).postDelayed(this::dismissSplash, remaining);
+            } else {
+                dismissSplash();
+            }
+        });
     }
 
     public void dismissSplash() {
-        // Direct launch complete
+        runOnUiThread(() -> {
+            if (splashDismissed) return;
+            long elapsed = System.currentTimeMillis() - launchStartTime;
+            if (!isWebReady && elapsed < 4500) {
+                return;
+            }
+            splashDismissed = true;
+            if (splashOverlay != null) {
+                splashOverlay.animate()
+                    .alpha(0f)
+                    .setDuration(400) // ~400ms fade per Requirement 5
+                    .withEndAction(() -> {
+                        try {
+                            if (splashOverlay != null && splashOverlay.getParent() != null) {
+                                ((ViewGroup) splashOverlay.getParent()).removeView(splashOverlay);
+                                splashOverlay = null;
+                            }
+                        } catch (Exception ignored) {}
+                        applyTheme(getSavedTheme());
+                    })
+                    .start();
+            } else {
+                applyTheme(getSavedTheme());
+            }
+        });
     }
 
     @Override
@@ -234,6 +336,9 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void syncThemeFromWeb() {
+        if (splashOverlay != null && !splashDismissed) {
+            return;
+        }
         if (bridge != null && bridge.getWebView() != null) {
             final WebView webView = bridge.getWebView();
             webView.post(() -> {
@@ -287,6 +392,9 @@ public class MainActivity extends BridgeActivity {
 
     public void applyTheme(final String theme) {
         runOnUiThread(() -> {
+            if (splashOverlay != null && !splashDismissed) {
+                return;
+            }
             boolean isDark = "dark".equalsIgnoreCase(theme);
             // White Theme: #F2F6F5 background with dark charcoal icons
             // Black Theme: #0B1112 background with crisp white icons

@@ -39,10 +39,10 @@
         <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 
-    <!-- Launch Theme: Defaults to White (#F2F6F5) with zero logo / zero splash unless user explicitly selected Dark in app -->
+    <!-- Launch Theme: Defaults to White (#F2F6F5) with splash.png per user rule unless Dark is saved in app -->
     <style name="AppTheme.NoActionBarLaunch" parent="AppTheme.NoActionBar">
         <item name="android:background">@drawable/splash</item>
-        <item name="android:windowBackground">#F2F6F5</item>
+        <item name="android:windowBackground">@drawable/splash</item>
         <item name="android:statusBarColor">#F2F6F5</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:navigationBarColor">#F2F6F5</item>
@@ -52,11 +52,11 @@
     </style>
 
     <style name="AppTheme.NoActionBarLaunch.Dark" parent="AppTheme.NoActionBar.Dark">
-        <item name="android:background">#0B1112</item>
-        <item name="android:windowBackground">#0B1112</item>
-        <item name="android:statusBarColor">#0B1112</item>
+        <item name="android:background">@drawable/splash_dark</item>
+        <item name="android:windowBackground">@drawable/splash_dark</item>
+        <item name="android:statusBarColor">#060E0E</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:navigationBarColor">#0B1112</item>
+        <item name="android:navigationBarColor">#060E0E</item>
         <item name="android:windowLightNavigationBar">false</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
