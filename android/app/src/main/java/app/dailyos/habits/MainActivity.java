@@ -51,6 +51,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (!prefs.getBoolean("default_white_v13", false)) {
+            prefs.edit().putString(KEY_THEME, "light").putBoolean("default_white_v13", true).apply();
+        }
         String initialTheme = prefs.getString(KEY_THEME, "light");
         int initialStyle = "dark".equalsIgnoreCase(initialTheme)
             ? R.style.AppTheme_NoActionBar_Dark

@@ -28,18 +28,13 @@
             });
           }
 
-          var PURGE_KEY = 'habittracker_clean_restart_v12';
+          var PURGE_KEY = 'habittracker_clean_restart_v13';
           if (!localStorage.getItem(PURGE_KEY)) {
-            var theme = localStorage.getItem('theme') || localStorage.getItem('dailyos_theme');
             localStorage.clear();
-            if (theme) {
-              localStorage.setItem('theme', theme);
-              localStorage.setItem('dailyos_theme', theme);
-            }
+            localStorage.setItem('theme', 'light');
+            localStorage.setItem('dailyos_theme', 'light');
+            localStorage.setItem(PURGE_KEY, 'true');
             sessionStorage.clear();
-            if (window.indexedDB && indexedDB.deleteDatabase) {
-              indexedDB.deleteDatabase('dailyos_db');
-            }
           }
 
           var savedTheme = localStorage.getItem('dailyos_theme') || localStorage.getItem('theme');

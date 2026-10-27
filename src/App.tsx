@@ -93,10 +93,11 @@ function AppNavigation() {
 export default function App() {
   useEffect(() => {
     // Fresh client purge: wipe ALL data across all Dexie tables completely for 100% clean slate
-    const PURGE_KEY = "habittracker_clean_restart_v12";
-    if (typeof window !== "undefined" && window.localStorage && !window.localStorage.getItem(PURGE_KEY)) {
+    const PURGE_KEY = "habittracker_clean_restart_v13";
+    if (typeof window !== "undefined" && window.localStorage && !window.localStorage.getItem("habittracker_db_purged_v13")) {
       clearAllData().then(() => {
         window.localStorage.setItem(PURGE_KEY, "true");
+        window.localStorage.setItem("habittracker_db_purged_v13", "true");
       });
     }
 

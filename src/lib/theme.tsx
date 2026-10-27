@@ -75,9 +75,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(THEME_STORAGE_KEY);
-      if (saved === "light" || saved === "dark" || saved === "system") {
+      if (saved === "light" || saved === "dark") {
         return saved as Theme;
       }
+      localStorage.setItem(THEME_STORAGE_KEY, "light");
       return "light"; // Default to light theme per brand spec
     }
     return "light";
