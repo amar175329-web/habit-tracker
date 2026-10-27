@@ -44,12 +44,13 @@ public class MainActivity extends BridgeActivity {
         @Override
         public void run() {
             syncThemeFromWeb();
-            themePollHandler.postDelayed(this, 400);
+            themePollHandler.postDelayed(this, 300);
         }
     };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        setTheme(R.style.AppTheme_NoActionBar);
         registerPlugin(AppThemePlugin.class);
         super.onCreate(savedInstanceState);
 
@@ -62,9 +63,9 @@ public class MainActivity extends BridgeActivity {
         View decor = getWindow() != null ? getWindow().getDecorView() : null;
         if (decor != null) {
             decor.post(() -> applyTheme(getSavedTheme()));
-            decor.postDelayed(() -> applyTheme(getSavedTheme()), 150);
-            decor.postDelayed(() -> applyTheme(getSavedTheme()), 450);
-            decor.postDelayed(() -> applyTheme(getSavedTheme()), 1000);
+            decor.postDelayed(() -> applyTheme(getSavedTheme()), 100);
+            decor.postDelayed(() -> applyTheme(getSavedTheme()), 300);
+            decor.postDelayed(() -> syncThemeFromWeb(), 500);
         }
     }
 
@@ -83,6 +84,7 @@ public class MainActivity extends BridgeActivity {
         applyTheme(getSavedTheme());
         themePollHandler.removeCallbacks(themePollRunnable);
         themePollHandler.post(themePollRunnable);
+        syncThemeFromWeb();
     }
 
     @Override
@@ -126,16 +128,13 @@ public class MainActivity extends BridgeActivity {
         if (bridge != null && bridge.getWebView() != null) {
             final WebView webView = bridge.getWebView();
 
-            // Always load latest bundled assets and eradicate stale WebView caches
             webView.clearCache(true);
             webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
 
-            // Disable long click and contextual copy/share popups across WebView
             webView.setLongClickable(false);
             webView.setOnLongClickListener(v -> true);
             webView.setHapticFeedbackEnabled(false);
 
-            // Expose AndroidTheme interface to JavaScript
             try {
                 webView.addJavascriptInterface(new Object() {
                     @JavascriptInterface
@@ -152,23 +151,26 @@ public class MainActivity extends BridgeActivity {
     private void syncThemeFromWeb() {
         if (bridge != null && bridge.getWebView() != null) {
             final WebView webView = bridge.getWebView();
-            try {
-                webView.evaluateJavascript(
-                    "(function() { return (document.documentElement.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark' || localStorage.getItem('dailyos_theme') === 'dark') ? 'dark' : 'light'; })()",
-                    value -> {
-                        if (value != null && !value.equals("null")) {
-                            String theme = value.replace("\"", "").trim();
-                            if ("dark".equalsIgnoreCase(theme) || "light".equalsIgnoreCase(theme)) {
-                                SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-                                String current = prefs.getString(KEY_THEME, "");
-                                if (!theme.equalsIgnoreCase(current)) {
-                                    saveAndApplyTheme(theme);
+            webView.post(() -> {
+                try {
+                    webView.evaluateJavascript(
+                        "(function() { try { var d = document.documentElement; if (d.classList.contains('dark') || d.getAttribute('data-theme') === 'dark' || localStorage.getItem('dailyos_theme') === 'dark') return 'dark'; if (d.classList.contains('light') || d.getAttribute('data-theme') === 'light' || localStorage.getItem('dailyos_theme') === 'light') return 'light'; } catch(e){} return 'light'; })()",
+                        value -> {
+                            if (value != null && !value.equals("null")) {
+                                String theme = value.replace("\"", "").replace("'", "").trim().toLowerCase();
+                                if ("dark".equals(theme) || "light".equals(theme)) {
+                                    SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                                    String current = prefs.getString(KEY_THEME, "");
+                                    if (!theme.equals(current)) {
+                                        prefs.edit().putString(KEY_THEME, theme).apply();
+                                        applyTheme(theme);
+                                    }
                                 }
                             }
                         }
-                    }
-                );
-            } catch (Exception ignored) {}
+                    );
+                } catch (Exception ignored) {}
+            });
         }
     }
 
@@ -206,22 +208,6 @@ public class MainActivity extends BridgeActivity {
                         controller.setAppearanceLightNavigationBars(!isDark);
                     }
                 } catch (Exception ignored) {}
-
-                // Fallback for OEM skins (Infinix XOS, Transsion, Xiaomi, Samsung)
-                int flags = decor.getSystemUiVisibility();
-                if (isDark) {
-                    flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-                    }
-                } else {
-                    flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-                    }
-                }
-                decor.setSystemUiVisibility(flags);
-                decor.invalidate();
             }
 
             if (bridge != null && bridge.getWebView() != null) {
