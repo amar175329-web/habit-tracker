@@ -218,7 +218,7 @@ public class MainActivity extends BridgeActivity {
 
             long elapsed = System.currentTimeMillis() - launchStartTime;
             // Real-time instantaneous transition into the app as soon as web is rendered
-            long minDuration = 200;
+            long minDuration = 0;
             if (elapsed < minDuration) {
                 splashDismissScheduled = true;
                 long remaining = minDuration - elapsed;
@@ -240,7 +240,7 @@ public class MainActivity extends BridgeActivity {
             if (splashOverlay != null) {
                 splashOverlay.animate()
                     .alpha(0f)
-                    .setDuration(260)
+                    .setDuration(180)
                     .withEndAction(() -> {
                         try {
                             if (splashOverlay != null && splashOverlay.getParent() != null) {
