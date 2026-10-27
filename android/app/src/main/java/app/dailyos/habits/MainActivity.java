@@ -16,8 +16,6 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
-import androidx.core.splashscreen.SplashScreen;
-import androidx.core.splashscreen.SplashScreenViewProvider;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
@@ -98,10 +96,6 @@ public class MainActivity extends BridgeActivity {
         int targetTheme = isDark
             ? R.style.AppTheme_NoActionBar_Dark
             : R.style.AppTheme_NoActionBar;
-
-        SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
-        splashScreen.setKeepOnScreenCondition(() -> false);
-        splashScreen.setOnExitAnimationListener(SplashScreenViewProvider::remove);
 
         setTheme(targetTheme);
         try {
