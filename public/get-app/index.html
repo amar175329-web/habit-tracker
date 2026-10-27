@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Download Habit Tracker & DailyOS (Android Builds v1.1.8)</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap">
+  <style>
+    :root {
+      --bg: #0B1112;
+      --card: #131E20;
+      --tx: #F2F5F5;
+      --mu: #8EA1A2;
+      --pr: #1FA694;
+      --prt: #5FE0CD;
+      --on: #052420;
+      --ln: rgba(255,255,255,0.08);
+      --ice: #2F8FD0;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--tx);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 20px;
+      box-sizing: border-box;
+    }
+    .container {
+      width: 100%;
+      max-width: 460px;
+      background: var(--card);
+      border: 1px solid var(--ln);
+      border-radius: 28px;
+      padding: 32px 24px;
+      box-sizing: border-box;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 99px;
+      background: rgba(31,166,148,0.15);
+      color: var(--prt);
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      color: var(--mu);
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 0 0 24px;
+    }
+    .btn-download {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      height: 56px;
+      background: var(--pr);
+      color: var(--on);
+      font-weight: 800;
+      font-size: 16px;
+      border-radius: 28px;
+      text-decoration: none;
+      box-sizing: border-box;
+      box-shadow: 0 8px 24px rgba(31,166,148,0.3);
+      transition: transform 0.15s ease;
+      margin-bottom: 12px;
+    }
+    .btn-download:active {
+      transform: scale(0.98);
+    }
+    .btn-download.secondary {
+      background: rgba(255,255,255,0.08);
+      color: var(--tx);
+      border: 1px solid var(--ln);
+      box-shadow: none;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--ln);
+      border-radius: 16px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      font-size: 13px;
+      color: var(--tx);
+      line-height: 1.45;
+    }
+    .feature-card b {
+      color: var(--prt);
+    }
+    .meta {
+      display: flex;
+      justify-content: space-between;
+      color: var(--mu);
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 6px;
+      margin-bottom: 18px;
+      padding: 0 6px;
+    }
+    .steps {
+      margin-top: 24px;
+      border-top: 1px solid var(--ln);
+      padding-top: 24px;
+    }
+    .steps-title {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      color: var(--mu);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+      font-size: 13.5px;
+      line-height: 1.45;
+    }
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      color: var(--prt);
+      font-weight: 800;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .pwa-box {
+      margin-top: 20px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--ln);
+      border-radius: 18px;
+      padding: 14px 16px;
+      font-size: 12.5px;
+      color: var(--mu);
+      line-height: 1.45;
+    }
+    .pwa-box b {
+      color: var(--tx);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+      <img src="/logo.png" alt="Habbitrack 3D Logo" style="width:54px;height:54px;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,0.5);object-fit:cover;">
+      <div>
+        <div class="badge" style="margin-bottom:4px;">
+          <span>●</span> Build v1.1.8 · Custom Dynamic Splash Screen (Zero Blank Flash)
+        </div>
+        <h1 style="margin:0;font-size:24px;">Habit Tracker & DailyOS</h1>
+      </div>
+    </div>
+    <div class="sub">
+      Install the official Android release. Features zero blank white flashes on launch, authentic Habbitrack animated splash logo matching your saved theme (#F2F6F5 / #060E0E), and smooth transition into your Today dashboard.
+    </div>
+
+    <div class="feature-card">
+      ✨ <b>v1.1.8 Updates:</b><br>
+      • <b>Zero Blank Screen:</b> Android native window preview immediately paints the branded theme canvas from frame 0.<br>
+      • <b>Saved-Theme Aware:</b> Seamlessly displays Light (#F2F6F5) or Dark (#060E0E) splash logo matching your in-app preference.<br>
+      • <b>Pop Animation:</b> Subtle 0.92 to 1.0 scale + fade-in animation matching the official Habbitrack splash package spec.<br>
+      • <b>Edge-to-Edge Status Bar:</b> Transparent status & navigation bars merge cleanly with the splash background, then gracefully transition to app UI.
+    </div>
+
+    <!-- Habit Tracker Download Button -->
+    <a href="/habittracker.apk?v=118" class="btn-download" download="habittracker.apk">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+      </svg>
+      Download Habit Tracker APK (v1.1.8)
+    </a>
+
+    <!-- Habbitrack Alternative Download Button -->
+    <a href="/habbitrack.apk?v=118" class="btn-download secondary" download="habbitrack.apk">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+      </svg>
+      Download Habbitrack APK (v1.1.8)
+    </a>
+
+    <!-- DailyOS Download Button -->
+    <a href="/dailyos.apk?v=118" class="btn-download secondary" download="dailyos.apk">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+      </svg>
+      Download DailyOS APK (v1.1.8)
+    </a>
+
+    <div class="meta">
+      <span>Version: 1.1.8 (Build 27)</span>
+      <span>Size: ~8.2 MB</span>
+      <span>Updated: 2026-10-27</span>
+    </div>
+
+    <div class="steps">
+      <div class="steps-title">Installation Guide</div>
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div>Tap <b>Download Habit Tracker APK</b> above in Chrome on your Android device.</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div>If asked, permit Chrome to <b>"Install unknown apps"</b>.</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div>If Play Protect shows a notice, tap <b>"More details"</b> &gt; <b>"Install anyway"</b> (standard for test APKs).</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">4</div>
+        <div>Launch the app. Status bar is pure white. When you toggle dark mode in the side menu (<code>...</code>), the top bar dynamically turns pitch black!</div>
+      </div>
+    </div>
+
+    <div class="pwa-box">
+      <b>Web App:</b> You can also use the app directly in your browser at <a href="/" style="color:var(--prt);text-decoration:none;font-weight:700;">Home</a>.
+    </div>
+  </div>
+</body>
+</html>
