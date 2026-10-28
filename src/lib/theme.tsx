@@ -34,14 +34,7 @@ function resolveInitialThemeSync(): ResolvedTheme {
   } catch {}
   try {
     const saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem("theme");
-    if (saved === "dark" || saved === "light") {
-      return saved;
-    }
-  } catch {}
-  try {
-    if (typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      localStorage.setItem(THEME_STORAGE_KEY, "dark");
-      localStorage.setItem("theme", "dark");
+    if (saved === "dark") {
       return "dark";
     }
   } catch {}

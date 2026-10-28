@@ -19,6 +19,9 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.splashscreen.SplashScreen;
+import androidx.core.splashscreen.SplashScreenViewProvider;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
@@ -31,9 +34,9 @@ public class MainActivity extends BridgeActivity {
 
     public static final String PREFS_NAME = "dailyos_theme_prefs";
     public static final String KEY_THEME = "dailyos_saved_theme";
-    public static final String KEY_LAST_SYS_DARK = "dailyos_last_sys_dark";
 
     private View splashOverlay = null;
+    private ImageView splashLogoView = null;
     private boolean splashDismissed = false;
     private boolean splashDismissScheduled = false;
     private boolean isWebReady = false;
@@ -63,34 +66,27 @@ public class MainActivity extends BridgeActivity {
     }
 
     public String resolveStartupTheme() {
-        boolean sysDark = false;
-        try {
-            sysDark = (getResources().getConfiguration().uiMode
-                & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-        } catch (Exception ignored) {}
-
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String saved = prefs.getString(KEY_THEME, null);
-        boolean hasLastSys = prefs.contains(KEY_LAST_SYS_DARK);
-        boolean lastSysDark = prefs.getBoolean(KEY_LAST_SYS_DARK, sysDark);
-
-        if (saved == null
-            || (!"dark".equalsIgnoreCase(saved) && !"light".equalsIgnoreCase(saved))
-            || !hasLastSys
-            || (sysDark != lastSysDark)) {
-            saved = sysDark ? "dark" : "light";
-            prefs.edit()
-                .putString(KEY_THEME, saved)
-                .putBoolean(KEY_LAST_SYS_DARK, sysDark)
-                .commit();
+        if ("dark".equalsIgnoreCase(saved)) {
+            return "dark";
         }
-        return "dark".equalsIgnoreCase(saved) ? "dark" : "light";
+        if (!"light".equalsIgnoreCase(saved)) {
+            prefs.edit().putString(KEY_THEME, "light").commit();
+        }
+        return "light";
     }
 
     @Override
     public void setTheme(int resid) {
+        boolean isDark = "dark".equalsIgnoreCase(getSavedTheme());
+        if (resid == R.style.AppTheme_NoActionBarLaunch
+            || resid == R.style.AppTheme_NoActionBarLaunch_Light
+            || resid == R.style.AppTheme_NoActionBarLaunch_Dark) {
+            super.setTheme(isDark ? R.style.AppTheme_NoActionBarLaunch_Dark : R.style.AppTheme_NoActionBarLaunch_Light);
+            return;
+        }
         if (resid == R.style.AppTheme_NoActionBar) {
-            boolean isDark = "dark".equalsIgnoreCase(getSavedTheme());
             super.setTheme(isDark ? R.style.AppTheme_NoActionBar_Dark : R.style.AppTheme_NoActionBar_Light);
             return;
         }
@@ -106,9 +102,16 @@ public class MainActivity extends BridgeActivity {
         attachSplashOverlay(isDark, splashBgColor);
 
         try {
+            ViewGroup content = findViewById(android.R.id.content);
+            if (content != null) {
+                content.setBackgroundColor(appBgColor);
+            }
             WebView wv = findViewById(com.getcapacitor.android.R.id.webview);
             if (wv != null) {
                 wv.setBackgroundColor(appBgColor);
+                if (wv.getParent() instanceof View) {
+                    ((View) wv.getParent()).setBackgroundColor(appBgColor);
+                }
                 registerThemeInterface(wv);
             }
         } catch (Exception ignored) {}
@@ -124,16 +127,33 @@ public class MainActivity extends BridgeActivity {
         boolean isDark = "dark".equalsIgnoreCase(initialTheme);
         int splashBgColor = isDark ? Color.parseColor("#060E0E") : Color.parseColor("#F2F6F5");
 
+        try {
+            AppCompatDelegate.setDefaultNightMode(
+                isDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO
+            );
+        } catch (Exception ignored) {}
+
+        int launchTheme = isDark
+            ? R.style.AppTheme_NoActionBarLaunch_Dark
+            : R.style.AppTheme_NoActionBarLaunch_Light;
         int targetTheme = isDark
             ? R.style.AppTheme_NoActionBar_Dark
             : R.style.AppTheme_NoActionBar_Light;
+
+        super.setTheme(launchTheme);
+
+        SplashScreen splashScreen = null;
+        try {
+            splashScreen = SplashScreen.installSplashScreen(this);
+            splashScreen.setKeepOnScreenCondition(() -> splashOverlay == null && !splashDismissed);
+            splashScreen.setOnExitAnimationListener(SplashScreenViewProvider::remove);
+        } catch (Exception ignored) {}
 
         super.setTheme(targetTheme);
         try {
             getTheme().applyStyle(targetTheme, true);
         } catch (Exception ignored) {}
 
-        // Apply window and system bar colors before super.onCreate so frame 0 is already correct
         configureWindowBars(isDark, splashBgColor);
 
         registerPlugin(AppThemePlugin.class);
@@ -141,11 +161,7 @@ public class MainActivity extends BridgeActivity {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
-                getSplashScreen().setSplashScreenTheme(
-                    isDark
-                        ? R.style.AppTheme_NoActionBarLaunch_Dark
-                        : R.style.AppTheme_NoActionBarLaunch_Light
-                );
+                getSplashScreen().setSplashScreenTheme(launchTheme);
             } catch (Exception ignored) {}
         }
 
@@ -214,7 +230,13 @@ public class MainActivity extends BridgeActivity {
             ViewGroup root = findViewById(android.R.id.content);
             if (root == null) return;
 
-            FrameLayout overlay = new FrameLayout(this);
+            FrameLayout overlay = new FrameLayout(this) {
+                @Override
+                protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+                    super.onLayout(changed, left, top, right, bottom);
+                    centerLogoToPhysicalScreen();
+                }
+            };
             overlay.setTag("habbitrack_splash_overlay");
             overlay.setBackgroundColor(splashBgColor);
             overlay.setClickable(true);
@@ -227,23 +249,23 @@ public class MainActivity extends BridgeActivity {
             ImageView iv = new ImageView(this);
             iv.setTag("habbitrack_splash_logo");
             iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            iv.setAdjustViewBounds(true);
-            int logoRes = isDark ? R.drawable.splash_dark_logo : R.drawable.splash_light_logo;
+            int logoRes = isDark ? R.drawable.splash_icon_dark : R.drawable.splash_icon_light;
             iv.setImageResource(logoRes);
 
             DisplayMetrics dm = getResources().getDisplayMetrics();
-            int screenWidth = dm.widthPixels;
-            int logoWidth = (int) (screenWidth * 0.62f);
+            int iconBoxSize = Math.round(288f * dm.density);
 
             FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                logoWidth,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+                iconBoxSize,
+                iconBoxSize,
                 Gravity.CENTER
             );
             overlay.addView(iv, lp);
 
+            splashLogoView = iv;
             splashOverlay = overlay;
             root.addView(overlay);
+            centerLogoToPhysicalScreen();
         } catch (Exception ignored) {}
 
         // Fallback safety timeout if WebView takes too long
@@ -255,13 +277,27 @@ public class MainActivity extends BridgeActivity {
         }, 3500);
     }
 
+    private void centerLogoToPhysicalScreen() {
+        try {
+            if (splashLogoView == null || getWindow() == null) return;
+            View decor = getWindow().getDecorView();
+            if (decor == null) return;
+            int topPad = decor.getPaddingTop();
+            int bottomPad = decor.getPaddingBottom();
+            float offsetY = (bottomPad - topPad) / 2.0f;
+            if (Math.abs(splashLogoView.getTranslationY() - offsetY) > 0.5f) {
+                splashLogoView.setTranslationY(offsetY);
+            }
+        } catch (Exception ignored) {}
+    }
+
     public void onWebRenderComplete() {
         runOnUiThread(() -> {
             isWebReady = true;
             if (splashDismissed || splashDismissScheduled) return;
 
             long elapsed = System.currentTimeMillis() - launchStartTime;
-            long minDuration = 900;
+            long minDuration = 650;
             if (elapsed < minDuration) {
                 splashDismissScheduled = true;
                 long remaining = minDuration - elapsed;
@@ -287,6 +323,7 @@ public class MainActivity extends BridgeActivity {
                     }
                 } catch (Exception ignored) {}
                 splashOverlay = null;
+                splashLogoView = null;
             }
             applyTheme(getSavedTheme());
         });
@@ -312,45 +349,36 @@ public class MainActivity extends BridgeActivity {
 
     public String getSavedTheme() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        String saved = prefs.getString(KEY_THEME, null);
-        if ("dark".equalsIgnoreCase(saved) || "light".equalsIgnoreCase(saved)) {
-            return saved.toLowerCase();
-        }
-        try {
-            boolean sysDark = (getResources().getConfiguration().uiMode
-                & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-            return sysDark ? "dark" : "light";
-        } catch (Exception ignored) {}
-        return "light";
+        String saved = prefs.getString(KEY_THEME, "light");
+        return "dark".equalsIgnoreCase(saved) ? "dark" : "light";
     }
 
     public void saveAndApplyTheme(String theme) {
         if (theme == null) return;
-        String t = theme.toLowerCase().trim();
-        if (!"dark".equals(t) && !"light".equals(t)) return;
+        final String t = "dark".equalsIgnoreCase(theme.trim()) ? "dark" : "light";
 
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        boolean sysDark = false;
-        try {
-            sysDark = (getResources().getConfiguration().uiMode
-                & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-        } catch (Exception ignored) {}
+        prefs.edit().putString(KEY_THEME, t).commit();
 
-        prefs.edit()
-            .putString(KEY_THEME, t)
-            .putBoolean(KEY_LAST_SYS_DARK, sysDark)
-            .commit();
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        runOnUiThread(() -> {
+            boolean isDark = "dark".equals(t);
             try {
-                getSplashScreen().setSplashScreenTheme(
-                    "dark".equals(t)
-                        ? R.style.AppTheme_NoActionBarLaunch_Dark
-                        : R.style.AppTheme_NoActionBarLaunch_Light
+                AppCompatDelegate.setDefaultNightMode(
+                    isDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO
                 );
             } catch (Exception ignored) {}
-        }
-        applyTheme(t);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                try {
+                    getSplashScreen().setSplashScreenTheme(
+                        isDark
+                            ? R.style.AppTheme_NoActionBarLaunch_Dark
+                            : R.style.AppTheme_NoActionBarLaunch_Light
+                    );
+                } catch (Exception ignored) {}
+            }
+            applyTheme(t);
+        });
     }
 
     // Suppress floating text selection action modes ("Copy | Select all | Share") window-wide
@@ -486,18 +514,6 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        boolean sysDark = (newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-        String newTheme = sysDark ? "dark" : "light";
-        saveAndApplyTheme(newTheme);
-        if (bridge != null && bridge.getWebView() != null) {
-            bridge.getWebView().post(() -> {
-                try {
-                    bridge.getWebView().evaluateJavascript(
-                        "(function(){try{localStorage.setItem('dailyos_theme','" + newTheme + "');localStorage.setItem('theme','" + newTheme + "');document.documentElement.className='" + newTheme + "';document.documentElement.setAttribute('data-theme','" + newTheme + "');window.dispatchEvent(new Event('storage'));}catch(e){}})()",
-                        null
-                    );
-                } catch (Exception ignored) {}
-            });
-        }
+        applyTheme(getSavedTheme());
     }
 }

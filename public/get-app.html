@@ -171,41 +171,41 @@
       <img src="/logo.png" alt="Habbitrack 3D Logo" style="width:54px;height:54px;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,0.5);object-fit:cover;">
       <div>
         <div class="badge" style="margin-bottom:4px;">
-          <span>●</span> Build v1.2.8 · Exact Habbitrack Logo Page · Zero Flash &amp; Zero Flicker
+          <span>●</span> Build v1.2.9 · Frame-0 Native Logo Page · Zero Blank/Black/White Flash
         </div>
         <h1 style="margin:0;font-size:24px;">Habit Tracker &amp; DailyOS</h1>
       </div>
     </div>
     <div class="sub">
-      Install the official Android release. Native launch window uses plain theme background color (#F2F6F5 light / #060E0E dark), shows the exact Habbitrack logo page once, and opens directly into the Today screen with zero white flash or flicker.
+      Install the official Android release. Shows your exact Habbitrack logo page from Frame 0 in both Light (#F2F6F5) and Dark (#060E0E) themes with zero blank/black/white flash, then opens directly into the Today screen.
     </div>
 
     <div class="feature-card">
-      ✨ <b>v1.2.8 Updates:</b><br>
-      • <b>Exact Habbitrack Logo Page Restored:</b> Shows the original Habbitrack "H" logo page (62% centered layout on #F2F6F5 light / #060E0E dark) once before entering the home screen.<br>
-      • <b>Zero White Flash in Dark Mode:</b> Fixed `values-night/styles.xml`, `BridgeActivity` theme override, and synchronous startup theme detection so Dark mode is black from Frame 0.<br>
-      • <b>Zero Light Mode Flicker/Reload:</b> Removed `VitePWA` self-destroying `client.navigate` reload, `SystemBars` `onPageCommitVisible` inset jump, and `webView.clearCache(true)` thrashing.<br>
-      • <b>Clean Install Recommended:</b> Uninstall the previous app before installing v1.2.8 so Android OS clears any cached launch snapshot.
+      ✨ <b>v1.2.9 Updates:</b><br>
+      • <b>Frame-0 Native Logo Page:</b> Android 12+ SplashScreen API + pre-Android-12 layer-list fallback render the exact Habbitrack logo page from the very first frame on icon tap.<br>
+      • <b>Strict Light Default &amp; Zero Black Flash:</b> Default theme is strictly Light (#F2F6F5); native Application and Activity read the saved theme synchronously and call setDefaultNightMode before Frame 0.<br>
+      • <b>1:1 Invisible Handover:</b> Native launch window and in-app splash share identical 288dp centered geometry and background tokens.<br>
+      • <b>Clean Install Recommended:</b> Uninstall the previous app before installing v1.2.9 so Android OS clears any cached launch snapshot.
     </div>
 
     <!-- Habit Tracker Download Button -->
-    <a href="/habittracker-v1.2.8.apk" class="btn-download" download="habittracker-v1.2.8.apk">
+    <a href="/habittracker-v1.2.9.apk" class="btn-download" download="habittracker-v1.2.9.apk">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
       </svg>
-      Download Habit Tracker APK (v1.2.8)
+      Download Habit Tracker APK (v1.2.9)
     </a>
 
     <!-- DailyOS Download Button -->
-    <a href="/dailyos-v1.2.8.apk" class="btn-download secondary" download="dailyos-v1.2.8.apk">
+    <a href="/dailyos-v1.2.9.apk" class="btn-download secondary" download="dailyos-v1.2.9.apk">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
       </svg>
-      Download DailyOS APK (v1.2.8)
+      Download DailyOS APK (v1.2.9)
     </a>
 
     <div class="meta">
-      <span>Version: 1.2.8 (Build 37)</span>
+      <span>Version: 1.2.9 (Build 38)</span>
       <span>Size: ~5.7 MB</span>
       <span>Updated: 2026-10-28</span>
     </div>
