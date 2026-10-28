@@ -226,7 +226,8 @@ export async function clearAllData(): Promise<void> {
   } catch {}
 
   if (typeof window !== "undefined" && window.localStorage) {
-    const keepKeys = new Set(["habittracker_clean_restart_v13", "habittracker_db_purged_v13"]);
+    const currentTheme = window.localStorage.getItem("dailyos_theme") || window.localStorage.getItem("theme") || "light";
+    const keepKeys = new Set(["habittracker_clean_restart_v13", "habittracker_db_purged_v13", "dailyos_theme", "theme"]);
     const keysToRemove: string[] = [];
     for (let i = 0; i < window.localStorage.length; i++) {
       const k = window.localStorage.key(i);
@@ -235,8 +236,8 @@ export async function clearAllData(): Promise<void> {
       }
     }
     keysToRemove.forEach((k) => window.localStorage.removeItem(k));
-    window.localStorage.setItem("theme", "light");
-    window.localStorage.setItem("dailyos_theme", "light");
+    window.localStorage.setItem("theme", currentTheme);
+    window.localStorage.setItem("dailyos_theme", currentTheme);
     window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
   }
   if (typeof window !== "undefined" && window.sessionStorage) {

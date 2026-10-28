@@ -20,24 +20,60 @@ const AppTheme = registerPlugin<{
   setTheme: (options: { theme: string }) => Promise<void>;
 }>("AppTheme");
 
+function resolveInitialThemeSync(): ResolvedTheme {
+  if (typeof window === "undefined") return "light";
+  try {
+    if ((window as any).AndroidTheme && typeof (window as any).AndroidTheme.getTheme === "function") {
+      const nativeTheme = (window as any).AndroidTheme.getTheme();
+      if (nativeTheme === "dark" || nativeTheme === "light") {
+        localStorage.setItem(THEME_STORAGE_KEY, nativeTheme);
+        localStorage.setItem("theme", nativeTheme);
+        return nativeTheme;
+      }
+    }
+  } catch {}
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem("theme");
+    if (saved === "dark" || saved === "light") {
+      return saved;
+    }
+  } catch {}
+  try {
+    if (typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      localStorage.setItem(THEME_STORAGE_KEY, "dark");
+      localStorage.setItem("theme", "dark");
+      return "dark";
+    }
+  } catch {}
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, "light");
+    localStorage.setItem("theme", "light");
+  } catch {}
+  return "light";
+}
+
 // 0ms Real-Time Synchronizer: executes in the exact same tick/frame as UI click
 export function fastSyncSystemBars(isDark: boolean) {
   const themeName = isDark ? "dark" : "light";
   const barColor = isDark ? "#0B1112" : "#F2F6F5";
 
   // 1. Direct synchronous Android JNI call (instant, 0ms)
+  let handledByNativeBridge = false;
   try {
     if (typeof window !== "undefined" && (window as any).AndroidTheme?.setTheme) {
       (window as any).AndroidTheme.setTheme(themeName);
+      handledByNativeBridge = true;
     }
   } catch (e) {}
 
-  // 2. Parallel non-blocking Capacitor plugin bridge calls
-  try {
-    AppTheme.setTheme({ theme: themeName }).catch(() => {});
-    StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {});
-    StatusBar.setBackgroundColor({ color: barColor }).catch(() => {});
-  } catch (e) {}
+  // 2. Fallback Capacitor plugin bridge calls only when JNI bridge is unavailable
+  if (!handledByNativeBridge) {
+    try {
+      AppTheme.setTheme({ theme: themeName }).catch(() => {});
+      StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {});
+      StatusBar.setBackgroundColor({ color: barColor }).catch(() => {});
+    } catch (e) {}
+  }
 
   // 3. Web Meta Theme-Color
   if (typeof document !== "undefined") {
@@ -48,31 +84,20 @@ export function fastSyncSystemBars(isDark: boolean) {
   }
 }
 
-// Fallback async system bars sync for mounting / life-cycle
 export async function syncSystemBars(isDark: boolean) {
   fastSyncSystemBars(isDark);
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(THEME_STORAGE_KEY);
-      if (saved === "dark") {
-        return "dark";
-      }
-      // Strict default is ALWAYS White / Light theme (#F2F6F5)
-      localStorage.setItem(THEME_STORAGE_KEY, "light");
-      return "light";
-    }
-    return "light";
-  });
+  const [theme, setThemeState] = useState<Theme>(() => resolveInitialThemeSync());
 
-  // Strict default is ALWAYS white/light unless the user explicitly selected "dark" in the app
   const resolvedTheme: ResolvedTheme = theme === "dark" ? "dark" : "light";
 
   useEffect(() => {
     if (typeof document === "undefined") return;
     const isDark = resolvedTheme === "dark";
+    const bg = isDark ? "#0B1112" : "#F2F6F5";
+    const text = isDark ? "#EAF4F2" : "#0E1F1E";
     const root = document.documentElement;
     if (isDark) {
       root.classList.add("dark");
@@ -83,20 +108,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.classList.add("light");
       root.setAttribute("data-theme", "light");
     }
+    root.style.backgroundColor = bg;
+    root.style.color = text;
 
-    fastSyncSystemBars(isDark);
-    const t1 = setTimeout(() => fastSyncSystemBars(isDark), 40);
-    const t2 = setTimeout(() => fastSyncSystemBars(isDark), 150);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    const s = document.getElementById("splash-critical-css");
+    if (s) {
+      s.innerHTML = `html, body, #root { width: 100%; min-height: 100%; margin: 0; padding: 0; background-color: ${bg} !important; color: ${text} !important; }`;
+    }
   }, [resolvedTheme]);
 
   const setTheme = (newTheme: Theme) => {
     const nextResolved: ResolvedTheme = newTheme === "dark" ? "dark" : "light";
     const isDark = nextResolved === "dark";
+    const bg = isDark ? "#0B1112" : "#F2F6F5";
+    const text = isDark ? "#EAF4F2" : "#0E1F1E";
 
     // 1. IMMEDIATELY update DOM root classes synchronously on click (0ms)
     if (typeof document !== "undefined") {
@@ -110,19 +135,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         root.classList.add("light");
         root.setAttribute("data-theme", "light");
       }
+      root.style.backgroundColor = bg;
+      root.style.color = text;
     }
 
-    // 2. IMMEDIATELY trigger native status bar & nav bar sync (0ms)
+    // 2. Update localStorage synchronously
+    if (typeof window !== "undefined") {
+      localStorage.setItem(THEME_STORAGE_KEY, nextResolved);
+      localStorage.setItem("theme", nextResolved);
+    }
+
+    // 3. IMMEDIATELY trigger native status bar & nav bar sync (0ms)
     fastSyncSystemBars(isDark);
 
-    // 3. Update localStorage synchronously
-    if (typeof window !== "undefined") {
-      localStorage.setItem(THEME_STORAGE_KEY, newTheme);
-      localStorage.setItem("theme", newTheme);
-    }
-
     // 4. Update React state
-    setThemeState(newTheme);
+    setThemeState(nextResolved);
   };
 
   const toggleTheme = () => {

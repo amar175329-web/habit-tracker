@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "app.habittracker.test",
-  appName: "Habit Tracker",
+  appName: "Habbitrack",
   webDir: "dist",
   server: {
     androidScheme: "https",
@@ -10,10 +10,6 @@ const config: CapacitorConfig = {
   plugins: {
     StatusBar: {
       overlaysWebView: false,
-    },
-    SplashScreen: {
-      launchShowDuration: 0,
-      launchAutoHide: true,
     },
   },
 };

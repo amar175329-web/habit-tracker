@@ -26,7 +26,7 @@ export function purgeLegacyStorage(force: boolean = false): { count: number; pur
       if (key) {
         const matches = LEGACY_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix));
         if (matches) {
-          if (!force && key === CLEAN_SLATE_KEY) {
+          if (!force && (key === CLEAN_SLATE_KEY || key === "dailyos_theme")) {
             continue;
           }
           candidates.push(key);

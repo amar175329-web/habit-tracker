@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="light" data-theme="light">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -15,35 +15,37 @@
         min-height: 100%;
         margin: 0;
         padding: 0;
-        background-color: #F2F6F5;
       }
     </style>
     <script>
       (function() {
         try {
-          // Immediately unregister all ServiceWorkers and wipe stale CacheStorage
-          if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-              for (var i = 0; i < registrations.length; i++) {
-                registrations[i].unregister();
-              }
-            });
-          }
-          if (typeof window !== 'undefined' && 'caches' in window) {
-            caches.keys().then(function(names) {
-              for (var i = 0; i < names.length; i++) {
-                caches.delete(names[i]);
-              }
-            });
-          }
-
-          var savedTheme = 'light';
+          var savedTheme = null;
           try {
-            savedTheme = localStorage.getItem('dailyos_theme') || localStorage.getItem('theme') || 'light';
-          } catch(e) {}
+            if (window.AndroidTheme && typeof window.AndroidTheme.getTheme === 'function') {
+              savedTheme = window.AndroidTheme.getTheme();
+            }
+          } catch (e) {}
+          try {
+            if (savedTheme !== 'dark' && savedTheme !== 'light') {
+              savedTheme = localStorage.getItem('dailyos_theme') || localStorage.getItem('theme');
+            }
+          } catch (e) {}
+          if (savedTheme !== 'dark' && savedTheme !== 'light') {
+            try {
+              savedTheme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+            } catch (e) {
+              savedTheme = 'light';
+            }
+          }
+          try {
+            localStorage.setItem('dailyos_theme', savedTheme);
+            localStorage.setItem('theme', savedTheme);
+          } catch (e) {}
+
           var isDark = savedTheme === 'dark';
           var bg = isDark ? '#0B1112' : '#F2F6F5';
-          var text = isDark ? '#F5F5F5' : '#0B1112';
+          var text = isDark ? '#EAF4F2' : '#0E1F1E';
 
           document.documentElement.className = isDark ? 'dark' : 'light';
           document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
@@ -58,25 +60,6 @@
             s.innerHTML = 'html, body, #root { width: 100%; min-height: 100%; margin: 0; padding: 0; background-color: ' + bg + ' !important; color: ' + text + ' !important; }';
           }
 
-          function syncAndroidTheme() {
-            var dark = document.documentElement.classList.contains('dark') ||
-                       document.documentElement.getAttribute('data-theme') === 'dark' ||
-                       localStorage.getItem('dailyos_theme') === 'dark';
-            var t = dark ? 'dark' : 'light';
-            if (window.AndroidTheme && window.AndroidTheme.setTheme) {
-              window.AndroidTheme.setTheme(t);
-            }
-            try {
-              if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AppTheme) {
-                window.Capacitor.Plugins.AppTheme.setTheme({ theme: t });
-              }
-            } catch (e) {}
-          }
-          syncAndroidTheme();
-          window.addEventListener('DOMContentLoaded', syncAndroidTheme);
-          window.addEventListener('load', syncAndroidTheme);
-          window.addEventListener('storage', syncAndroidTheme);
-
           function notifyAppReady() {
             try {
               if (window.AndroidTheme && window.AndroidTheme.onAppReady) {
@@ -88,21 +71,8 @@
             } catch(e) {}
           }
           window.notifyAppReady = notifyAppReady;
-          window.addEventListener('load', function() {
-            requestAnimationFrame(function() {
-              requestAnimationFrame(notifyAppReady);
-            });
-          });
 
-          // Watch for theme mutations on root HTML element
-          if (window.MutationObserver) {
-            var themeObserver = new MutationObserver(function() {
-              syncAndroidTheme();
-            });
-            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
-          }
-
-          // Completely suppress native contextmenu & selection action bar popups across app
+          // Suppress native contextmenu & selection action bar popups across app
           document.addEventListener('contextmenu', function(e) {
             var target = e.target;
             if (!target || !target.closest('input, textarea, [contenteditable="true"]')) {

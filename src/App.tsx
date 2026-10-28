@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { App as CapApp } from "@capacitor/app";
 import { ThemeProvider } from "./lib/theme";
 import { queryClient as qc } from "./lib/queryClient";
-import { initDatabase, purgeLegacyStorage, clearAllData, db, type MoodLog } from "./lib/db";
+import { initDatabase, purgeLegacyStorage, db, type MoodLog } from "./lib/db";
 import { BottomNav as BottomNavPrimitive } from "./components/primitives/BottomNav";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
@@ -92,16 +92,7 @@ function AppNavigation() {
 
 export default function App() {
   useEffect(() => {
-    // Fresh client purge: wipe ALL data across all Dexie tables completely for 100% clean slate
-    const PURGE_KEY = "habittracker_clean_restart_v13";
-    if (typeof window !== "undefined" && window.localStorage && !window.localStorage.getItem("habittracker_db_purged_v13")) {
-      clearAllData().then(() => {
-        window.localStorage.setItem(PURGE_KEY, "true");
-        window.localStorage.setItem("habittracker_db_purged_v13", "true");
-      });
-    }
-
-    // Purge stale local storage and initialize Dexie store on startup
+    // Purge stale legacy storage keys (preserving saved theme) and initialize Dexie store on startup
     purgeLegacyStorage();
     // Clean up any legacy unconfirmed auto-seeded default mood logs
     db.mood_logs.filter((m: MoodLog) => !m.changeCount || m.changeCount === 0).delete().catch(() => {});
