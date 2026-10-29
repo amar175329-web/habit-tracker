@@ -2,12 +2,12 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#060E0E" />
+            <solid android:color="#F2F6F5" />
         </shape>
     </item>
     <item
         android:width="288dp"
         android:height="288dp"
-        android:drawable="@drawable/splash_icon_dark"
+        android:drawable="@drawable/splash_icon_light"
         android:gravity="center" />
 </layer-list>

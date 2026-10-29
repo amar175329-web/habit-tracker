@@ -21,7 +21,8 @@ public class HabitApplication extends Application {
         applyInitialNightMode(this);
     }
 
-    private void applyInitialNightMode(Context context) {
+    public static void applyInitialNightMode(Context context) {
+        if (context == null) return;
         try {
             SharedPreferences prefs = context.getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
             String saved = prefs.getString(MainActivity.KEY_THEME, null);
@@ -30,7 +31,7 @@ public class HabitApplication extends Application {
             }
             boolean isDark = "dark".equalsIgnoreCase(saved);
             if (!isDark && !"light".equalsIgnoreCase(saved)) {
-                // Fresh install: default to LIGHT
+                // Fresh install / nothing saved: force default to LIGHT
                 prefs.edit().putString(MainActivity.KEY_THEME, "light").putString("dailyos_theme", "light").commit();
                 isDark = false;
             }
@@ -40,10 +41,7 @@ public class HabitApplication extends Application {
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 try {
-                    UiModeManager uim = context.getSystemService(UiModeManager.class);
-                    if (uim == null) {
-                        uim = (UiModeManager) context.getSystemService(Context.UI_MODE_SERVICE);
-                    }
+                    UiModeManager uim = (UiModeManager) context.getSystemService(Context.UI_MODE_SERVICE);
                     if (uim != null) {
                         int targetMode = isDark ? UiModeManager.MODE_NIGHT_YES : UiModeManager.MODE_NIGHT_NO;
                         uim.setApplicationNightMode(targetMode);

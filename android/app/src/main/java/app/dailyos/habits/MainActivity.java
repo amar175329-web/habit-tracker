@@ -75,6 +75,9 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AppThemePlugin.class);
         super.onCreate(savedInstanceState);
 
+        // Enforce saved theme & night mode sync before any visual initialization
+        HabitApplication.applyInitialNightMode(this);
+
         boolean isDark = "dark".equalsIgnoreCase(getSavedTheme());
         configureWindowBars(isDark);
         setupThemeBridge();
@@ -170,26 +173,29 @@ public class MainActivity extends BridgeActivity {
         final String t = "dark".equalsIgnoreCase(theme.trim()) ? "dark" : "light";
         final boolean isDark = "dark".equals(t);
 
+        // 1. Commit immediately to SharedPreferences
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         prefs.edit().putString(KEY_THEME, t).putString("dailyos_theme", t).commit();
 
-        runOnUiThread(() -> {
-            int nightMode = isDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO;
+        // 2. Synchronous night mode updates
+        int nightMode = isDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO;
+        try {
+            AppCompatDelegate.setDefaultNightMode(nightMode);
+            getDelegate().setLocalNightMode(nightMode);
+        } catch (Exception ignored) {}
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
-                AppCompatDelegate.setDefaultNightMode(nightMode);
-                getDelegate().setLocalNightMode(nightMode);
+                UiModeManager uim = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
+                if (uim != null) {
+                    int targetMode = isDark ? UiModeManager.MODE_NIGHT_YES : UiModeManager.MODE_NIGHT_NO;
+                    uim.setApplicationNightMode(targetMode);
+                }
             } catch (Exception ignored) {}
+        }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                try {
-                    UiModeManager uim = getSystemService(UiModeManager.class);
-                    if (uim != null) {
-                        int targetMode = isDark ? UiModeManager.MODE_NIGHT_YES : UiModeManager.MODE_NIGHT_NO;
-                        uim.setApplicationNightMode(targetMode);
-                    }
-                } catch (Exception ignored) {}
-            }
-
+        // 3. UI bar and webview color sync
+        runOnUiThread(() -> {
             applyTheme(t);
         });
     }
