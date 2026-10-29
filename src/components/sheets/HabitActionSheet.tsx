@@ -10,6 +10,9 @@ export interface HabitActionSheetProps {
   onToggleWidth: () => void;
   onEdit: () => void;
   onDelete: (purgeHistory: boolean) => void;
+  currentStreak?: number;
+  bestStreak?: number;
+  habitColor?: string;
 }
 
 export function HabitActionSheet({
@@ -22,6 +25,9 @@ export function HabitActionSheet({
   onToggleWidth,
   onEdit,
   onDelete,
+  currentStreak = 0,
+  bestStreak = 0,
+  habitColor,
 }: HabitActionSheetProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -268,6 +274,156 @@ export function HabitActionSheet({
                     {subtitle}
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Side-by-side streak cards: Current Streak & Best Streak */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: "10px",
+                marginBottom: "16px",
+              }}
+            >
+              {/* Left Card: Current Streak */}
+              <div
+                style={{
+                  background: "var(--bg)",
+                  border: "1px solid var(--ln)",
+                  borderRadius: "20px",
+                  padding: "14px 10px 12px",
+                  textAlign: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+                }}
+              >
+                {/* Laurel decoration in habit accent colour */}
+                <svg
+                  width="26"
+                  height="26"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={habitColor || "var(--pr)"}
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ marginBottom: "4px" }}
+                  aria-hidden="true"
+                >
+                  <path d="M12 21a9 9 0 0 1-9-9c0-3.5 2-6.5 5-8" />
+                  <path d="M12 21a9 9 0 0 0 9-9c0-3.5-2-6.5-5-8" />
+                  <path d="M7 6c1.2.4 2 1.6 2 2.8" />
+                  <path d="M5.5 10.5c1.2.4 2 1.6 2 2.8" />
+                  <path d="M17 6c-1.2.4-2 1.6-2 2.8" />
+                  <path d="M18.5 10.5c-1.2.4-2 1.6-2 2.8" />
+                </svg>
+                <div
+                  style={{
+                    fontSize: "10.5px",
+                    letterSpacing: ".12em",
+                    fontWeight: 800,
+                    color: "var(--mu)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  CURRENT STREAK
+                </div>
+                <div
+                  style={{
+                    fontFamily: "var(--num)",
+                    fontWeight: 700,
+                    fontSize: "34px",
+                    lineHeight: 1.1,
+                    marginTop: "4px",
+                    color: "var(--tx)",
+                  }}
+                >
+                  {currentStreak}
+                </div>
+                <div
+                  style={{
+                    fontSize: "11.5px",
+                    fontWeight: 700,
+                    color: "var(--mu)",
+                    marginTop: "2px",
+                  }}
+                >
+                  {currentStreak === 1 ? "day" : "days"}
+                </div>
+              </div>
+
+              {/* Right Card: Best Streak */}
+              <div
+                style={{
+                  background: "var(--bg)",
+                  border: "1px solid var(--ln)",
+                  borderRadius: "20px",
+                  padding: "14px 10px 12px",
+                  textAlign: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+                }}
+              >
+                {/* Laurel decoration in habit accent colour */}
+                <svg
+                  width="26"
+                  height="26"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={habitColor || "var(--pr)"}
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ marginBottom: "4px" }}
+                  aria-hidden="true"
+                >
+                  <path d="M12 21a9 9 0 0 1-9-9c0-3.5 2-6.5 5-8" />
+                  <path d="M12 21a9 9 0 0 0 9-9c0-3.5-2-6.5-5-8" />
+                  <path d="M7 6c1.2.4 2 1.6 2 2.8" />
+                  <path d="M5.5 10.5c1.2.4 2 1.6 2 2.8" />
+                  <path d="M17 6c-1.2.4-2 1.6-2 2.8" />
+                  <path d="M18.5 10.5c-1.2.4-2 1.6-2 2.8" />
+                </svg>
+                <div
+                  style={{
+                    fontSize: "10.5px",
+                    letterSpacing: ".12em",
+                    fontWeight: 800,
+                    color: "var(--mu)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  BEST STREAK
+                </div>
+                <div
+                  style={{
+                    fontFamily: "var(--num)",
+                    fontWeight: 700,
+                    fontSize: "34px",
+                    lineHeight: 1.1,
+                    marginTop: "4px",
+                    color: "var(--tx)",
+                  }}
+                >
+                  {bestStreak}
+                </div>
+                <div
+                  style={{
+                    fontSize: "11.5px",
+                    fontWeight: 700,
+                    color: "var(--mu)",
+                    marginTop: "2px",
+                  }}
+                >
+                  {bestStreak === 1 ? "day" : "days"}
+                </div>
               </div>
             </div>
 

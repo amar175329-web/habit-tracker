@@ -123,6 +123,50 @@ export function streakDays(
 }
 
 /**
+ * Best streak = longest streak calculated across historical logs up to today.
+ * Uses streakDays: calendar days, rest days keep streak, freezes respected.
+ */
+export function calculateHabitBestStreak(
+  logs: Map<string, number> | Record<string, number>,
+  goalDays: number,
+  today: string,
+  firstDate?: string,
+  freezes: string[] = []
+): number {
+  const current = streakDays(logs, goalDays, today, firstDate || today, freezes);
+
+  // Find the earliest date to evaluate
+  let earliestDate = firstDate && firstDate <= today ? firstDate : today;
+  if (logs instanceof Map) {
+    for (const d of logs.keys()) {
+      if (d <= today && (!earliestDate || d < earliestDate)) {
+        earliestDate = d;
+      }
+    }
+  } else if (logs && typeof logs === "object") {
+    for (const d of Object.keys(logs)) {
+      if (d <= today && (!earliestDate || d < earliestDate)) {
+        earliestDate = d;
+      }
+    }
+  }
+
+  let maxStreak = current;
+  const startMs = toMs(earliestDate);
+  const todayMs = toMs(today);
+
+  for (let ms = startMs; ms <= todayMs; ms += DAY_MS) {
+    const d = fromMs(ms);
+    const s = streakDays(logs, goalDays, d, earliestDate, freezes);
+    if (s > maxStreak) {
+      maxStreak = s;
+    }
+  }
+
+  return maxStreak;
+}
+
+/**
  * Calculate overall streak: consecutive calendar days with at least one point earned,
  * or protected by a streak freeze token.
  */

@@ -42,7 +42,13 @@ import { MenuSheet } from "../components/sheets/MenuSheet";
 import { FeelingsSheet } from "../components/sheets/FeelingsSheet";
 import { HabitActionSheet } from "../components/sheets/HabitActionSheet";
 import { StreakSheet } from "../components/sheets/StreakSheet";
+import { StreakCelebrationSheet } from "../components/sheets/StreakCelebrationSheet";
 import { ConfirmModal } from "../components/modals/ConfirmModal";
+import {
+  shouldCelebrateStreak,
+  recordMilestoneShown,
+  calculateHabitBestStreak,
+} from "../lib/streakMilestones";
 
 export default function Today() {
   const { date: paramDate } = useParams();
@@ -65,6 +71,13 @@ export default function Today() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [feelingsOpen, setFeelingsOpen] = useState(false);
   const [streakSheetOpen, setStreakSheetOpen] = useState(false);
+  const [celebrationSheetOpen, setCelebrationSheetOpen] = useState(false);
+  const [celebrationData, setCelebrationData] = useState<{
+    habitId: string;
+    habitName: string;
+    currentStreak: number;
+    habitColor?: string;
+  } | null>(null);
 
   const currentWeekStart = useMemo(() => weekStart(todayStr), [todayStr]);
   const unlockedPasses = useLiveQuery(
@@ -487,6 +500,16 @@ export default function Today() {
     });
   }, [habits, logsByHabit, todayStr, usedFreezeDates]);
 
+  // Active menu habit streaks (reactive to live habit completion/toggle)
+  const activeHabitStreaks = useMemo(() => {
+    if (!activeMenuHabit) return { currentStreak: 0, bestStreak: 0 };
+    const habitLogs = logsByHabit.get(activeMenuHabit.id) ?? new Map<string, number>();
+    const firstDate = activeMenuHabit.createdAt?.slice(0, 10) || "2026-10-01";
+    const current = streakDays(habitLogs, activeMenuHabit.goalDays, todayStr, firstDate, usedFreezeDates);
+    const best = calculateHabitBestStreak(habitLogs, activeMenuHabit.goalDays, todayStr, firstDate, usedFreezeDates);
+    return { currentStreak: current, bestStreak: best };
+  }, [activeMenuHabit, logsByHabit, todayStr, usedFreezeDates]);
+
   // Status pace label
   const statusLabel = useMemo(() => {
     if (habits.length === 0) return "Your week starts here";
@@ -519,6 +542,34 @@ export default function Today() {
 
     // Instant optimistic update (0ms UI latency!)
     setOptimisticOverrides((prev) => new Map(prev).set(habitId, next));
+
+    // Check streak celebration milestone when completing a habit on TODAY
+    if (next === 2 && isViewingToday) {
+      const habit = habits.find((h) => h.id === habitId);
+      if (habit) {
+        const habitLogs = new Map(logsByHabit.get(habitId) ?? new Map());
+        habitLogs.set(todayStr, 2);
+        const firstDate = habit.createdAt?.slice(0, 10) || "2026-10-01";
+        const newStreak = streakDays(habitLogs, habit.goalDays, todayStr, firstDate, usedFreezeDates);
+        const evaluation = shouldCelebrateStreak({
+          habitId: habit.id,
+          newState: 2,
+          isToday: isViewingToday,
+          currentStreak: newStreak,
+        });
+
+        if (evaluation.shouldCelebrate && evaluation.milestone !== null) {
+          recordMilestoneShown(habit.id, evaluation.milestone);
+          setCelebrationData({
+            habitId: habit.id,
+            habitName: habit.name,
+            currentStreak: newStreak,
+            habitColor: (habit as any).color,
+          });
+          setCelebrationSheetOpen(true);
+        }
+      }
+    }
 
     try {
       await toggleHabit(habitId, date, todayStr);
@@ -1857,6 +1908,9 @@ export default function Today() {
           onToggleWidth={() => handleToggleHabitWidth(activeMenuHabit.id)}
           onEdit={() => navigate(`/new-habit?edit=${activeMenuHabit.id}`)}
           onDelete={(purge) => handleDeleteHabitFromMenu(activeMenuHabit.id, purge)}
+          currentStreak={activeHabitStreaks.currentStreak}
+          bestStreak={activeHabitStreaks.bestStreak}
+          habitColor={(activeMenuHabit as any).color}
         />
       )}
 
@@ -1882,6 +1936,17 @@ export default function Today() {
         allReflections={allReflections}
         usedFreezeDates={usedFreezeDates}
       />
+
+      {/* Streak Celebration Sheet (Triggered on milestones: 1st time 1 day, or badges 3, 7, 14, 30, 60, 100, 150, 200, 365) */}
+      {celebrationData && (
+        <StreakCelebrationSheet
+          isOpen={celebrationSheetOpen}
+          onClose={() => setCelebrationSheetOpen(false)}
+          habitName={celebrationData.habitName}
+          currentStreak={celebrationData.currentStreak}
+          habitColor={celebrationData.habitColor}
+        />
+      )}
 
       {/* First-Time Habit Delete Onboarding Tip (Theme-Adaptive & Only Shown Once Ever) */}
       {showFirstDeleteTip && (

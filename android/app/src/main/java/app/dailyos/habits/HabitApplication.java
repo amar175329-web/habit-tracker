@@ -28,11 +28,19 @@ public class HabitApplication extends Application {
                 isDark = false;
             }
 
-            // Force AppCompat default night mode synchronously before super.onCreate/super.attachBaseContext
             int mode = isDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO;
             AppCompatDelegate.setDefaultNightMode(mode);
 
-            // Create context with explicit uiMode so resource resolution matches app theme immediately
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                try {
+                    UiModeManager uim = (UiModeManager) base.getSystemService(Context.UI_MODE_SERVICE);
+                    if (uim != null) {
+                        int targetMode = isDark ? UiModeManager.MODE_NIGHT_YES : UiModeManager.MODE_NIGHT_NO;
+                        uim.setApplicationNightMode(targetMode);
+                    }
+                } catch (Exception ignored) {}
+            }
+
             Configuration config = new Configuration(base.getResources().getConfiguration());
             config.uiMode = (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK) |
                 (isDark ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO);
@@ -45,6 +53,7 @@ public class HabitApplication extends Application {
 
     @Override
     public void onCreate() {
+        super.onCreate();
         try {
             SharedPreferences prefs = getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
             String saved = prefs.getString(MainActivity.KEY_THEME, null);
@@ -60,8 +69,7 @@ public class HabitApplication extends Application {
             int mode = isDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO;
             AppCompatDelegate.setDefaultNightMode(mode);
 
-            // Sync per-app night mode with Android OS on Android 13+ (API 33+)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 try {
                     UiModeManager uim = getSystemService(UiModeManager.class);
                     if (uim != null) {
@@ -71,6 +79,5 @@ public class HabitApplication extends Application {
                 } catch (Exception ignored) {}
             }
         } catch (Exception ignored) {}
-        super.onCreate();
     }
 }
