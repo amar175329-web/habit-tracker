@@ -19,9 +19,12 @@ public class HabitApplication extends Application {
         try {
             SharedPreferences prefs = base.getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
             String saved = prefs.getString(MainActivity.KEY_THEME, null);
+            if (saved == null) {
+                saved = prefs.getString("dailyos_theme", null);
+            }
             boolean isDark = "dark".equalsIgnoreCase(saved);
             if (!isDark && !"light".equalsIgnoreCase(saved)) {
-                prefs.edit().putString(MainActivity.KEY_THEME, "light").commit();
+                prefs.edit().putString(MainActivity.KEY_THEME, "light").putString("dailyos_theme", "light").commit();
                 isDark = false;
             }
 
@@ -45,9 +48,12 @@ public class HabitApplication extends Application {
         try {
             SharedPreferences prefs = getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
             String saved = prefs.getString(MainActivity.KEY_THEME, null);
+            if (saved == null) {
+                saved = prefs.getString("dailyos_theme", null);
+            }
             boolean isDark = "dark".equalsIgnoreCase(saved);
             if (!isDark && !"light".equalsIgnoreCase(saved)) {
-                prefs.edit().putString(MainActivity.KEY_THEME, "light").commit();
+                prefs.edit().putString(MainActivity.KEY_THEME, "light").putString("dailyos_theme", "light").commit();
                 isDark = false;
             }
 

@@ -73,9 +73,12 @@ public class MainActivity extends BridgeActivity {
         try {
             SharedPreferences prefs = newBase.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             String saved = prefs.getString(KEY_THEME, null);
+            if (saved == null) {
+                saved = prefs.getString("dailyos_theme", null);
+            }
             boolean isDark = "dark".equalsIgnoreCase(saved);
             if (!isDark && !"light".equalsIgnoreCase(saved)) {
-                prefs.edit().putString(KEY_THEME, "light").commit();
+                prefs.edit().putString(KEY_THEME, "light").putString("dailyos_theme", "light").commit();
                 isDark = false;
             }
 
@@ -95,11 +98,14 @@ public class MainActivity extends BridgeActivity {
     public String resolveStartupTheme() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String saved = prefs.getString(KEY_THEME, null);
+        if (saved == null) {
+            saved = prefs.getString("dailyos_theme", null);
+        }
         if ("dark".equalsIgnoreCase(saved)) {
             return "dark";
         }
         if (!"light".equalsIgnoreCase(saved)) {
-            prefs.edit().putString(KEY_THEME, "light").commit();
+            prefs.edit().putString(KEY_THEME, "light").putString("dailyos_theme", "light").commit();
         }
         return "light";
     }
@@ -153,14 +159,6 @@ public class MainActivity extends BridgeActivity {
         String initialTheme = resolveStartupTheme();
         boolean isDark = "dark".equalsIgnoreCase(initialTheme);
         int splashBgColor = isDark ? Color.parseColor("#060E0E") : Color.parseColor("#F2F6F5");
-        int nightMode = isDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO;
-
-        // Force AppCompat night mode and delegate before installSplashScreen and super.onCreate
-        try {
-            AppCompatDelegate.setDefaultNightMode(nightMode);
-            getDelegate().setLocalNightMode(nightMode);
-            getDelegate().applyDayNight();
-        } catch (Exception ignored) {}
 
         int launchTheme = isDark
             ? R.style.AppTheme_NoActionBarLaunch_Dark
@@ -395,14 +393,13 @@ public class MainActivity extends BridgeActivity {
         final boolean isDark = "dark".equals(t);
 
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        prefs.edit().putString(KEY_THEME, t).commit();
+        prefs.edit().putString(KEY_THEME, t).putString("dailyos_theme", t).commit();
 
         runOnUiThread(() -> {
             int nightMode = isDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO;
             try {
                 AppCompatDelegate.setDefaultNightMode(nightMode);
                 getDelegate().setLocalNightMode(nightMode);
-                getDelegate().applyDayNight();
             } catch (Exception ignored) {}
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
