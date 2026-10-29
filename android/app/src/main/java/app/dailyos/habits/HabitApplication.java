@@ -31,21 +31,14 @@ public class HabitApplication extends Application {
                 saved = prefs.getString("dailyos_theme", null);
             }
 
-            boolean isDark;
+            boolean isDark = false;
             if (saved != null) {
                 String clean = saved.trim().toLowerCase();
                 if ("dark".equals(clean)) {
                     isDark = true;
-                } else if ("light".equals(clean)) {
-                    isDark = false;
-                } else if ("system".equals(clean)) {
-                    int mode = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-                    isDark = (mode == Configuration.UI_MODE_NIGHT_YES);
-                } else {
-                    isDark = false;
                 }
             } else {
-                // Fresh install / nothing saved: force default to LIGHT
+                // Fresh install / nothing saved: force default strictly to LIGHT
                 prefs.edit().putString(MainActivity.KEY_THEME, "light").putString("dailyos_theme", "light").commit();
                 isDark = false;
             }

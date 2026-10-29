@@ -37,9 +37,6 @@ function resolveInitialThemeSync(): ResolvedTheme {
     if (saved === "dark") {
       return "dark";
     }
-    if (saved === "system" && typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      return "dark";
-    }
   } catch {}
   return "light";
 }
@@ -79,7 +76,7 @@ export async function syncSystemBars(isDark: boolean) {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => resolveInitialThemeSync());
 
-  const isDark = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const isDark = theme === "dark";
   const resolvedTheme: ResolvedTheme = isDark ? "dark" : "light";
 
   // Native bridge sync on JS load
@@ -112,7 +109,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [resolvedTheme]);
 
   const setTheme = (newTheme: Theme) => {
-    const isDark = newTheme === "dark" || (newTheme === "system" && typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const isDark = newTheme === "dark";
     const nextResolved: ResolvedTheme = isDark ? "dark" : "light";
     const bg = isDark ? "#0B1112" : "#F2F6F5";
     const text = isDark ? "#EAF4F2" : "#0E1F1E";

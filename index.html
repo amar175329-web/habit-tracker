@@ -31,13 +31,7 @@
           try {
             if (savedTheme !== 'dark' && savedTheme !== 'light') {
               var localSaved = localStorage.getItem('dailyos_theme') || localStorage.getItem('theme');
-              if (localSaved === 'dark') {
-                savedTheme = 'dark';
-              } else if (localSaved === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                savedTheme = 'dark';
-              } else if (localSaved === 'light') {
-                savedTheme = 'light';
-              }
+              savedTheme = (localSaved === 'dark') ? 'dark' : 'light';
             }
           } catch (e) {}
           savedTheme = (savedTheme === 'dark') ? 'dark' : 'light';

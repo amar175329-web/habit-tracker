@@ -19,6 +19,7 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.splashscreen.SplashScreen;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
@@ -99,6 +100,9 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AppThemePlugin.class);
         super.onCreate(savedInstanceState);
 
+        // Ensure decor fits system windows so webview sits cleanly below status bar
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+
         // 4. Enforce saved theme & night mode sync
         HabitApplication.applyInitialNightMode(this);
 
@@ -136,6 +140,20 @@ public class MainActivity extends BridgeActivity {
     public void onWebRenderComplete() {
         runOnUiThread(() -> {
             isWebReady = true;
+            Window window = getWindow();
+            if (window != null) {
+                WindowCompat.setDecorFitsSystemWindows(window, true);
+                View decor = window.getDecorView();
+                if (decor != null) {
+                    try {
+                        int flags = decor.getSystemUiVisibility();
+                        flags &= ~View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN;
+                        flags &= ~View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+                        decor.setSystemUiVisibility(flags);
+                        ViewCompat.requestApplyInsets(decor);
+                    } catch (Exception ignored) {}
+                }
+            }
         });
     }
 
@@ -143,6 +161,8 @@ public class MainActivity extends BridgeActivity {
         int color = isDark ? Color.parseColor("#0B1112") : Color.parseColor("#F2F6F5");
         Window window = getWindow();
         if (window == null) return;
+
+        WindowCompat.setDecorFitsSystemWindows(window, true);
 
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
@@ -169,6 +189,10 @@ public class MainActivity extends BridgeActivity {
 
             try {
                 int flags = decor.getSystemUiVisibility();
+                // Clear fullscreen and layout stable flags left behind by splash screen
+                flags &= ~View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN;
+                flags &= ~View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+
                 if (isDark) {
                     flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -181,6 +205,7 @@ public class MainActivity extends BridgeActivity {
                     }
                 }
                 decor.setSystemUiVisibility(flags);
+                ViewCompat.requestApplyInsets(decor);
             } catch (Exception ignored) {}
         }
     }
@@ -194,11 +219,6 @@ public class MainActivity extends BridgeActivity {
         if (saved != null) {
             String clean = saved.trim().toLowerCase();
             if ("dark".equals(clean)) return "dark";
-            if ("light".equals(clean)) return "light";
-            if ("system".equals(clean)) {
-                int currentNightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-                return currentNightMode == Configuration.UI_MODE_NIGHT_YES ? "dark" : "light";
-            }
         }
         return "light";
     }
@@ -206,17 +226,7 @@ public class MainActivity extends BridgeActivity {
     public void saveAndApplyTheme(String theme) {
         if (theme == null) return;
         final String cleanTheme = theme.trim().toLowerCase();
-        final String t;
-        if ("dark".equals(cleanTheme)) {
-            t = "dark";
-        } else if ("light".equals(cleanTheme)) {
-            t = "light";
-        } else if ("system".equals(cleanTheme)) {
-            int currentNightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-            t = (currentNightMode == Configuration.UI_MODE_NIGHT_YES) ? "dark" : "light";
-        } else {
-            t = "light";
-        }
+        final String t = "dark".equals(cleanTheme) ? "dark" : "light";
         final boolean isDark = "dark".equals(t);
 
         // 1. Commit immediately to SharedPreferences across both keys
