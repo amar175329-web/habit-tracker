@@ -4,6 +4,7 @@ import android.app.Application;
 import android.app.UiModeManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.os.Build;
 import androidx.appcompat.app.AppCompatDelegate;
 
@@ -29,8 +30,21 @@ public class HabitApplication extends Application {
             if (saved == null) {
                 saved = prefs.getString("dailyos_theme", null);
             }
-            boolean isDark = "dark".equalsIgnoreCase(saved);
-            if (!isDark && !"light".equalsIgnoreCase(saved)) {
+
+            boolean isDark;
+            if (saved != null) {
+                String clean = saved.trim().toLowerCase();
+                if ("dark".equals(clean)) {
+                    isDark = true;
+                } else if ("light".equals(clean)) {
+                    isDark = false;
+                } else if ("system".equals(clean)) {
+                    int mode = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+                    isDark = (mode == Configuration.UI_MODE_NIGHT_YES);
+                } else {
+                    isDark = false;
+                }
+            } else {
                 // Fresh install / nothing saved: force default to LIGHT
                 prefs.edit().putString(MainActivity.KEY_THEME, "light").putString("dailyos_theme", "light").commit();
                 isDark = false;

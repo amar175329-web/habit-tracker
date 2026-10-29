@@ -57,6 +57,15 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private void updateSplashScreenTheme(boolean isDark) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            try {
+                int splashStyle = isDark ? R.style.Theme_Habbit_Splash_Dark : R.style.Theme_Habbit_Splash_Light;
+                getSplashScreen().setSplashScreenTheme(splashStyle);
+            } catch (Throwable ignored) {}
+        }
+    }
+
     @Override
     protected void attachBaseContext(Context newBase) {
         super.attachBaseContext(newBase);
@@ -64,6 +73,21 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Read saved theme before any window creation or super.onCreate
+        boolean isDark = "dark".equalsIgnoreCase(getSavedTheme());
+
+        // 1. Android 13+ (API 33+): Set splash theme BEFORE super.onCreate / before first frame
+        updateSplashScreenTheme(isDark);
+
+        // 2. Android 11 and below: before first frame set window background from saved theme
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            int appBgColor = isDark ? Color.parseColor("#060E0E") : Color.parseColor("#F2F6F5");
+            try {
+                getWindow().setBackgroundDrawable(new ColorDrawable(appBgColor));
+            } catch (Throwable ignored) {}
+        }
+
+        // 3. Install AndroidX splash screen & keep on screen until webview renders
         SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
         splashScreen.setKeepOnScreenCondition(() -> !isWebReady);
 
@@ -75,17 +99,11 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AppThemePlugin.class);
         super.onCreate(savedInstanceState);
 
-        // Enforce saved theme & night mode sync before any visual initialization
+        // 4. Enforce saved theme & night mode sync
         HabitApplication.applyInitialNightMode(this);
 
-        boolean isDark = "dark".equalsIgnoreCase(getSavedTheme());
-
-        // Android 13+ (API 33+): set splash theme for next cold start
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            try {
-                getSplashScreen().setSplashScreenTheme(isDark ? R.style.Theme_Habbit_Splash_Dark : R.style.Theme_Habbit_Splash_Light);
-            } catch (Throwable ignored) {}
-        }
+        // 5. Ensure splash theme is bound after activity creation
+        updateSplashScreenTheme(isDark);
 
         configureWindowBars(isDark);
         setupThemeBridge();
@@ -173,24 +191,40 @@ public class MainActivity extends BridgeActivity {
         if (saved == null) {
             saved = prefs.getString("dailyos_theme", null);
         }
-        return "dark".equalsIgnoreCase(saved) ? "dark" : "light";
+        if (saved != null) {
+            String clean = saved.trim().toLowerCase();
+            if ("dark".equals(clean)) return "dark";
+            if ("light".equals(clean)) return "light";
+            if ("system".equals(clean)) {
+                int currentNightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+                return currentNightMode == Configuration.UI_MODE_NIGHT_YES ? "dark" : "light";
+            }
+        }
+        return "light";
     }
 
     public void saveAndApplyTheme(String theme) {
         if (theme == null) return;
-        final String t = "dark".equalsIgnoreCase(theme.trim()) ? "dark" : "light";
+        final String cleanTheme = theme.trim().toLowerCase();
+        final String t;
+        if ("dark".equals(cleanTheme)) {
+            t = "dark";
+        } else if ("light".equals(cleanTheme)) {
+            t = "light";
+        } else if ("system".equals(cleanTheme)) {
+            int currentNightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+            t = (currentNightMode == Configuration.UI_MODE_NIGHT_YES) ? "dark" : "light";
+        } else {
+            t = "light";
+        }
         final boolean isDark = "dark".equals(t);
 
-        // 1. Commit immediately to SharedPreferences
+        // 1. Commit immediately to SharedPreferences across both keys
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         prefs.edit().putString(KEY_THEME, t).putString("dailyos_theme", t).commit();
 
-        // 2. Android 13+ (API 33+): persist splash theme for next cold start
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            try {
-                getSplashScreen().setSplashScreenTheme(isDark ? R.style.Theme_Habbit_Splash_Dark : R.style.Theme_Habbit_Splash_Light);
-            } catch (Throwable ignored) {}
-        }
+        // 2. Android 13+ (API 33+): call immediately inside theme-change handler
+        updateSplashScreenTheme(isDark);
 
         // 3. Android 12 (API 31-32): set application night mode
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -209,8 +243,9 @@ public class MainActivity extends BridgeActivity {
             getDelegate().setLocalNightMode(nightMode);
         } catch (Exception ignored) {}
 
-        // 4. UI bar and webview color sync
+        // 4. UI bar and webview color sync on UI thread
         runOnUiThread(() -> {
+            updateSplashScreenTheme(isDark);
             applyTheme(t);
         });
     }

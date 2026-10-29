@@ -37,10 +37,9 @@ function resolveInitialThemeSync(): ResolvedTheme {
     if (saved === "dark") {
       return "dark";
     }
-  } catch {}
-  try {
-    localStorage.setItem(THEME_STORAGE_KEY, "light");
-    localStorage.setItem("theme", "light");
+    if (saved === "system" && typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      return "dark";
+    }
   } catch {}
   return "light";
 }
@@ -51,22 +50,18 @@ export function fastSyncSystemBars(isDark: boolean) {
   const barColor = isDark ? "#0B1112" : "#F2F6F5";
 
   // 1. Direct synchronous Android JNI call (instant, 0ms)
-  let handledByNativeBridge = false;
   try {
     if (typeof window !== "undefined" && (window as any).AndroidTheme?.setTheme) {
       (window as any).AndroidTheme.setTheme(themeName);
-      handledByNativeBridge = true;
     }
   } catch (e) {}
 
-  // 2. Fallback Capacitor plugin bridge calls only when JNI bridge is unavailable
-  if (!handledByNativeBridge) {
-    try {
-      AppTheme.setTheme({ theme: themeName }).catch(() => {});
-      StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {});
-      StatusBar.setBackgroundColor({ color: barColor }).catch(() => {});
-    } catch (e) {}
-  }
+  // 2. Capacitor plugin bridge call to keep native in sync
+  try {
+    AppTheme.setTheme({ theme: themeName }).catch(() => {});
+    StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {});
+    StatusBar.setBackgroundColor({ color: barColor }).catch(() => {});
+  } catch (e) {}
 
   // 3. Web Meta Theme-Color
   if (typeof document !== "undefined") {
@@ -84,7 +79,13 @@ export async function syncSystemBars(isDark: boolean) {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => resolveInitialThemeSync());
 
-  const resolvedTheme: ResolvedTheme = theme === "dark" ? "dark" : "light";
+  const isDark = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const resolvedTheme: ResolvedTheme = isDark ? "dark" : "light";
+
+  // Native bridge sync on JS load
+  useEffect(() => {
+    fastSyncSystemBars(resolvedTheme === "dark");
+  }, []);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -111,8 +112,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [resolvedTheme]);
 
   const setTheme = (newTheme: Theme) => {
-    const nextResolved: ResolvedTheme = newTheme === "dark" ? "dark" : "light";
-    const isDark = nextResolved === "dark";
+    const isDark = newTheme === "dark" || (newTheme === "system" && typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const nextResolved: ResolvedTheme = isDark ? "dark" : "light";
     const bg = isDark ? "#0B1112" : "#F2F6F5";
     const text = isDark ? "#EAF4F2" : "#0E1F1E";
 
@@ -134,15 +135,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     // 2. Update localStorage synchronously
     if (typeof window !== "undefined") {
-      localStorage.setItem(THEME_STORAGE_KEY, nextResolved);
+      localStorage.setItem(THEME_STORAGE_KEY, newTheme);
       localStorage.setItem("theme", nextResolved);
     }
 
-    // 3. IMMEDIATELY trigger native status bar & nav bar sync (0ms)
+    // 3. IMMEDIATELY trigger native status bar, splash & nav bar sync (0ms)
     fastSyncSystemBars(isDark);
 
     // 4. Update React state
-    setThemeState(nextResolved);
+    setThemeState(newTheme);
   };
 
   const toggleTheme = () => {

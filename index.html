@@ -30,13 +30,27 @@
           } catch (e) {}
           try {
             if (savedTheme !== 'dark' && savedTheme !== 'light') {
-              savedTheme = localStorage.getItem('dailyos_theme') || localStorage.getItem('theme');
+              var localSaved = localStorage.getItem('dailyos_theme') || localStorage.getItem('theme');
+              if (localSaved === 'dark') {
+                savedTheme = 'dark';
+              } else if (localSaved === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                savedTheme = 'dark';
+              } else if (localSaved === 'light') {
+                savedTheme = 'light';
+              }
             }
           } catch (e) {}
           savedTheme = (savedTheme === 'dark') ? 'dark' : 'light';
           try {
             localStorage.setItem('dailyos_theme', savedTheme);
             localStorage.setItem('theme', savedTheme);
+          } catch (e) {}
+
+          // Synchronize with native Android splash and status bar on JS load
+          try {
+            if (window.AndroidTheme && typeof window.AndroidTheme.setTheme === 'function') {
+              window.AndroidTheme.setTheme(savedTheme);
+            }
           } catch (e) {}
 
           var isDark = savedTheme === 'dark';
