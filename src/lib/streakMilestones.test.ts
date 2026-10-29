@@ -174,6 +174,42 @@ describe("streakMilestones logic & celebrations", () => {
       expect(res7Again.shouldCelebrate).toBe(false);
     });
 
+    it("prevents duplicate milestone 1 triggers on the same calendar day but permits on a new streak", () => {
+      clearShownMilestones();
+      const res1 = shouldCelebrateStreak({
+        habitId: "habit-workout",
+        newState: 2,
+        isToday: true,
+        currentStreak: 1,
+        todayStr: "2026-10-29",
+      });
+      expect(res1.shouldCelebrate).toBe(true);
+      expect(res1.milestone).toBe(1);
+
+      recordMilestoneShown("habit-workout", 1, "2026-10-29");
+
+      // Repeated completion on same day must not trigger
+      const res2 = shouldCelebrateStreak({
+        habitId: "habit-workout",
+        newState: 2,
+        isToday: true,
+        currentStreak: 1,
+        todayStr: "2026-10-29",
+      });
+      expect(res2.shouldCelebrate).toBe(false);
+
+      // On a new date when starting a fresh 1-day streak, it celebrates!
+      const res3 = shouldCelebrateStreak({
+        habitId: "habit-workout",
+        newState: 2,
+        isToday: true,
+        currentStreak: 1,
+        todayStr: "2026-10-31",
+      });
+      expect(res3.shouldCelebrate).toBe(true);
+      expect(res3.milestone).toBe(1);
+    });
+
     it("NEVER triggers on undo (changing from state 2 to 1 or 0)", () => {
       // State 1 = half completed (undo or partial)
       const resHalf = shouldCelebrateStreak({

@@ -1,5 +1,4 @@
-
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 
 export interface SleepDialProps {
   bedtime?: string;  // "23:00"
@@ -11,6 +10,7 @@ export interface SleepDialProps {
 }
 
 function parseTimeToMinutes(t: string): number {
+  if (!t || typeof t !== "string") return 0;
   const [h, m] = t.split(":").map(Number);
   return (h || 0) * 60 + (m || 0);
 }
@@ -24,8 +24,12 @@ function formatMinutesToTime(totalMinutes: number): string {
 }
 
 function formatTime12h(timeStr: string): string {
+  if (!timeStr || typeof timeStr !== "string" || !timeStr.includes(":")) {
+    return "12:00 AM";
+  }
   const [hStr, mStr] = timeStr.split(":");
   let h = parseInt(hStr, 10);
+  if (isNaN(h)) h = 0;
   const m = mStr ?? "00";
   const ampm = h >= 12 ? "PM" : "AM";
   h = h % 12 || 12;
@@ -38,6 +42,22 @@ function calculateDuration(bedMins: number, wakeMins: number): number {
   }
   return 1440 - bedMins + wakeMins;
 }
+
+// 12-hour analog clock hours
+const CLOCK_HOURS = [
+  { h: 12, deg: 0 },
+  { h: 1, deg: 30 },
+  { h: 2, deg: 60 },
+  { h: 3, deg: 90 },
+  { h: 4, deg: 120 },
+  { h: 5, deg: 150 },
+  { h: 6, deg: 180 },
+  { h: 7, deg: 210 },
+  { h: 8, deg: 240 },
+  { h: 9, deg: 270 },
+  { h: 10, deg: 300 },
+  { h: 11, deg: 330 },
+];
 
 export function SleepDial({
   bedtime = "23:00",
@@ -58,47 +78,91 @@ export function SleepDial({
   const durationRemMins = durationMins % 60;
   const durationText = `${durationHours}h ${String(durationRemMins).padStart(2, "0")}m`;
 
-  const C = 691.15; // 2 * PI * 110
-  const arcLength = (durationMins / 1440) * C;
+  // 12-hour analog clock circumference for radius 105
+  // C = 2 * PI * 105 = 659.734
+  const C = 659.734;
+
+  // On a 12-hour clock (720 mins per revolution):
+  // 12 is at top (-90 deg)
+  const bedMinutes12 = bedMins % 720;
+  const bedAngle = (bedMinutes12 / 720) * 360 - 90;
+
+  // Arc length and wake angle
+  const sweepDuration = Math.min(720, durationMins);
+  const arcLength = (sweepDuration / 720) * C;
   const dashRemaining = Math.max(0, C - arcLength);
+  const wakeAngle = bedAngle + (sweepDuration / 720) * 360;
 
-  // Rotation: 12 AM (0 mins) is at top (-90deg)
-  const bedAngle = (bedMins / 1440) * 360 - 90;
-  const wakeAngle = bedAngle + (durationMins / 1440) * 360;
-
-  // Marker positions
+  // Marker handle positions at radius 105
   const bedRad = (bedAngle * Math.PI) / 180;
   const wakeRad = (wakeAngle * Math.PI) / 180;
 
-  const bedX = (165 + 110 * Math.cos(bedRad)).toFixed(1);
-  const bedY = (150 + 110 * Math.sin(bedRad)).toFixed(1);
+  const bedX = (165 + 105 * Math.cos(bedRad)).toFixed(1);
+  const bedY = (165 + 105 * Math.sin(bedRad)).toFixed(1);
 
-  const wakeX = (165 + 110 * Math.cos(wakeRad)).toFixed(1);
-  const wakeY = (150 + 110 * Math.sin(wakeRad)).toFixed(1);
+  const wakeX = (165 + 105 * Math.cos(wakeRad)).toFixed(1);
+  const wakeY = (165 + 105 * Math.sin(wakeRad)).toFixed(1);
 
-  // Helper to convert pointer coordinates to minutes with 15-min snapping
-  const getMinutesFromPointer = useCallback((clientX: number, clientY: number): number => {
+  // 60 tick marks around the dial (hours bold, minutes light)
+  const clockTicks = useMemo(() => {
+    return Array.from({ length: 60 }, (_, i) => {
+      const deg = i * 6;
+      const isHour = i % 5 === 0;
+      const rad = ((deg - 90) * Math.PI) / 180;
+      const rInner = isHour ? 117 : 121;
+      const rOuter = 126;
+      return {
+        x1: (165 + rInner * Math.cos(rad)).toFixed(1),
+        y1: (165 + rInner * Math.sin(rad)).toFixed(1),
+        x2: (165 + rOuter * Math.cos(rad)).toFixed(1),
+        y2: (165 + rOuter * Math.sin(rad)).toFixed(1),
+        isHour,
+      };
+    });
+  }, []);
+
+  // Precomputed hour numbers positions at radius 140
+  const clockNumbers = useMemo(() => {
+    return CLOCK_HOURS.map((item) => {
+      const rad = ((item.deg - 90) * Math.PI) / 180;
+      return {
+        h: item.h,
+        x: (165 + 140 * Math.cos(rad)).toFixed(1),
+        y: (165 + 140 * Math.sin(rad)).toFixed(1),
+        isCardinal: item.h % 3 === 0, // 12, 3, 6, 9
+      };
+    });
+  }, []);
+
+  // Helper to convert pointer coordinates to minutes with 15-min snapping on 12-hour face
+  const getMinutesFromPointer = useCallback((clientX: number, clientY: number, handle: "bed" | "wake"): number => {
     if (!svgRef.current) return 0;
     const rect = svgRef.current.getBoundingClientRect();
-    // SVG viewBox is 330 x 300 with center at (165, 150)
-    const scaleX = 330 / rect.width;
-    const scaleY = 300 / rect.height;
-    const svgX = (clientX - rect.left) * scaleX;
-    const svgY = (clientY - rect.top) * scaleY;
+    const scale = 330 / rect.width;
+    const svgX = (clientX - rect.left) * scale;
+    const svgY = (clientY - rect.top) * scale;
 
-    let deg = Math.atan2(svgY - 150, svgX - 165) * (180 / Math.PI);
-    // Since 12 AM is at -90 deg (top):
+    let deg = Math.atan2(svgY - 165, svgX - 165) * (180 / Math.PI);
+    // 12 o'clock is at top (0 deg)
     deg = (deg + 90 + 360) % 360;
-    const rawMins = deg * 4;
-    // Snap to 15-minute intervals
-    const snappedMins = (Math.round(rawMins / 15) * 15) % 1440;
-    return snappedMins;
+
+    // 360 deg = 720 mins on 12h clock => 1 deg = 2 mins
+    const rawMins12 = deg * 2;
+    const snapped12 = (Math.round(rawMins12 / 15) * 15) % 720;
+
+    if (handle === "bed") {
+      // Bedtime: 6:00 to 11:45 is PM (18:00 - 23:45), 12:00 to 5:45 is AM (00:00 - 05:45)
+      return snapped12 >= 360 ? snapped12 + 720 : snapped12;
+    } else {
+      // Wake time: 1:00 to 11:45 is AM (01:00 - 11:45), 12:00 is PM (12:00)
+      return snapped12 === 0 ? 0 : (snapped12 <= 720 ? snapped12 : snapped12 - 720);
+    }
   }, []);
 
   const handlePointerMove = useCallback(
     (e: PointerEvent) => {
       if (!dragging || !onChange) return;
-      const mins = getMinutesFromPointer(e.clientX, e.clientY);
+      const mins = getMinutesFromPointer(e.clientX, e.clientY, dragging);
       const newTime = formatMinutesToTime(mins);
 
       if (dragging === "bed") {
@@ -146,50 +210,74 @@ export function SleepDial({
         style={{
           background: "var(--card)",
           border: "1px solid var(--ln)",
-          borderRadius: "24px",
-          padding: "12px",
+          borderRadius: "28px",
+          padding: "16px 12px 14px",
           boxSizing: "border-box",
         }}
       >
         <svg
           ref={svgRef}
-          viewBox="0 0 330 300"
+          viewBox="0 0 330 330"
           width="100%"
-          style={{ display: "block", touchAction: "none", maxWidth: "360px", margin: "0 auto" }}
+          style={{ display: "block", touchAction: "none", maxWidth: "360px", margin: "0 auto", userSelect: "none" }}
           role="img"
           aria-label={`Sleep dial: ${formatTime12h(bedtime)} to ${formatTime12h(wakeTime)}, duration ${durationText}`}
         >
-          {/* Outer Tick Marks */}
-          <circle
-            cx="165"
-            cy="150"
-            r="128"
-            fill="none"
-            strokeWidth="9"
-            strokeDasharray="1.5 32"
-            style={{ stroke: "var(--tr)" }}
-          />
+          {/* 60 Realistic Watch / Clock Ticks */}
+          <g>
+            {clockTicks.map((tick, i) => (
+              <line
+                key={`tick-${i}`}
+                x1={tick.x1}
+                y1={tick.y1}
+                x2={tick.x2}
+                y2={tick.y2}
+                stroke={tick.isHour ? "var(--mu)" : "var(--tr)"}
+                strokeWidth={tick.isHour ? "2" : "1"}
+                strokeLinecap="round"
+              />
+            ))}
+          </g>
+
+          {/* Authentic 12-Hour Numerals (12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11) */}
+          <g>
+            {clockNumbers.map((num) => (
+              <text
+                key={`num-${num.h}`}
+                x={num.x}
+                y={num.y}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={num.isCardinal ? "13" : "11"}
+                fontWeight={num.isCardinal ? "800" : "600"}
+                fontFamily="Space Grotesk, sans-serif"
+                style={{ fill: num.isCardinal ? "var(--tx)" : "var(--mu)" }}
+              >
+                {num.h}
+              </text>
+            ))}
+          </g>
 
           {/* Base Ring Track */}
           <circle
             cx="165"
-            cy="150"
-            r="110"
+            cy="165"
+            r="105"
             fill="none"
-            strokeWidth="22"
+            strokeWidth="20"
             style={{ stroke: "var(--bg)" }}
           />
 
           {/* Sleep Arc in Indigo */}
           <circle
             cx="165"
-            cy="150"
-            r="110"
+            cy="165"
+            r="105"
             fill="none"
-            strokeWidth="22"
+            strokeWidth="20"
             strokeLinecap="round"
             strokeDasharray={`${arcLength.toFixed(1)} ${dashRemaining.toFixed(1)}`}
-            transform={`rotate(${bedAngle.toFixed(1)} 165 150)`}
+            transform={`rotate(${bedAngle.toFixed(1)} 165 165)`}
             style={{ stroke: "var(--ind)" }}
           />
 
@@ -201,15 +289,16 @@ export function SleepDial({
               setDragging("bed");
             }}
           >
-            <circle cx={bedX} cy={bedY} r="24" fill="transparent" />
+            <circle cx={bedX} cy={bedY} r="26" fill="transparent" />
             <circle
               cx={bedX}
               cy={bedY}
-              r="14"
+              r="15"
               style={{
                 fill: "var(--card)",
                 stroke: dragging === "bed" ? "var(--ind)" : "var(--ln)",
-                strokeWidth: dragging === "bed" ? 2.5 : 1,
+                strokeWidth: dragging === "bed" ? 2.5 : 1.2,
+                filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.12))",
               }}
             />
             <path
@@ -229,39 +318,27 @@ export function SleepDial({
               setDragging("wake");
             }}
           >
-            <circle cx={wakeX} cy={wakeY} r="24" fill="transparent" />
+            <circle cx={wakeX} cy={wakeY} r="26" fill="transparent" />
             <circle
               cx={wakeX}
               cy={wakeY}
-              r="14"
+              r="15"
               style={{
                 fill: "var(--card)",
                 stroke: dragging === "wake" ? "var(--fl)" : "var(--ln)",
-                strokeWidth: dragging === "wake" ? 2.5 : 1,
+                strokeWidth: dragging === "wake" ? 2.5 : 1.2,
+                filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.12))",
               }}
             />
-            <circle cx={wakeX} cy={wakeY} r="4.5" style={{ fill: "var(--fl)" }} />
+            <circle cx={wakeX} cy={wakeY} r="5" style={{ fill: "var(--fl)" }} />
           </g>
-
-          {/* Clock Labels */}
-          <text x="165" y="10" textAnchor="middle" fontSize="11" fontWeight="700" style={{ fill: "var(--mu)" }}>
-            12 AM
-          </text>
-          <text x="305" y="154" textAnchor="middle" fontSize="11" fontWeight="700" style={{ fill: "var(--mu)" }}>
-            6 AM
-          </text>
-          <text x="165" y="298" textAnchor="middle" fontSize="11" fontWeight="700" style={{ fill: "var(--mu)" }}>
-            12 PM
-          </text>
-          <text x="25" y="154" textAnchor="middle" fontSize="11" fontWeight="700" style={{ fill: "var(--mu)" }}>
-            6 PM
-          </text>
 
           {/* Center Readout */}
           <text
             x="165"
-            y="152"
+            y="158"
             textAnchor="middle"
+            dominantBaseline="central"
             fontSize="40"
             fontWeight="700"
             fontFamily="Space Grotesk, sans-serif"
@@ -271,8 +348,9 @@ export function SleepDial({
           </text>
           <text
             x="165"
-            y="176"
+            y="184"
             textAnchor="middle"
+            dominantBaseline="central"
             fontSize="12"
             fontWeight="600"
             style={{ fill: "var(--mu)" }}

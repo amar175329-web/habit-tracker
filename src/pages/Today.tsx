@@ -556,10 +556,11 @@ export default function Today() {
           newState: 2,
           isToday: isViewingToday,
           currentStreak: newStreak,
+          todayStr,
         });
 
         if (evaluation.shouldCelebrate && evaluation.milestone !== null) {
-          recordMilestoneShown(habit.id, evaluation.milestone);
+          recordMilestoneShown(habit.id, evaluation.milestone, todayStr);
           setCelebrationData({
             habitId: habit.id,
             habitName: habit.name,

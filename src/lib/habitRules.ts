@@ -76,6 +76,43 @@ export function goalDaysDone(
 export const STREAK_BADGES = [3, 7, 14, 30, 60, 100, 150, 200, 300, 365];
 
 /**
+ * Calculates consecutive active days ending on today (or yesterday if today is not yet logged).
+ * Protects streaks with freeze tokens and ensures completed habits have at least streak >= 1.
+ */
+export function calculateConsecutiveStreak(
+  logs: Map<string, number> | Record<string, number>,
+  today: string,
+  firstDate: string,
+  freezes: string[] = []
+): number {
+  const getState = (d: string) => {
+    const val = (logs instanceof Map ? logs.get(d) : logs[d]) || 0;
+    if (val === 0 && freezes.includes(d)) return 2;
+    return val;
+  };
+
+  const startMs = toMs(firstDate);
+  let count = 0;
+  let cursor = today;
+
+  // If today is not completed yet, check if yesterday was completed to keep the active streak alive
+  if (getState(today) !== 2) {
+    const yesterday = fromMs(toMs(today) - DAY_MS);
+    if (toMs(yesterday) >= startMs && getState(yesterday) === 2) {
+      cursor = yesterday;
+    } else {
+      return 0;
+    }
+  }
+
+  while (toMs(cursor) >= startMs && getState(cursor) === 2) {
+    count++;
+    cursor = fromMs(toMs(cursor) - DAY_MS);
+  }
+  return count;
+}
+
+/**
  * Streak in calendar days. Rest days after a week's goal is met keep the chain alive.
  * Chain breaks when a week ends with fewer than goalDays full days, or the current week can no longer reach it.
  * firstDate = first date the habit was ever logged (days before it never count).
@@ -101,25 +138,27 @@ export function streakDays(
     if (getState(d) === 2) done++;
   }
 
-  if (done + (7 - idx) < goalDays) {
-    return 0; // current week can't be met anymore
-  }
+  let weeklyStreak = 0;
+  if (done + (7 - idx) >= goalDays) {
+    let days = 0;
+    const thisStart = weekStart(today);
+    const startMs = toMs(firstDate);
 
-  let days = 0;
-  const thisStart = weekStart(today);
-  const startMs = toMs(firstDate);
+    days += Math.min(idx, Math.floor((toMs(today) - Math.max(startMs, toMs(thisStart))) / DAY_MS) + 1);
 
-  days += Math.min(idx, Math.floor((toMs(today) - Math.max(startMs, toMs(thisStart))) / DAY_MS) + 1);
-
-  for (let ws = toMs(thisStart) - 7 * DAY_MS; ws + 6 * DAY_MS >= startMs; ws -= 7 * DAY_MS) {
-    let n = 0;
-    for (let k = 0; k < 7; k++) {
-      if (getState(fromMs(ws + k * DAY_MS)) === 2) n++;
+    for (let ws = toMs(thisStart) - 7 * DAY_MS; ws + 6 * DAY_MS >= startMs; ws -= 7 * DAY_MS) {
+      let n = 0;
+      for (let k = 0; k < 7; k++) {
+        if (getState(fromMs(ws + k * DAY_MS)) === 2) n++;
+      }
+      if (n < goalDays) break;
+      days += 7 - Math.max(0, Math.floor((startMs - ws) / DAY_MS));
     }
-    if (n < goalDays) break;
-    days += 7 - Math.max(0, Math.floor((startMs - ws) / DAY_MS));
+    weeklyStreak = days;
   }
-  return days;
+
+  const consecutive = calculateConsecutiveStreak(logs, today, firstDate, freezes);
+  return Math.max(weeklyStreak, consecutive);
 }
 
 /**

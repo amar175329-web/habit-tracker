@@ -87,6 +87,22 @@ describe("habitRules logic & scoring", () => {
 
     // Goal 5, only 2 done on Sat 24 (remaining Sun = 1 day, 2+1=3 < 5 cannot reach => breaks to 0)
     expect(streakDays(M, 5, "2026-10-24", "2026-10-19")).toBe(0);
+
+    // Habit completed on Thursday for the first time (e.g. user seed habit Workout): streak must be 1 day!
+    const U = new Map<string, number>();
+    U.set("2026-10-29", 2);
+    expect(streakDays(U, 5, "2026-10-29", "2026-10-01")).toBe(1);
+
+    // Habit completed on Thursday and Friday: streak is 2 days
+    U.set("2026-10-30", 2);
+    expect(streakDays(U, 5, "2026-10-30", "2026-10-01")).toBe(2);
+
+    // Freeze token keeps consecutive streak alive across missed day
+    const F = new Map<string, number>();
+    F.set("2026-10-28", 2);
+    // Missed 2026-10-29 (protected by freeze)
+    F.set("2026-10-30", 2);
+    expect(streakDays(F, 7, "2026-10-30", "2026-10-01", ["2026-10-29"])).toBe(3);
   });
 
   it("enforces editing constraints for reflections and habits", () => {

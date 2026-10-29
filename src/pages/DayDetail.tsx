@@ -2,10 +2,12 @@ import { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, toggleHabit, useHabits, useEditPass, markDateUnlocked, getSessionUnlockedDates } from "../lib/db";
-import { weekStart, isHabitActiveOnDate } from "../lib/habitRules";
+import { weekStart, isHabitActiveOnDate, streakDays } from "../lib/habitRules";
 import { getIconPath } from "../lib/icons";
 import { formatTime12h } from "../lib/sleep";
 import { classifyEmotion } from "../lib/emotions";
+import { shouldCelebrateStreak, recordMilestoneShown } from "../lib/streakMilestones";
+import { StreakCelebrationSheet } from "../components/sheets/StreakCelebrationSheet";
 
 export default function DayDetail() {
   const { date = "" } = useParams();
@@ -23,6 +25,14 @@ export default function DayDetail() {
   const isPastDay = date < todayStr;
   const isFutureDay = date > todayStr;
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [celebrationSheetOpen, setCelebrationSheetOpen] = useState(false);
+  const [celebrationData, setCelebrationData] = useState<{
+    habitId: string;
+    habitName: string;
+    currentStreak: number;
+    habitColor?: string;
+  } | null>(null);
+
   const currentWeekStart = useMemo(() => weekStart(todayStr), [todayStr]);
   const unlockedPasses = useLiveQuery(
     () => db.edit_passes.where("week_start").equals(currentWeekStart).toArray(),
@@ -54,6 +64,10 @@ export default function DayDetail() {
   const habits = useHabits();
   const allHabits = useLiveQuery(() => db.habits.toArray(), []) ?? [];
   const dayLogs = useLiveQuery(() => db.habit_logs.where("date").equals(date).toArray(), [date]) ?? [];
+  const allHabitLogs = useLiveQuery(() => db.habit_logs.toArray(), []) ?? [];
+  const currentMonth = useMemo(() => todayStr.slice(0, 7), [todayStr]);
+  const freezeRecord = useLiveQuery(() => db.streak_freezes.get(currentMonth), [currentMonth]);
+  const usedFreezeDates = freezeRecord?.usedDates || [];
   const sleepLog = useLiveQuery(() => db.sleep_logs.get(date), [date]);
   const moodLog = useLiveQuery(() => db.mood_logs.get(date), [date]);
   const reflection = useLiveQuery(() => db.reflections.get(date), [date]);
@@ -68,6 +82,19 @@ export default function DayDetail() {
   }, [habits, allHabits, dayLogs, date]);
 
   const [optimisticOverrides, setOptimisticOverrides] = useState<Map<string, number>>(new Map());
+
+  const logsByHabit = useMemo(() => {
+    const map = new Map<string, Map<string, number>>();
+    allHabitLogs.forEach((l) => {
+      if (!map.has(l.habitId)) map.set(l.habitId, new Map());
+      map.get(l.habitId)!.set(l.date, l.state);
+    });
+    optimisticOverrides.forEach((val, key) => {
+      if (!map.has(key)) map.set(key, new Map());
+      map.get(key)!.set(date, val);
+    });
+    return map;
+  }, [allHabitLogs, optimisticOverrides, date]);
 
   useEffect(() => {
     if (optimisticOverrides.size === 0) return;
@@ -115,6 +142,35 @@ export default function DayDetail() {
 
     // Instant optimistic update (0ms UI latency!)
     setOptimisticOverrides((prev) => new Map(prev).set(habitId, next));
+
+    // Check streak celebration milestone when completing a habit on TODAY
+    if (next === 2 && isToday) {
+      const habit = (allHabits.length > 0 ? allHabits : habits).find((h) => h.id === habitId);
+      if (habit) {
+        const habitLogs = new Map(logsByHabit.get(habitId) ?? new Map());
+        habitLogs.set(todayStr, 2);
+        const firstDate = habit.createdAt?.slice(0, 10) || todayStr;
+        const newStreak = streakDays(habitLogs, habit.goalDays, todayStr, firstDate, usedFreezeDates);
+        const evaluation = shouldCelebrateStreak({
+          habitId: habit.id,
+          newState: 2,
+          isToday,
+          currentStreak: newStreak,
+          todayStr,
+        });
+
+        if (evaluation.shouldCelebrate && evaluation.milestone !== null) {
+          recordMilestoneShown(habit.id, evaluation.milestone, todayStr);
+          setCelebrationData({
+            habitId: habit.id,
+            habitName: habit.name,
+            currentStreak: newStreak,
+            habitColor: (habit as any).color,
+          });
+          setCelebrationSheetOpen(true);
+        }
+      }
+    }
 
     try {
       await toggleHabit(habitId, date, todayStr);
@@ -453,6 +509,17 @@ export default function DayDetail() {
             {reflection?.content?.trim() || "No reflection for this date."}
           </div>
         </div>
+
+        {/* Streak Celebration Sheet (Triggered on milestones: 1st time 1 day, or badges 3, 7, 14, 30, 60, 100, 150, 200, 365) */}
+        {celebrationData && (
+          <StreakCelebrationSheet
+            isOpen={celebrationSheetOpen}
+            onClose={() => setCelebrationSheetOpen(false)}
+            habitName={celebrationData.habitName}
+            currentStreak={celebrationData.currentStreak}
+            habitColor={celebrationData.habitColor}
+          />
+        )}
       </div>
     </div>
   );

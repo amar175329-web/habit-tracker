@@ -10,6 +10,7 @@ export { calculateHabitBestStreak };
 export const BADGE_MILESTONES = [3, 7, 14, 30, 60, 100, 150, 200, 365] as const;
 
 export const SHOWN_MILESTONES_STORAGE_KEY = "habbitrack_shown_milestones";
+export const LAST_CELEBRATION_DATES_KEY = "habbitrack_last_celebration_dates";
 
 /**
  * Returns the next badge milestone strictly greater than currentStreak.
@@ -57,10 +58,40 @@ export function getShownMilestones(habitId: string): number[] {
 }
 
 /**
+ * Retrieves the last date string when a milestone was celebrated for a habit.
+ */
+export function getLastCelebrationDate(habitId: string, milestone: number): string | null {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return null;
+    const raw = window.localStorage.getItem(LAST_CELEBRATION_DATES_KEY);
+    if (!raw) return null;
+    const map = JSON.parse(raw);
+    return map[`${habitId}_${milestone}`] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Records the last date string when a milestone was celebrated for a habit.
+ */
+export function setLastCelebrationDate(habitId: string, milestone: number, dateStr: string): void {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return;
+    const raw = window.localStorage.getItem(LAST_CELEBRATION_DATES_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    map[`${habitId}_${milestone}`] = dateStr;
+    window.localStorage.setItem(LAST_CELEBRATION_DATES_KEY, JSON.stringify(map));
+  } catch {
+    // Non-blocking
+  }
+}
+
+/**
  * Records that a milestone has been shown for a specific habit.
  * Stored in localStorage under `habbitrack_shown_milestones`.
  */
-export function recordMilestoneShown(habitId: string, milestone: number): void {
+export function recordMilestoneShown(habitId: string, milestone: number, dateStr?: string): void {
   try {
     if (typeof window === "undefined" || !window.localStorage) return;
     const all = getAllShownMilestones();
@@ -68,6 +99,9 @@ export function recordMilestoneShown(habitId: string, milestone: number): void {
     if (!currentList.includes(milestone)) {
       all[habitId] = [...currentList, milestone];
       window.localStorage.setItem(SHOWN_MILESTONES_STORAGE_KEY, JSON.stringify(all));
+    }
+    if (dateStr) {
+      setLastCelebrationDate(habitId, milestone, dateStr);
     }
   } catch {
     // Non-blocking fallback if localStorage is disabled or throws
@@ -88,6 +122,7 @@ export function clearShownMilestones(habitId?: string): void {
       window.localStorage.setItem(SHOWN_MILESTONES_STORAGE_KEY, JSON.stringify(all));
     } else {
       window.localStorage.removeItem(SHOWN_MILESTONES_STORAGE_KEY);
+      window.localStorage.removeItem(LAST_CELEBRATION_DATES_KEY);
     }
   } catch {
     // Non-blocking fallback
@@ -100,6 +135,7 @@ export interface ShouldCelebrateOptions {
   isToday: boolean;
   currentStreak: number;
   shownMilestones?: number[];
+  todayStr?: string;
 }
 
 /**
@@ -114,7 +150,7 @@ export function shouldCelebrateStreak(options: ShouldCelebrateOptions): {
   shouldCelebrate: boolean;
   milestone: number | null;
 } {
-  const { habitId, newState, isToday, currentStreak } = options;
+  const { habitId, newState, isToday, currentStreak, todayStr } = options;
 
   // Never trigger if not today, or if not completing (state !== 2), or streak < 1
   if (!isToday || newState !== 2 || currentStreak < 1) {
@@ -123,10 +159,18 @@ export function shouldCelebrateStreak(options: ShouldCelebrateOptions): {
 
   const shown = options.shownMilestones ?? getShownMilestones(habitId);
 
-  // Condition (a): streak becomes 1 for the first time ever for this habit
+  // Condition (a): streak becomes 1 (day 1 celebration)
   if (currentStreak === 1) {
+    // If not in shown list, celebrate!
     if (!shown.includes(1)) {
       return { shouldCelebrate: true, milestone: 1 };
+    }
+    // If shown in history from a previous streak that broke, but not yet celebrated today
+    if (todayStr && !options.shownMilestones) {
+      const lastDate = getLastCelebrationDate(habitId, 1);
+      if (lastDate !== todayStr) {
+        return { shouldCelebrate: true, milestone: 1 };
+      }
     }
     return { shouldCelebrate: false, milestone: null };
   }
