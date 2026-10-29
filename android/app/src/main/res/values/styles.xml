@@ -26,39 +26,6 @@
         <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 
-    <style name="AppTheme.NoActionBar.Light" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
-        <item name="colorPrimary">#0D7B6C</item>
-        <item name="colorPrimaryDark">#F2F6F5</item>
-        <item name="colorAccent">#0D7B6C</item>
-        <item name="android:windowBackground">#F2F6F5</item>
-        <item name="android:colorBackground">#F2F6F5</item>
-        <item name="android:statusBarColor">#F2F6F5</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:navigationBarColor">#F2F6F5</item>
-        <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
-    </style>
-
-    <!-- Black / Dark Theme: #0B1112 with crisp white icons -->
-    <style name="AppTheme.NoActionBar.Dark" parent="Theme.AppCompat.NoActionBar">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
-        <item name="colorPrimary">#2DD4BF</item>
-        <item name="colorPrimaryDark">#0B1112</item>
-        <item name="colorAccent">#2DD4BF</item>
-        <item name="android:windowBackground">#0B1112</item>
-        <item name="android:colorBackground">#0B1112</item>
-        <item name="android:statusBarColor">#0B1112</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:navigationBarColor">#0B1112</item>
-        <item name="android:windowLightNavigationBar">false</item>
-        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
-    </style>
-
     <!-- Base Launch Window (Strictly Light: #F2F6F5 + splash_icon_light) -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#F2F6F5</item>
@@ -69,7 +36,7 @@
         <item name="android:windowSplashScreenAnimationDuration" tools:targetApi="31">0</item>
         <item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
         <item name="android:windowSplashScreenIconBackgroundColor" tools:targetApi="31">@android:color/transparent</item>
-        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar.Light</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
         <item name="android:windowBackground">@drawable/splash_layer_light</item>
         <item name="android:colorBackground">#F2F6F5</item>
         <item name="android:statusBarColor">#F2F6F5</item>
