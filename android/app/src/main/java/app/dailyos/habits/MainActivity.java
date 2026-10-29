@@ -229,15 +229,11 @@ public class MainActivity extends BridgeActivity {
 
         window.setStatusBarColor(bgColor);
         window.setNavigationBarColor(bgColor);
-        if (splashDismissed) {
-            window.setBackgroundDrawable(new ColorDrawable(bgColor));
-        }
+        window.setBackgroundDrawable(new ColorDrawable(bgColor));
 
         View decor = window.getDecorView();
         if (decor != null) {
-            if (splashDismissed) {
-                decor.setBackgroundColor(bgColor);
-            }
+            decor.setBackgroundColor(bgColor);
             try {
                 WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
                 if (controller != null) {
@@ -505,12 +501,11 @@ public class MainActivity extends BridgeActivity {
 
                 window.setStatusBarColor(activeBarColor);
                 window.setNavigationBarColor(activeBarColor);
-                if (splashDismissed) {
-                    window.setBackgroundDrawable(new ColorDrawable(activeBarColor));
-                }
+                window.setBackgroundDrawable(new ColorDrawable(activeBarColor));
 
                 View decor = window.getDecorView();
                 if (decor != null) {
+                    decor.setBackgroundColor(activeBarColor);
                     if (splashDismissed) {
                         setHierarchyBackgroundColor(decor, activeBarColor);
                     }
