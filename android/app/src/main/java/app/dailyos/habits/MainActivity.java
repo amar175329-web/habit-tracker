@@ -79,6 +79,14 @@ public class MainActivity extends BridgeActivity {
         HabitApplication.applyInitialNightMode(this);
 
         boolean isDark = "dark".equalsIgnoreCase(getSavedTheme());
+
+        // Android 13+ (API 33+): set splash theme for next cold start
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            try {
+                getSplashScreen().setSplashScreenTheme(isDark ? R.style.Theme_Habbit_Splash_Dark : R.style.Theme_Habbit_Splash_Light);
+            } catch (Throwable ignored) {}
+        }
+
         configureWindowBars(isDark);
         setupThemeBridge();
     }
@@ -177,13 +185,14 @@ public class MainActivity extends BridgeActivity {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         prefs.edit().putString(KEY_THEME, t).putString("dailyos_theme", t).commit();
 
-        // 2. Synchronous night mode updates
-        int nightMode = isDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO;
-        try {
-            AppCompatDelegate.setDefaultNightMode(nightMode);
-            getDelegate().setLocalNightMode(nightMode);
-        } catch (Exception ignored) {}
+        // 2. Android 13+ (API 33+): persist splash theme for next cold start
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            try {
+                getSplashScreen().setSplashScreenTheme(isDark ? R.style.Theme_Habbit_Splash_Dark : R.style.Theme_Habbit_Splash_Light);
+            } catch (Throwable ignored) {}
+        }
 
+        // 3. Android 12 (API 31-32): set application night mode
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
                 UiModeManager uim = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
@@ -194,7 +203,13 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception ignored) {}
         }
 
-        // 3. UI bar and webview color sync
+        int nightMode = isDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO;
+        try {
+            AppCompatDelegate.setDefaultNightMode(nightMode);
+            getDelegate().setLocalNightMode(nightMode);
+        } catch (Exception ignored) {}
+
+        // 4. UI bar and webview color sync
         runOnUiThread(() -> {
             applyTheme(t);
         });
