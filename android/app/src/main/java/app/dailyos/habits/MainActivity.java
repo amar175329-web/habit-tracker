@@ -145,7 +145,7 @@ public class MainActivity extends BridgeActivity {
         SplashScreen splashScreen = null;
         try {
             splashScreen = SplashScreen.installSplashScreen(this);
-            splashScreen.setKeepOnScreenCondition(() -> splashOverlay == null && !splashDismissed);
+            splashScreen.setKeepOnScreenCondition(() -> !splashDismissed);
             splashScreen.setOnExitAnimationListener(SplashScreenViewProvider::remove);
         } catch (Exception ignored) {}
 
@@ -191,13 +191,17 @@ public class MainActivity extends BridgeActivity {
             window.setNavigationBarContrastEnforced(false);
         }
 
-        window.setBackgroundDrawable(new ColorDrawable(bgColor));
         window.setStatusBarColor(bgColor);
         window.setNavigationBarColor(bgColor);
+        if (splashDismissed) {
+            window.setBackgroundDrawable(new ColorDrawable(bgColor));
+        }
 
         View decor = window.getDecorView();
         if (decor != null) {
-            decor.setBackgroundColor(bgColor);
+            if (splashDismissed) {
+                decor.setBackgroundColor(bgColor);
+            }
             try {
                 WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
                 if (controller != null) {
@@ -421,7 +425,16 @@ public class MainActivity extends BridgeActivity {
 
     private void setupThemeBridge() {
         if (bridge != null && bridge.getWebView() != null) {
-            registerThemeInterface(bridge.getWebView());
+            WebView wv = bridge.getWebView();
+            boolean isDark = "dark".equalsIgnoreCase(getSavedTheme());
+            int appBgColor = isDark ? Color.parseColor("#0B1112") : Color.parseColor("#F2F6F5");
+            try {
+                wv.setBackgroundColor(appBgColor);
+                if (wv.getParent() instanceof View) {
+                    ((View) wv.getParent()).setBackgroundColor(appBgColor);
+                }
+            } catch (Exception ignored) {}
+            registerThemeInterface(wv);
         }
     }
 
@@ -445,11 +458,15 @@ public class MainActivity extends BridgeActivity {
 
                 window.setStatusBarColor(activeBarColor);
                 window.setNavigationBarColor(activeBarColor);
-                window.setBackgroundDrawable(new ColorDrawable(activeBarColor));
+                if (splashDismissed) {
+                    window.setBackgroundDrawable(new ColorDrawable(activeBarColor));
+                }
 
                 View decor = window.getDecorView();
                 if (decor != null) {
-                    setHierarchyBackgroundColor(decor, activeBarColor);
+                    if (splashDismissed) {
+                        setHierarchyBackgroundColor(decor, activeBarColor);
+                    }
                     try {
                         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
                         if (controller != null) {

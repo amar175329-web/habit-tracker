@@ -7,7 +7,6 @@ import androidx.appcompat.app.AppCompatDelegate;
 public class HabitApplication extends Application {
     @Override
     public void onCreate() {
-        super.onCreate();
         try {
             SharedPreferences prefs = getSharedPreferences(MainActivity.PREFS_NAME, MODE_PRIVATE);
             String saved = prefs.getString(MainActivity.KEY_THEME, null);
@@ -19,5 +18,6 @@ public class HabitApplication extends Application {
                 isDark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO
             );
         } catch (Exception ignored) {}
+        super.onCreate();
     }
 }
