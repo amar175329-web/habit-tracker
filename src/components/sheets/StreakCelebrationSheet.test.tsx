@@ -44,10 +44,10 @@ describe("StreakCelebrationSheet — Native Share & Download Link", () => {
     const [title, text, url] = mockShare.mock.calls[0];
     expect(title).toContain("Morning Workout");
     expect(text).toContain("Morning Workout");
-    expect(text).toContain("in Habit Tracker!");
+    expect(text).toContain("in Habbitrack!");
     expect(text).not.toContain("DailyOS");
-    expect(text).toContain("https://");
-    expect(url).toContain("get-app");
+    expect(text).toContain("https://habbitrack.vercel.app/get-app");
+    expect(url).toContain("habbitrack.vercel.app/get-app");
   });
 
   it("falls back to Web Share API with download URL when AndroidTheme is not present", async () => {
@@ -76,9 +76,9 @@ describe("StreakCelebrationSheet — Native Share & Download Link", () => {
 
     const shareCall = mockWebShare.mock.calls[0][0];
     expect(shareCall.text).toContain("Reading");
-    expect(shareCall.text).toContain("in Habit Tracker!");
+    expect(shareCall.text).toContain("in Habbitrack!");
     expect(shareCall.text).not.toContain("DailyOS");
-    expect(shareCall.text).toContain("get-app");
-    expect(shareCall.url).toContain("get-app");
+    expect(shareCall.text).toContain("habbitrack.vercel.app/get-app");
+    expect(shareCall.url).toContain("habbitrack.vercel.app/get-app");
   });
 });

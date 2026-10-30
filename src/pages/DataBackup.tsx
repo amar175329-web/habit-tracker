@@ -190,7 +190,7 @@ export default function DataBackup() {
       const nowIso = now.toISOString();
       await setSetting("last_backup_time", nowIso);
       setLastBackupTime(nowIso);
-      const filename = `habittracker-backup-${dateStr}.json`;
+      const filename = `habbitrack-backup-${dateStr}.json`;
 
       let savedNative = false;
       const androidTheme = typeof window !== "undefined" ? (window as any)?.AndroidTheme : null;

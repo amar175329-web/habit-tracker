@@ -745,7 +745,7 @@ export default function Today() {
       const dateStr = now.toISOString().slice(0, 10);
       const nowIso = now.toISOString();
       await setSetting("last_backup_time", nowIso);
-      const filename = `habittracker-backup-${dateStr}.json`;
+      const filename = `habbitrack-backup-${dateStr}.json`;
       const blob = new Blob([jsonStr], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

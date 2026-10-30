@@ -51,10 +51,10 @@ describe("DataBackup — Input Accessibility and Export Operations", () => {
       expect(screen.getByText(/Export successful/i)).toBeInTheDocument();
     });
 
-    // Verify the new interactive download and share buttons appear with habittracker-backup filename
+    // Verify the new interactive download and share buttons appear with habbitrack-backup filename
     const downloadBtn = screen.getByTestId("download-backup-btn");
     expect(downloadBtn).toBeInTheDocument();
-    expect(downloadBtn.textContent).toContain("habittracker-backup-");
+    expect(downloadBtn.textContent).toContain("habbitrack-backup-");
     expect(downloadBtn.textContent).not.toContain("dailyos-backup-");
     expect(screen.getByTestId("share-backup-btn")).toBeInTheDocument();
   });
