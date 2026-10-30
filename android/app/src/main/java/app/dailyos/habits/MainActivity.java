@@ -356,7 +356,7 @@ public class MainActivity extends BridgeActivity {
                                 if (fullText.length() > 0) fullText.append("\n\n");
                                 fullText.append(url);
                             }
-                            sendIntent.putExtra(Intent.EXTRA_SUBJECT, title != null && !title.isEmpty() ? title : "DailyOS");
+                            sendIntent.putExtra(Intent.EXTRA_SUBJECT, title != null && !title.isEmpty() ? title : "Habit Tracker");
                             sendIntent.putExtra(Intent.EXTRA_TEXT, fullText.toString());
                             Intent chooser = Intent.createChooser(sendIntent, title != null && !title.isEmpty() ? title : "Share via");
                             chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

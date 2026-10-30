@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, useHabits } from "../lib/db";
-import { fromMs, toMs } from "../lib/habitRules";
+import { fromMs, toMs, formatPoints } from "../lib/habitRules";
 
 export default function ReflectionReader() {
   const { date = "" } = useParams();
@@ -182,7 +182,7 @@ export default function ReflectionReader() {
             gap: "6px",
           }}
         >
-          {habitsScore.toFixed(1)} / {habits.length || 5} habits
+          {formatPoints(habitsScore)} / {habits.length || 5} habits
         </span>
       </div>
 

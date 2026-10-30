@@ -144,7 +144,8 @@ export function HabitTile({
           {goalDays !== undefined && goalDays > 0 && goalDays < 7 ? (
             <span style={{ display: "inline-flex", gap: "3px" }}>
               {Array.from({ length: goalDays }).map((_, i) => {
-                const isFilled = completedThisWeek !== undefined && i < completedThisWeek;
+                const isFull = completedThisWeek !== undefined && i < Math.floor(completedThisWeek);
+                const isHalf = completedThisWeek !== undefined && i === Math.floor(completedThisWeek) && (completedThisWeek % 1 !== 0);
                 return (
                   <i
                     key={i}
@@ -152,7 +153,8 @@ export function HabitTile({
                       width: "7px",
                       height: "7px",
                       borderRadius: "50%",
-                      background: isFilled ? "var(--pr)" : "var(--tr)",
+                      background: isFull || isHalf ? "var(--pr)" : "var(--tr)",
+                      opacity: isHalf ? 0.45 : 1,
                       display: "inline-block",
                     }}
                   />

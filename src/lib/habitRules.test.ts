@@ -7,6 +7,7 @@ import {
   weekPoints,
   targetSoFar,
   goalDaysDone,
+  formatPoints,
   streakDays,
   isReflectionEditable,
   isHabitEditable,
@@ -62,12 +63,30 @@ describe("habitRules logic & scoring", () => {
     expect(targetSoFar(habits, "2026-10-23")).toBe(25);
   });
 
-  it("counts goalDaysDone (only FULL 2 count)", () => {
+  it("counts goalDaysDone correctly including 0.5 for half days", () => {
     const logs = new Map<string, number>();
     logs.set("2026-10-19", 2);
-    logs.set("2026-10-20", 1); // half day should NOT count toward full goal
+    logs.set("2026-10-20", 1); // half day counts as 0.5 toward goal
     logs.set("2026-10-21", 2);
-    expect(goalDaysDone(logs, "2026-10-23")).toBe(2);
+    expect(goalDaysDone(logs, "2026-10-23")).toBe(2.5);
+
+    const singleHalf = new Map<string, number>();
+    singleHalf.set("2026-10-19", 1);
+    expect(goalDaysDone(singleHalf, "2026-10-23")).toBe(0.5);
+
+    const twoHalfs = new Map<string, number>();
+    twoHalfs.set("2026-10-19", 1);
+    twoHalfs.set("2026-10-20", 1);
+    expect(goalDaysDone(twoHalfs, "2026-10-23")).toBe(1.0);
+  });
+
+  it("formats points cleanly with formatPoints", () => {
+    expect(formatPoints(0)).toBe("0");
+    expect(formatPoints(0.5)).toBe("0.5");
+    expect(formatPoints(1)).toBe("1");
+    expect(formatPoints(1.5)).toBe("1.5");
+    expect(formatPoints(2)).toBe("2");
+    expect(formatPoints(2.5)).toBe("2.5");
   });
 
   it("preserves streak during rest days if goal is met (spec invariant test)", () => {

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { formatPoints } from "../lib/habitRules";
 import { Zap } from "lucide-react";
 import { useTheme } from "../lib/theme";
 
@@ -97,7 +98,7 @@ export function WeeklyGauge({
             {percentage}%
           </span>
           <span className="text-[11px] font-mono tabular-nums font-medium text-zinc-400 mt-1">
-            {score.toFixed(1)} / {maxScore} pts
+            {formatPoints(score)} / {maxScore} pts
           </span>
         </div>
       </div>

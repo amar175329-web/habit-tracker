@@ -76,4 +76,39 @@ describe("Insights — Multi-Year and Year Mention Verification", () => {
       expect(screen.getByText(/all time.*yrs/i)).toBeInTheDocument();
     });
   });
+
+  it("displays exact decimal points (+0.5) and half habit consistency (0.5 / 7) when a habit is half completed", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    await db.habits.add({
+      id: "h_workout",
+      name: "Workout",
+      icon: "dumbbell",
+      goalDays: 7,
+      sort: 0,
+      isActive: true,
+      createdAt: `${today}T00:00:00Z`,
+    });
+
+    await db.habit_logs.add({
+      id: `h_workout_${today}`,
+      habitId: "h_workout",
+      date: today,
+      state: 1, // half completion (0.5 pt)
+      updatedAt: `${today}T12:00:00Z`,
+    });
+
+    render(
+      <MemoryRouter>
+        <Insights />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      // Must display exact +0.5 pts in header and terrain chart, NOT +1
+      const pointBadges = screen.getAllByText("+0.5");
+      expect(pointBadges.length).toBeGreaterThanOrEqual(1);
+      // Consistency by habit must display 0.5 / 7 (7%)
+      expect(screen.getByText(/0\.5\s*\/\s*7\s*\(7%\)/)).toBeInTheDocument();
+    });
+  });
 });

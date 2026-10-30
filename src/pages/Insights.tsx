@@ -6,6 +6,7 @@ import {
   toMs,
   goalDaysDone,
   streakDays,
+  formatPoints,
 } from "../lib/habitRules";
 import { TerrainChart, type TerrainPoint } from "../components/signature/TerrainChart";
 import { getIconPath } from "../lib/icons";
@@ -192,7 +193,7 @@ export default function Insights() {
 
     const todayName = eDateObj.toLocaleDateString("en-US", { weekday: "short" });
     const todayNum = eDateObj.getDate();
-    const curLabel = `${todayName} ${todayNum} ${eMonth} ${eYear} · ${runningPoints.toFixed(0)} pts`;
+    const curLabel = `${todayName} ${todayNum} ${eMonth} ${eYear} · ${formatPoints(runningPoints)} pts`;
 
     return {
       terrainPoints: points,
@@ -339,7 +340,7 @@ export default function Insights() {
                 fontSize: "34px",
               }}
             >
-              +{currentTotalPoints.toFixed(0)}
+              +{formatPoints(currentTotalPoints)}
             </span>
             <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--prt)" }}>
               {rangeSubtitle}
@@ -403,7 +404,7 @@ export default function Insights() {
                       <span style={{ fontWeight: 700, fontSize: "14px" }}>{h.name}</span>
                     </div>
                     <span style={{ fontFamily: "var(--num)", fontWeight: 700, fontSize: "13px" }}>
-                      {h.doneThisWeek} / {h.goalDays} ({h.pct}%)
+                      {formatPoints(h.doneThisWeek)} / {h.goalDays} ({h.pct}%)
                     </span>
                   </div>
 

@@ -30,7 +30,7 @@ export function StreakCelebrationSheet({
     const streakWord = currentStreak === 1 ? "day" : "days";
     const downloadUrl = "https://habit-tracker-livid-delta-16.vercel.app/get-app";
     const shareTitle = `🔥 ${currentStreak}-${streakWord} streak on "${habitName}"!`;
-    const shareText = `I just hit a ${currentStreak}-${streakWord} streak on "${habitName}" in DailyOS! 🔥\n\nTrack your habits, sleep & routines with DailyOS. Download the app here:\n${downloadUrl}`;
+    const shareText = `I just hit a ${currentStreak}-${streakWord} streak on "${habitName}" in Habit Tracker! 🔥\n\nTrack your habits, sleep & routines with Habit Tracker. Download the app here:\n${downloadUrl}`;
 
     // 1. First priority on Android: Native JavascriptInterface (immediate native system share chooser)
     const androidTheme = typeof window !== "undefined" ? (window as any)?.AndroidTheme : null;

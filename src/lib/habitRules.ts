@@ -1,5 +1,5 @@
 /**
- * Reference implementation of DailyOS / Habit Tracker scoring rules.
+ * Reference implementation of Habit Tracker scoring rules.
  * Dates are 'YYYY-MM-DD' strings in user local timezone.
  * state: 0 pending (0 pt), 1 half (0.5 pt), 2 full (1 pt).
  */
@@ -58,7 +58,13 @@ export const targetSoFar = (habits: HabitRuleItem[], today: string): number => {
   return habits.reduce((s, h) => s + (h.goalDays * idx) / 7, 0);
 };
 
-/** Days this week that count toward a weekly goal (only FULL days count). */
+/** Format points with decimals if fractional (e.g. 0.5, 1.5), or whole integer if integer (e.g. 1, 2) */
+export function formatPoints(points: number): string {
+  if (points % 1 === 0) return points.toFixed(0);
+  return points.toFixed(1).replace(/\.0$/, "");
+}
+
+/** Days this week that count toward a weekly goal (state 1 = 0.5, state 2 = 1.0). */
 export function goalDaysDone(
   logs: Map<string, number> | Record<string, number>,
   today: string
@@ -68,7 +74,9 @@ export function goalDaysDone(
   const getState = (d: string) => (logs instanceof Map ? logs.get(d) : logs[d]) || 0;
 
   for (let d = start; d <= today; d = fromMs(toMs(d) + DAY_MS)) {
-    if (getState(d) === 2) n++;
+    const s = getState(d);
+    if (s === 2) n += 1;
+    else if (s === 1) n += 0.5;
   }
   return n;
 }

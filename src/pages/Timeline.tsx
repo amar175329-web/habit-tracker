@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, useHabits } from "../lib/db";
 import { getIconPath } from "../lib/icons";
+import { formatPoints } from "../lib/habitRules";
 
 export default function Timeline() {
   const navigate = useNavigate();
@@ -165,7 +166,7 @@ export default function Timeline() {
                     borderRadius: "99px",
                   }}
                 >
-                  {d.totalScore} pts
+                  {formatPoints(d.totalScore)} pts
                 </span>
               </div>
 

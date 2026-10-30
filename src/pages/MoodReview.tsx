@@ -7,6 +7,7 @@ import { todayKey, addDays } from "../lib/date";
 import { MOOD_OPTIONS, parseMoodTag } from "../components/MoodCard";
 import { formatDuration } from "../lib/sleep";
 import { onSyncEvent } from "../lib/sync";
+import { formatPoints } from "../lib/habitRules";
 
 export default function MoodReview() {
   const navigate = useNavigate();
@@ -226,7 +227,7 @@ export default function MoodReview() {
 
                   <div className="text-right">
                     <span className="text-xs font-medium text-zinc-300">
-                      {entry.habitScore.toFixed(1)} <span className="text-[10px] text-zinc-500">habits</span>
+                      {formatPoints(entry.habitScore)} <span className="text-[10px] text-zinc-500">habits</span>
                     </span>
                     <p className="text-[10px] text-zinc-500">
                       Sleep: {entry.sleepLabel}

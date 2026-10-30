@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, saveReflection, useHabits } from "../lib/db";
+import { formatPoints } from "../lib/habitRules";
 
 export default function WriteToday() {
   const navigate = useNavigate();
@@ -404,7 +405,7 @@ export default function WriteToday() {
               transition: "all 0.15s ease",
             }}
           >
-            <span>{habitsScore.toFixed(1)} / {habits.length || 5} habits</span>
+            <span>{formatPoints(habitsScore)} / {habits.length || 5} habits</span>
             <span style={{ opacity: 0.6 }}>↗</span>
           </button>
         </div>

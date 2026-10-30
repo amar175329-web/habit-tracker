@@ -29,6 +29,7 @@ import {
   targetSoFar,
   streakDays,
   goalDaysDone,
+  formatPoints,
   calculateOverallStreak,
   isHabitActiveOnDate,
 } from "../lib/habitRules";
@@ -744,7 +745,7 @@ export default function Today() {
       const dateStr = now.toISOString().slice(0, 10);
       const nowIso = now.toISOString();
       await setSetting("last_backup_time", nowIso);
-      const filename = `dailyos-backup-${dateStr}.json`;
+      const filename = `habittracker-backup-${dateStr}.json`;
       const blob = new Blob([jsonStr], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -1530,7 +1531,7 @@ export default function Today() {
 
               // Subtitle
               const isDayFrozen = !isViewingToday && usedFreezeDates.includes(date);
-              let subtitle = `${doneCount} of ${h.goalDays} this week`;
+              let subtitle = `${formatPoints(doneCount)} of ${h.goalDays} this week`;
               if (h.goalDays === 7) subtitle = "Daily habit";
               if (isDayFrozen) subtitle = "Saved by Freeze ❄️";
 
