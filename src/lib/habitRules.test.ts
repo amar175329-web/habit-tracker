@@ -93,6 +93,15 @@ describe("habitRules logic & scoring", () => {
     U.set("2026-10-29", 2);
     expect(streakDays(U, 5, "2026-10-29", "2026-10-01")).toBe(1);
 
+    // Habit half-completed (state = 1, e.g. habit 'Ei'): streak must still be 1 day!
+    const H = new Map<string, number>();
+    H.set("2026-10-30", 1);
+    expect(streakDays(H, 7, "2026-10-30", "2026-10-01")).toBe(1);
+
+    // Habit half-completed yesterday (29th) and half-completed today (30th): streak is 2 days
+    H.set("2026-10-29", 1);
+    expect(streakDays(H, 7, "2026-10-30", "2026-10-01")).toBe(2);
+
     // Habit completed on Thursday and Friday: streak is 2 days
     U.set("2026-10-30", 2);
     expect(streakDays(U, 5, "2026-10-30", "2026-10-01")).toBe(2);

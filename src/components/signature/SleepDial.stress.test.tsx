@@ -195,7 +195,7 @@ describe("SleepDial Midnight Rollover & Boundary Harness", () => {
     expect(onSave).toHaveBeenCalledTimes(1);
   });
 
-  it("renders an authentic 12-hour analog clock face with numerals 1 through 12 and 60 ticks", () => {
+  it("renders an authentic 12-hour analog clock face with numerals 1 through 12 and a smooth clean look with zero cluttered tick lines", () => {
     const { container } = render(
       <SleepDial bedtime="23:00" wakeTime="06:30" />
     );
@@ -206,9 +206,9 @@ describe("SleepDial Midnight Rollover & Boundary Harness", () => {
       expect(numElem).toBeInTheDocument();
     }
 
-    // Verify 60 ticks (lines)
+    // Verify zero prickly / cluttered tick lines for smooth clean appearance
     const tickLines = container.querySelectorAll("line");
-    expect(tickLines.length).toBe(60);
+    expect(tickLines.length).toBe(0);
   });
 
   it("handles malformed time strings without crashing", () => {

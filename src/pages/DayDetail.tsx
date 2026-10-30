@@ -148,12 +148,12 @@ export default function DayDetail() {
       const habit = (allHabits.length > 0 ? allHabits : habits).find((h) => h.id === habitId);
       if (habit) {
         const habitLogs = new Map(logsByHabit.get(habitId) ?? new Map());
-        habitLogs.set(todayStr, 2);
+        habitLogs.set(todayStr, next);
         const firstDate = habit.createdAt?.slice(0, 10) || todayStr;
         const newStreak = streakDays(habitLogs, habit.goalDays, todayStr, firstDate, usedFreezeDates);
         const evaluation = shouldCelebrateStreak({
           habitId: habit.id,
-          newState: 2,
+          newState: next,
           isToday,
           currentStreak: newStreak,
           todayStr,

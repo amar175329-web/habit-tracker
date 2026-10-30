@@ -103,32 +103,14 @@ export function SleepDial({
   const wakeX = (165 + 105 * Math.cos(wakeRad)).toFixed(1);
   const wakeY = (165 + 105 * Math.sin(wakeRad)).toFixed(1);
 
-  // 60 tick marks around the dial (hours bold, minutes light)
-  const clockTicks = useMemo(() => {
-    return Array.from({ length: 60 }, (_, i) => {
-      const deg = i * 6;
-      const isHour = i % 5 === 0;
-      const rad = ((deg - 90) * Math.PI) / 180;
-      const rInner = isHour ? 117 : 121;
-      const rOuter = 126;
-      return {
-        x1: (165 + rInner * Math.cos(rad)).toFixed(1),
-        y1: (165 + rInner * Math.sin(rad)).toFixed(1),
-        x2: (165 + rOuter * Math.cos(rad)).toFixed(1),
-        y2: (165 + rOuter * Math.sin(rad)).toFixed(1),
-        isHour,
-      };
-    });
-  }, []);
-
-  // Precomputed hour numbers positions at radius 140
+  // Precomputed hour numbers positions at radius 138 for smooth clean aesthetic
   const clockNumbers = useMemo(() => {
     return CLOCK_HOURS.map((item) => {
       const rad = ((item.deg - 90) * Math.PI) / 180;
       return {
         h: item.h,
-        x: (165 + 140 * Math.cos(rad)).toFixed(1),
-        y: (165 + 140 * Math.sin(rad)).toFixed(1),
+        x: (165 + 138 * Math.cos(rad)).toFixed(1),
+        y: (165 + 138 * Math.sin(rad)).toFixed(1),
         isCardinal: item.h % 3 === 0, // 12, 3, 6, 9
       };
     });
@@ -223,23 +205,7 @@ export function SleepDial({
           role="img"
           aria-label={`Sleep dial: ${formatTime12h(bedtime)} to ${formatTime12h(wakeTime)}, duration ${durationText}`}
         >
-          {/* 60 Realistic Watch / Clock Ticks */}
-          <g>
-            {clockTicks.map((tick, i) => (
-              <line
-                key={`tick-${i}`}
-                x1={tick.x1}
-                y1={tick.y1}
-                x2={tick.x2}
-                y2={tick.y2}
-                stroke={tick.isHour ? "var(--mu)" : "var(--tr)"}
-                strokeWidth={tick.isHour ? "2" : "1"}
-                strokeLinecap="round"
-              />
-            ))}
-          </g>
-
-          {/* Authentic 12-Hour Numerals (12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11) */}
+          {/* Authentic 12-Hour Numerals (12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11) - Smooth Clean Layout */}
           <g>
             {clockNumbers.map((num) => (
               <text
@@ -248,10 +214,10 @@ export function SleepDial({
                 y={num.y}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize={num.isCardinal ? "13" : "11"}
+                fontSize={num.isCardinal ? "13.5" : "11"}
                 fontWeight={num.isCardinal ? "800" : "600"}
                 fontFamily="Space Grotesk, sans-serif"
-                style={{ fill: num.isCardinal ? "var(--tx)" : "var(--mu)" }}
+                style={{ fill: num.isCardinal ? "var(--tx)" : "var(--mu)", opacity: num.isCardinal ? 0.95 : 0.65 }}
               >
                 {num.h}
               </text>
@@ -264,7 +230,7 @@ export function SleepDial({
             cy="165"
             r="105"
             fill="none"
-            strokeWidth="20"
+            strokeWidth="18"
             style={{ stroke: "var(--bg)" }}
           />
 
@@ -274,7 +240,7 @@ export function SleepDial({
             cy="165"
             r="105"
             fill="none"
-            strokeWidth="20"
+            strokeWidth="18"
             strokeLinecap="round"
             strokeDasharray={`${arcLength.toFixed(1)} ${dashRemaining.toFixed(1)}`}
             transform={`rotate(${bedAngle.toFixed(1)} 165 165)`}
@@ -293,16 +259,16 @@ export function SleepDial({
             <circle
               cx={bedX}
               cy={bedY}
-              r="15"
+              r="14"
               style={{
                 fill: "var(--card)",
                 stroke: dragging === "bed" ? "var(--ind)" : "var(--ln)",
-                strokeWidth: dragging === "bed" ? 2.5 : 1.2,
-                filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.12))",
+                strokeWidth: dragging === "bed" ? 2.5 : 1.4,
+                filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.12))",
               }}
             />
             <path
-              transform={`translate(${parseFloat(bedX) - 7} ${parseFloat(bedY) - 7}) scale(.6)`}
+              transform={`translate(${parseFloat(bedX) - 6.5} ${parseFloat(bedY) - 6.5}) scale(.55)`}
               d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"
               fill="none"
               strokeWidth="2.4"
@@ -322,21 +288,21 @@ export function SleepDial({
             <circle
               cx={wakeX}
               cy={wakeY}
-              r="15"
+              r="14"
               style={{
                 fill: "var(--card)",
                 stroke: dragging === "wake" ? "var(--fl)" : "var(--ln)",
-                strokeWidth: dragging === "wake" ? 2.5 : 1.2,
-                filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.12))",
+                strokeWidth: dragging === "wake" ? 2.5 : 1.4,
+                filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.12))",
               }}
             />
-            <circle cx={wakeX} cy={wakeY} r="5" style={{ fill: "var(--fl)" }} />
+            <circle cx={wakeX} cy={wakeY} r="4.5" style={{ fill: "var(--fl)" }} />
           </g>
 
           {/* Center Readout */}
           <text
             x="165"
-            y="158"
+            y="156"
             textAnchor="middle"
             dominantBaseline="central"
             fontSize="40"
@@ -348,7 +314,7 @@ export function SleepDial({
           </text>
           <text
             x="165"
-            y="184"
+            y="182"
             textAnchor="middle"
             dominantBaseline="central"
             fontSize="12"

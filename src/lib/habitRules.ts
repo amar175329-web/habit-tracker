@@ -95,17 +95,18 @@ export function calculateConsecutiveStreak(
   let count = 0;
   let cursor = today;
 
-  // If today is not completed yet, check if yesterday was completed to keep the active streak alive
-  if (getState(today) !== 2) {
+  // If today is not completed yet (state 0), check if yesterday was active (state >= 1) to keep the active streak alive
+  if (getState(today) < 1) {
     const yesterday = fromMs(toMs(today) - DAY_MS);
-    if (toMs(yesterday) >= startMs && getState(yesterday) === 2) {
+    if (toMs(yesterday) >= startMs && getState(yesterday) >= 1) {
       cursor = yesterday;
     } else {
       return 0;
     }
   }
 
-  while (toMs(cursor) >= startMs && getState(cursor) === 2) {
+  // Both full (2) and half (1) completions count towards active consecutive streaks
+  while (toMs(cursor) >= startMs && getState(cursor) >= 1) {
     count++;
     cursor = fromMs(toMs(cursor) - DAY_MS);
   }
@@ -135,7 +136,7 @@ export function streakDays(
   let done = 0;
   const start = weekStart(today);
   for (let d = start; d <= today; d = fromMs(toMs(d) + DAY_MS)) {
-    if (getState(d) === 2) done++;
+    if (getState(d) >= 1) done++;
   }
 
   let weeklyStreak = 0;
@@ -149,7 +150,7 @@ export function streakDays(
     for (let ws = toMs(thisStart) - 7 * DAY_MS; ws + 6 * DAY_MS >= startMs; ws -= 7 * DAY_MS) {
       let n = 0;
       for (let k = 0; k < 7; k++) {
-        if (getState(fromMs(ws + k * DAY_MS)) === 2) n++;
+        if (getState(fromMs(ws + k * DAY_MS)) >= 1) n++;
       }
       if (n < goalDays) break;
       days += 7 - Math.max(0, Math.floor((startMs - ws) / DAY_MS));
