@@ -53,13 +53,29 @@ export default function Insights() {
       allLogs.forEach((l) => {
         if (l.date && l.date < earliestDate) earliestDate = l.date;
       });
-      const diff = Math.max(30, Math.min(90, Math.round((toMs(todayStr) - toMs(earliestDate)) / 86400000) + 1));
+      habits.forEach((h) => {
+        if (h.createdAt) {
+          const cDate = h.createdAt.slice(0, 10);
+          if (cDate && cDate < earliestDate) earliestDate = cDate;
+        }
+      });
+      // No artificial 90-day ceiling: supports 1 year, 2 years, or many years of tracking!
+      const diff = Math.max(30, Math.round((toMs(todayStr) - toMs(earliestDate)) / 86400000) + 1);
       numDays = diff;
     }
 
     const startDate = fromMs(toMs(todayStr) - (numDays - 1) * 86400000);
     const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const points: TerrainPoint[] = [];
+
+    const sDateObj = new Date(`${startDate}T12:00:00`);
+    const eDateObj = new Date(`${todayStr}T12:00:00`);
+    const sYear = sDateObj.getFullYear();
+    const eYear = eDateObj.getFullYear();
+    const sMonth = sDateObj.toLocaleDateString("en-US", { month: "short" });
+    const eMonth = eDateObj.toLocaleDateString("en-US", { month: "short" });
+    const sDay = sDateObj.getDate();
+    const eDay = eDateObj.getDate();
 
     let runningPoints = 0;
     let runningPrevPeriodPoints = 0;
@@ -104,7 +120,17 @@ export default function Insights() {
       if (labelIndices.has(i)) {
         if (numDays <= 7) {
           label = dayLabels[dayOfWeekIdx];
+        } else if (sYear !== eYear) {
+          // Cross-year or multi-year span: always include year!
+          if (numDays > 365) {
+            // Multi-year (e.g. Oct '24, Apr '25, Oct '26)
+            label = `${dObj.toLocaleDateString("en-US", { month: "short" })} '${String(dObj.getFullYear()).slice(-2)}`;
+          } else {
+            // Crossing year boundary (e.g. 15 Dec '25, 10 Jan '26)
+            label = `${dObj.getDate()} ${dObj.toLocaleDateString("en-US", { month: "short" })} '${String(dObj.getFullYear()).slice(-2)}`;
+          }
         } else {
+          // Within same year: date + month
           label = `${dObj.getDate()} ${dObj.toLocaleDateString("en-US", { month: "short" })}`;
         }
       }
@@ -119,35 +145,54 @@ export default function Insights() {
       });
     }
 
-    const milestone = range === "7D" ? 10 : range === "14D" ? 20 : range === "30D" ? 50 : 100;
+    // Dynamic milestone for multi-year tracking or large point totals
+    let milestone = 10;
+    if (range === "7D") milestone = 10;
+    else if (range === "14D") milestone = 20;
+    else if (range === "30D") milestone = 50;
+    else if (range === "ALL") {
+      milestone = runningPoints > 85 ? Math.ceil((runningPoints * 1.15) / 50) * 50 : 100;
+    }
 
-    const sDateObj = new Date(`${startDate}T12:00:00`);
-    const eDateObj = new Date(`${todayStr}T12:00:00`);
-    const sFormatted = sDateObj.toLocaleDateString("en-US", { day: "numeric", month: "short" });
-    const eFormatted = eDateObj.toLocaleDateString("en-US", { day: "numeric", month: "short" });
-    const rangeLabel =
-      sDateObj.getMonth() === eDateObj.getMonth()
-        ? `${sDateObj.getDate()} – ${eDateObj.getDate()} ${eDateObj.toLocaleDateString("en-US", { month: "short" })}`
-        : `${sFormatted} – ${eFormatted}`;
+    // Date range badge at top right: ALWAYS include year(s)
+    let rangeLabel = "";
+    if (sYear !== eYear) {
+      // Spans multiple years: e.g. "15 Oct 2024 – 30 Oct 2026"
+      rangeLabel = `${sDay} ${sMonth} ${sYear} – ${eDay} ${eMonth} ${eYear}`;
+    } else if (sDateObj.getMonth() === eDateObj.getMonth()) {
+      // Same month & year: e.g. "1 – 30 Oct 2026"
+      rangeLabel = `${sDay} – ${eDay} ${eMonth} ${eYear}`;
+    } else {
+      // Different months, same year: e.g. "15 Sep – 30 Oct 2026"
+      rangeLabel = `${sDay} ${sMonth} – ${eDay} ${eMonth} ${eYear}`;
+    }
 
     // Count distinct days with recorded activity/points across range
     let daysWithData = 0;
     points.forEach((p) => {
       if ((p.dayScore ?? 0) > 0) daysWithData++;
     });
-    // Also consider total historical days logged if available
     const totalLoggedDays = new Set(allLogs.filter((l) => l.state > 0).map((l) => l.date)).size;
     const hasThreeDaysData = Math.max(daysWithData, totalLoggedDays) >= 3;
 
     let sub = "pts in 7 days";
-    if (range === "7D") sub = hasThreeDaysData ? "pts in 7 days · all-time high" : "pts in 7 days";
-    else if (range === "14D") sub = hasThreeDaysData ? "pts in 14 days · all-time high" : "pts in 14 days";
-    else if (range === "30D") sub = hasThreeDaysData ? "pts in 30 days · all-time high" : "pts in 30 days";
-    else if (range === "ALL") sub = hasThreeDaysData ? "pts all time · all-time high" : "pts all time";
+    if (range === "7D") sub = hasThreeDaysData ? `pts in 7 days · all-time high` : `pts in 7 days (${eYear})`;
+    else if (range === "14D") sub = hasThreeDaysData ? `pts in 14 days · all-time high` : `pts in 14 days (${eYear})`;
+    else if (range === "30D") sub = hasThreeDaysData ? `pts in 30 days · all-time high` : `pts in 30 days (${eMonth} ${eYear})`;
+    else if (range === "ALL") {
+      if (numDays >= 365) {
+        const yrs = (numDays / 365.25).toFixed(1).replace(/\.0$/, "");
+        const yearSpanText = sYear !== eYear ? `${sYear}–${eYear}` : `${eYear}`;
+        sub = hasThreeDaysData ? `pts all time (${yrs} yrs · ${yearSpanText}) · ATH` : `pts all time (${yrs} yrs · ${yearSpanText})`;
+      } else {
+        const yearSpanText = sYear !== eYear ? `${sYear}–${eYear}` : `${eYear}`;
+        sub = hasThreeDaysData ? `pts all time (${numDays}d · ${yearSpanText}) · ATH` : `pts all time (${numDays}d · ${yearSpanText})`;
+      }
+    }
 
     const todayName = eDateObj.toLocaleDateString("en-US", { weekday: "short" });
     const todayNum = eDateObj.getDate();
-    const curLabel = `${todayName} ${todayNum} · ${runningPoints.toFixed(0)} pts`;
+    const curLabel = `${todayName} ${todayNum} ${eMonth} ${eYear} · ${runningPoints.toFixed(0)} pts`;
 
     return {
       terrainPoints: points,

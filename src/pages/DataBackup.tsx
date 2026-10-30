@@ -461,7 +461,33 @@ export default function DataBackup() {
 
         {/* Form Inputs */}
         <div style={{ marginTop: "14px" }}>
-          <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--mu)", marginBottom: "6px" }}>Database URL</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+            <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--mu)" }}>Database URL</div>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const text = await navigator.clipboard.readText();
+                  if (text && text.trim()) setDbUrl(text.trim());
+                } catch {}
+              }}
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "var(--prt)",
+                background: "var(--tint)",
+                border: "none",
+                borderRadius: "99px",
+                padding: "3px 10px",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              Paste
+            </button>
+          </div>
           <input
             type="text"
             placeholder="libsql://your-db.turso.io"
@@ -480,12 +506,40 @@ export default function DataBackup() {
               fontFamily: "inherit",
               outline: "none",
               boxSizing: "border-box",
+              userSelect: "text",
+              WebkitUserSelect: "text",
             }}
           />
         </div>
 
         <div style={{ marginTop: "12px" }}>
-          <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--mu)", marginBottom: "6px" }}>Auth Token</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+            <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--mu)" }}>Auth Token</div>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const text = await navigator.clipboard.readText();
+                  if (text && text.trim()) setAuthToken(text.trim());
+                } catch {}
+              }}
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "var(--prt)",
+                background: "var(--tint)",
+                border: "none",
+                borderRadius: "99px",
+                padding: "3px 10px",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              Paste
+            </button>
+          </div>
           <input
             type="password"
             placeholder="eyJhbGciOi..."
@@ -504,6 +558,8 @@ export default function DataBackup() {
               fontFamily: "inherit",
               outline: "none",
               boxSizing: "border-box",
+              userSelect: "text",
+              WebkitUserSelect: "text",
             }}
           />
         </div>

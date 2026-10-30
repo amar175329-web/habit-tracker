@@ -76,7 +76,7 @@
           }
           window.notifyAppReady = notifyAppReady;
 
-          // Suppress native contextmenu & selection action bar popups across app
+          // Suppress accidental selection action bar popups on non-editable UI, permit in inputs & textareas
           document.addEventListener('contextmenu', function(e) {
             var target = e.target;
             if (!target || !target.closest('input, textarea, [contenteditable="true"]')) {
@@ -89,8 +89,12 @@
             var isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
             if (!isInput) {
               var sel = window.getSelection();
-              if (sel && sel.removeAllRanges) {
-                sel.removeAllRanges();
+              if (sel && sel.rangeCount > 0 && sel.removeAllRanges) {
+                var container = sel.getRangeAt(0).commonAncestorContainer;
+                var el = container && container.nodeType === 1 ? container : (container ? container.parentElement : null);
+                if (!el || !el.closest('input, textarea, [contenteditable="true"]')) {
+                  sel.removeAllRanges();
+                }
               }
             }
           });

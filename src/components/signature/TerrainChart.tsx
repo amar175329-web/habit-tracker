@@ -191,20 +191,22 @@ export function TerrainChart({
         </defs>
 
         {/* Vertical Column Boundary Gridlines */}
-        {Array.from({ length: numCols + 1 }).map((_, k) => {
-          const x = xStart + k * colWidth;
-          return (
-            <line
-              key={`grid-${k}`}
-              x1={x.toFixed(1)}
-              x2={x.toFixed(1)}
-              y1="30"
-              y2="170"
-              strokeWidth="1"
-              style={{ stroke: "var(--ln)", opacity: 0.7 }}
-            />
-          );
-        })}
+        {(numCols <= 35
+          ? Array.from({ length: numCols + 1 }).map((_, k) => xStart + k * colWidth)
+          : normalized
+              .map((d, i) => (d.dayLabel ? xStart + (i + 0.5) * colWidth : null))
+              .filter((x): x is number => x !== null)
+        ).map((x, k) => (
+          <line
+            key={`grid-${k}`}
+            x1={x.toFixed(1)}
+            x2={x.toFixed(1)}
+            y1="30"
+            y2="170"
+            strokeWidth="1"
+            style={{ stroke: "var(--ln)", opacity: 0.7 }}
+          />
+        ))}
 
         {/* Milestone Dotted Amber Line at 10 pts */}
         <line
@@ -246,6 +248,8 @@ export function TerrainChart({
         {/* "+N" Label above each rise */}
         {normalized.map((d, i) => {
           if (d.dayScore <= 0) return null;
+          // In multi-day or multi-year views, suppress intermediate rising labels to avoid dense overlap
+          if (numCols > 31 && !d.isToday && colWidth < 12) return null;
           const xMid = xStart + (i + 0.5) * colWidth;
           const stepY = yBaseline - d.runningTotal * pxPerPt;
           const scoreText = Number.isInteger(d.dayScore) ? d.dayScore : d.dayScore.toFixed(1);
@@ -283,15 +287,24 @@ export function TerrainChart({
           </g>
         )}
 
-        {/* X-Axis Day Labels */}
+        {/* X-Axis Day & Year Labels */}
         {normalized.map((d, i) => {
-          const xMid = xStart + (i + 0.5) * colWidth;
+          if (!d.dayLabel) return null;
+          let x = xStart + (i + 0.5) * colWidth;
+          let anchor: "start" | "middle" | "end" = "middle";
+          if (i === 0) {
+            x = xStart;
+            anchor = "start";
+          } else if (i === normalized.length - 1) {
+            x = xEnd;
+            anchor = "end";
+          }
           return (
             <text
               key={`lbl-${i}`}
-              x={xMid.toFixed(1)}
+              x={x.toFixed(1)}
               y="192"
-              textAnchor="middle"
+              textAnchor={anchor}
               fontSize="10"
               fontWeight={d.isToday ? "800" : "700"}
               style={{

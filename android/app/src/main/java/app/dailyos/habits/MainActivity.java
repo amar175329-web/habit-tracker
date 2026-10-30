@@ -306,22 +306,10 @@ public class MainActivity extends BridgeActivity {
         applyTheme(getSavedTheme());
     }
 
-    // Suppress floating text selection action modes ("Copy | Select all | Share") window-wide
-    @Override
-    public ActionMode onWindowStartingActionMode(ActionMode.Callback callback) {
-        return null;
-    }
-
-    @Override
-    public ActionMode onWindowStartingActionMode(ActionMode.Callback callback, int type) {
-        return null;
-    }
-
     private void registerThemeInterface(WebView webView) {
         if (webView == null || themeInterfaceRegistered) return;
         themeInterfaceRegistered = true;
-        webView.setLongClickable(false);
-        webView.setOnLongClickListener(v -> true);
+        // Native long-click and action modes are allowed so users can Cut, Copy, Paste & Select All in text fields
         webView.setHapticFeedbackEnabled(false);
 
         try {
