@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import "fake-indexeddb/auto";
 import DataBackup from "./DataBackup";
 import { db } from "../lib/db";
 
-describe("DataBackup — Paste and Input Accessibility", () => {
+describe("DataBackup — Input Accessibility and Export Operations", () => {
   beforeEach(async () => {
     await db.habits.clear();
   });
 
-  it("renders Paste helper buttons and selectable input fields for Database URL and Auth Token", () => {
+  it("renders clean input fields without extra Paste buttons and enables selectable text", () => {
     render(
       <MemoryRouter>
         <DataBackup />
@@ -26,12 +26,33 @@ describe("DataBackup — Paste and Input Accessibility", () => {
     expect(dbUrlInput).toBeInTheDocument();
     expect(tokenInput).toBeInTheDocument();
 
-    // Verify Paste buttons exist
-    const pasteButtons = screen.getAllByRole("button", { name: "Paste" });
-    expect(pasteButtons.length).toBe(2);
+    // Verify Paste buttons are removed per user request
+    const pasteButtons = screen.queryAllByRole("button", { name: "Paste" });
+    expect(pasteButtons.length).toBe(0);
 
     // Verify input fields have userSelect: text enabled
     expect(dbUrlInput.style.userSelect).toBe("text");
     expect(tokenInput.style.userSelect).toBe("text");
+  });
+
+  it("triggers Export JSON and renders interactive download and share buttons", async () => {
+    render(
+      <MemoryRouter>
+        <DataBackup />
+      </MemoryRouter>
+    );
+
+    const exportBtn = screen.getByTestId("export-json");
+    expect(exportBtn).toBeInTheDocument();
+
+    fireEvent.click(exportBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Export successful/i)).toBeInTheDocument();
+    });
+
+    // Verify the new interactive download and share buttons appear
+    expect(screen.getByTestId("download-backup-btn")).toBeInTheDocument();
+    expect(screen.getByTestId("share-backup-btn")).toBeInTheDocument();
   });
 });

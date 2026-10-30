@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { Share } from "@capacitor/share";
 import { getNextAward } from "../../lib/streakMilestones";
 
 export interface StreakCelebrationSheetProps {
@@ -27,51 +28,49 @@ export function StreakCelebrationSheet({
 
   const handleShare = async () => {
     const streakWord = currentStreak === 1 ? "day" : "days";
-    const shareText = `I just hit a ${currentStreak}-${streakWord} streak on "${habitName}" in DailyOS! 🔥`;
+    const downloadUrl = "https://habit-tracker-livid-delta-16.vercel.app/get-app";
+    const shareTitle = `🔥 ${currentStreak}-${streakWord} streak on "${habitName}"!`;
+    const shareText = `I just hit a ${currentStreak}-${streakWord} streak on "${habitName}" in DailyOS! 🔥\n\nTrack your habits, sleep & routines with DailyOS. Download the app here:\n${downloadUrl}`;
 
-    let shared = false;
+    // 1. First priority on Android: Native JavascriptInterface (immediate native system share chooser)
+    const androidTheme = typeof window !== "undefined" ? (window as any)?.AndroidTheme : null;
+    if (androidTheme?.share && typeof androidTheme.share === "function") {
+      try {
+        androidTheme.share(shareTitle, shareText, downloadUrl);
+        return;
+      } catch (e) {
+        console.error("AndroidTheme.share error:", e);
+      }
+    }
 
-    // 1. Try Capacitor Share plugin on window.Capacitor
+    // 2. Capacitor Share plugin
     try {
       const cap = typeof window !== "undefined" ? (window as any)?.Capacitor : undefined;
-      if (cap?.Plugins?.Share && typeof cap.Plugins.Share.share === "function") {
-        await cap.Plugins.Share.share({
-          title: "DailyOS Streak Milestone",
+      const sharePlugin = cap?.Plugins?.Share || Share;
+      if (sharePlugin && typeof sharePlugin.share === "function") {
+        await sharePlugin.share({
+          title: shareTitle,
           text: shareText,
+          url: downloadUrl,
           dialogTitle: "Share your streak",
         });
-        shared = true;
+        return;
       }
-    } catch {
-      // Capacitor share not available or canceled
-    }
-
-    // 2. Try dynamic import of @capacitor/share without static Vite resolution
-    if (!shared) {
-      try {
-        const pkgName = "@capacitor" + "/share";
-        const capModule: any = await import(/* @vite-ignore */ pkgName).catch(() => null);
-        if (capModule?.Share && typeof capModule.Share.share === "function") {
-          await capModule.Share.share({
-            title: "DailyOS Streak Milestone",
-            text: shareText,
-            dialogTitle: "Share your streak",
-          });
-          shared = true;
-        }
-      } catch {
-        // Module not installed or failed
+    } catch (e: any) {
+      if (e?.name === "AbortError" || e?.message?.includes("canceled") || e?.message?.includes("cancelled")) {
+        return;
       }
     }
 
-    // 3. Try Web Share API
-    if (!shared && typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    // 3. Web Share API
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
       try {
         await navigator.share({
-          title: "DailyOS Streak Milestone",
+          title: shareTitle,
           text: shareText,
+          url: downloadUrl,
         });
-        shared = true;
+        return;
       } catch (err: any) {
         if (err?.name === "AbortError") {
           return; // user dismissed share sheet
@@ -79,28 +78,26 @@ export function StreakCelebrationSheet({
       }
     }
 
-    // 3. Fallback: Copy to clipboard with toast indicator
-    if (!shared) {
-      try {
-        if (navigator?.clipboard?.writeText) {
-          await navigator.clipboard.writeText(shareText);
-          setToast("Copied to clipboard!");
-        } else {
-          const ta = document.createElement("textarea");
-          ta.value = shareText;
-          ta.style.position = "fixed";
-          ta.style.opacity = "0";
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand("copy");
-          document.body.removeChild(ta);
-          setToast("Copied to clipboard!");
-        }
-      } catch {
-        setToast("Could not copy to clipboard");
+    // 4. Fallback for desktop browsers without Web Share: Copy to clipboard with toast indicator
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareText);
+        setToast("Copied link to clipboard!");
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = shareText;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        setToast("Copied link to clipboard!");
       }
-      setTimeout(() => setToast(null), 2500);
+    } catch {
+      setToast("Could not copy link");
     }
+    setTimeout(() => setToast(null), 2500);
   };
 
   return (

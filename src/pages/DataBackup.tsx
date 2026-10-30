@@ -40,7 +40,7 @@ export default function DataBackup() {
 
   // Visual feedback for Export/Import operations
   const [feedback, setFeedback] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
-  const [downloadLink, setDownloadLink] = useState<{ url: string; filename: string } | null>(null);
+  const [downloadLink, setDownloadLink] = useState<{ url: string; filename: string; jsonStr: string } | null>(null);
 
   // Cloud Turso Settings
   const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
@@ -191,26 +191,100 @@ export default function DataBackup() {
       await setSetting("last_backup_time", nowIso);
       setLastBackupTime(nowIso);
       const filename = `dailyos-backup-${dateStr}.json`;
+
+      let savedNative = false;
+      const androidTheme = typeof window !== "undefined" ? (window as any)?.AndroidTheme : null;
+      if (androidTheme?.saveJsonFile && typeof androidTheme.saveJsonFile === "function") {
+        try {
+          savedNative = androidTheme.saveJsonFile(filename, jsonStr);
+        } catch (e) {
+          console.error("AndroidTheme.saveJsonFile failed:", e);
+        }
+      }
+
       const blob = new Blob([jsonStr], { type: "application/json" });
+      let url = "";
+      try {
+        if (typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+          url = URL.createObjectURL(blob);
+        }
+      } catch {}
+      setDownloadLink({ url, filename, jsonStr });
 
-      const url = URL.createObjectURL(blob);
-      setDownloadLink({ url, filename });
-
-      // Direct anchor download
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      // Direct anchor download for browser fallback
+      if (!savedNative && url) {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
 
       setFeedback({
         type: "success",
-        message: `Export successful! Saved ${exportData.habits.length} habits and ${exportData.habit_logs.length} logs to ${filename}.`,
+        message: savedNative
+          ? `Export successful! Saved ${exportData.habits.length} habits and ${exportData.habit_logs.length} logs to your phone's Downloads folder (${filename}).`
+          : `Export successful! Saved ${exportData.habits.length} habits and ${exportData.habit_logs.length} logs to ${filename}.`,
       });
     } catch (err: any) {
       console.error(err);
       setFeedback({ type: "error", message: `Export failed: ${err.message}` });
+    }
+  };
+
+  const handleDownloadLinkClick = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (!downloadLink) return;
+
+    const androidTheme = typeof window !== "undefined" ? (window as any)?.AndroidTheme : null;
+    if (androidTheme?.saveJsonFile && downloadLink.jsonStr) {
+      try {
+        const ok = androidTheme.saveJsonFile(downloadLink.filename, downloadLink.jsonStr);
+        if (ok) {
+          setFeedback({
+            type: "success",
+            message: `Saved ${downloadLink.filename} to your phone's Downloads folder!`,
+          });
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Web fallback
+    const a = document.createElement("a");
+    a.href = downloadLink.url;
+    a.download = downloadLink.filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleShareBackup = async () => {
+    if (!downloadLink?.jsonStr) return;
+    const androidTheme = typeof window !== "undefined" ? (window as any)?.AndroidTheme : null;
+    if (androidTheme?.shareJsonFile) {
+      try {
+        androidTheme.shareJsonFile(downloadLink.filename, downloadLink.jsonStr);
+        return;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    if (typeof navigator !== "undefined" && typeof (navigator as any).share === "function") {
+      try {
+        const file = new File([downloadLink.jsonStr], downloadLink.filename, { type: "application/json" });
+        if ((navigator as any).canShare && (navigator as any).canShare({ files: [file] })) {
+          await (navigator as any).share({
+            files: [file],
+            title: downloadLink.filename,
+          });
+          return;
+        }
+      } catch {}
     }
   };
 
@@ -461,33 +535,7 @@ export default function DataBackup() {
 
         {/* Form Inputs */}
         <div style={{ marginTop: "14px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-            <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--mu)" }}>Database URL</div>
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  const text = await navigator.clipboard.readText();
-                  if (text && text.trim()) setDbUrl(text.trim());
-                } catch {}
-              }}
-              style={{
-                fontSize: "11px",
-                fontWeight: 700,
-                color: "var(--prt)",
-                background: "var(--tint)",
-                border: "none",
-                borderRadius: "99px",
-                padding: "3px 10px",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              Paste
-            </button>
-          </div>
+          <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--mu)", marginBottom: "6px" }}>Database URL</div>
           <input
             type="text"
             placeholder="libsql://your-db.turso.io"
@@ -513,33 +561,7 @@ export default function DataBackup() {
         </div>
 
         <div style={{ marginTop: "12px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-            <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--mu)" }}>Auth Token</div>
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  const text = await navigator.clipboard.readText();
-                  if (text && text.trim()) setAuthToken(text.trim());
-                } catch {}
-              }}
-              style={{
-                fontSize: "11px",
-                fontWeight: 700,
-                color: "var(--prt)",
-                background: "var(--tint)",
-                border: "none",
-                borderRadius: "99px",
-                padding: "3px 10px",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              Paste
-            </button>
-          </div>
+          <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--mu)", marginBottom: "6px" }}>Auth Token</div>
           <input
             type="password"
             placeholder="eyJhbGciOi..."
@@ -639,22 +661,56 @@ export default function DataBackup() {
           >
             <div>{feedback.message}</div>
             {downloadLink && feedback.type === "success" && (
-              <div style={{ marginTop: "8px" }}>
-                <a
-                  href={downloadLink.url}
-                  download={downloadLink.filename}
+              <div style={{ marginTop: "10px", display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                <button
+                  type="button"
+                  data-testid="download-backup-btn"
+                  onClick={handleDownloadLinkClick}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "6px",
-                    fontWeight: 800,
+                    fontWeight: 700,
                     fontSize: "13px",
-                    color: "inherit",
-                    textDecoration: "underline",
+                    color: "var(--prt)",
+                    background: "rgba(15, 157, 138, 0.15)",
+                    border: "1px solid var(--pr)",
+                    borderRadius: "10px",
+                    padding: "7px 14px",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
                   }}
                 >
-                  📥 Click here to download {downloadLink.filename} directly
-                </a>
+                  📥 Download {downloadLink.filename}
+                </button>
+                <button
+                  type="button"
+                  data-testid="share-backup-btn"
+                  onClick={handleShareBackup}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontWeight: 700,
+                    fontSize: "13px",
+                    color: "var(--tx)",
+                    background: "var(--bg)",
+                    border: "1px solid var(--ln)",
+                    borderRadius: "10px",
+                    padding: "7px 14px",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="18" cy="5" r="3" />
+                    <circle cx="6" cy="12" r="3" />
+                    <circle cx="18" cy="19" r="3" />
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                  </svg>
+                  Share / Send file
+                </button>
               </div>
             )}
           </div>

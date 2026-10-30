@@ -1,15 +1,22 @@
 package app.dailyos.habits;
 
 import android.app.UiModeManager;
+import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.media.MediaScannerConnection;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.MediaStore;
+import android.util.Log;
 import android.view.ActionMode;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,7 +24,9 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.content.FileProvider;
 import androidx.core.splashscreen.SplashScreen;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -27,6 +36,10 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends BridgeActivity {
 
@@ -327,6 +340,110 @@ public class MainActivity extends BridgeActivity {
                 @JavascriptInterface
                 public void onAppReady() {
                     onWebRenderComplete();
+                }
+
+                @JavascriptInterface
+                public void share(final String title, final String text, final String url) {
+                    runOnUiThread(() -> {
+                        try {
+                            Intent sendIntent = new Intent(Intent.ACTION_SEND);
+                            sendIntent.setType("text/plain");
+                            StringBuilder fullText = new StringBuilder();
+                            if (text != null && !text.isEmpty()) {
+                                fullText.append(text);
+                            }
+                            if (url != null && !url.isEmpty()) {
+                                if (fullText.length() > 0) fullText.append("\n\n");
+                                fullText.append(url);
+                            }
+                            sendIntent.putExtra(Intent.EXTRA_SUBJECT, title != null && !title.isEmpty() ? title : "DailyOS");
+                            sendIntent.putExtra(Intent.EXTRA_TEXT, fullText.toString());
+                            Intent chooser = Intent.createChooser(sendIntent, title != null && !title.isEmpty() ? title : "Share via");
+                            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(chooser);
+                        } catch (Exception e) {
+                            Log.e("MainActivity", "Native share failed", e);
+                        }
+                    });
+                }
+
+                @JavascriptInterface
+                public boolean saveJsonFile(final String filename, final String jsonContent) {
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            ContentValues values = new ContentValues();
+                            values.put(MediaStore.Downloads.DISPLAY_NAME, filename);
+                            values.put(MediaStore.Downloads.MIME_TYPE, "application/json");
+                            values.put(MediaStore.Downloads.IS_PENDING, 1);
+
+                            Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                            if (uri != null) {
+                                try (OutputStream os = getContentResolver().openOutputStream(uri)) {
+                                    if (os != null) {
+                                        os.write(jsonContent.getBytes(StandardCharsets.UTF_8));
+                                        os.flush();
+                                    }
+                                }
+                                values.clear();
+                                values.put(MediaStore.Downloads.IS_PENDING, 0);
+                                getContentResolver().update(uri, values, null, null);
+
+                                runOnUiThread(() -> {
+                                    Toast.makeText(MainActivity.this, "Saved " + filename + " to Downloads", Toast.LENGTH_LONG).show();
+                                });
+                                return true;
+                            }
+                        } else {
+                            File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                            if (!downloadsDir.exists()) downloadsDir.mkdirs();
+                            File file = new File(downloadsDir, filename);
+                            try (FileOutputStream fos = new FileOutputStream(file)) {
+                                fos.write(jsonContent.getBytes(StandardCharsets.UTF_8));
+                                fos.flush();
+                            }
+                            MediaScannerConnection.scanFile(MainActivity.this, new String[]{file.getAbsolutePath()}, new String[]{"application/json"}, null);
+                            runOnUiThread(() -> {
+                                Toast.makeText(MainActivity.this, "Saved " + filename + " to Downloads", Toast.LENGTH_LONG).show();
+                            });
+                            return true;
+                        }
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Failed to save JSON backup", e);
+                    }
+                    return false;
+                }
+
+                @JavascriptInterface
+                public void shareJsonFile(final String filename, final String jsonContent) {
+                    runOnUiThread(() -> {
+                        try {
+                            File cacheDir = new File(getCacheDir(), "backups");
+                            if (!cacheDir.exists()) cacheDir.mkdirs();
+                            File backupFile = new File(cacheDir, filename);
+                            try (FileOutputStream fos = new FileOutputStream(backupFile)) {
+                                fos.write(jsonContent.getBytes(StandardCharsets.UTF_8));
+                                fos.flush();
+                            }
+                            Uri contentUri = FileProvider.getUriForFile(
+                                MainActivity.this,
+                                getPackageName() + ".fileprovider",
+                                backupFile
+                            );
+
+                            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                            shareIntent.setType("application/json");
+                            shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
+                            shareIntent.putExtra(Intent.EXTRA_SUBJECT, filename);
+                            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                            Intent chooser = Intent.createChooser(shareIntent, "Share Backup File");
+                            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(chooser);
+                        } catch (Exception e) {
+                            Log.e("MainActivity", "Failed to share JSON file", e);
+                            share(filename, jsonContent, "");
+                        }
+                    });
                 }
             }, "AndroidTheme");
         } catch (Exception ignored) {}
