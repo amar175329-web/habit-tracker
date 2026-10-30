@@ -5,6 +5,7 @@ import { App as CapApp } from "@capacitor/app";
 import { ThemeProvider } from "./lib/theme";
 import { queryClient as qc } from "./lib/queryClient";
 import { initDatabase, purgeLegacyStorage, db, type MoodLog } from "./lib/db";
+import { checkAndRestoreAutoBackup } from "./lib/autoBackup";
 import { BottomNav as BottomNavPrimitive } from "./components/primitives/BottomNav";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
@@ -96,7 +97,11 @@ export default function App() {
     purgeLegacyStorage();
     // Clean up any legacy unconfirmed auto-seeded default mood logs
     db.mood_logs.filter((m: MoodLog) => !m.changeCount || m.changeCount === 0).delete().catch(() => {});
-    initDatabase().catch(() => {});
+    initDatabase()
+      .then(() => {
+        checkAndRestoreAutoBackup().catch(() => {});
+      })
+      .catch(() => {});
 
     // Notify native Android splash overlay that React has mounted and painted
     if (typeof window !== "undefined") {

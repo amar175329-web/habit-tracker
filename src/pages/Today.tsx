@@ -311,6 +311,23 @@ export default function Today() {
     return () => clearTimeout(t);
   }, [showFirstDeleteTip]);
 
+  const [restoredBanner, setRestoredBanner] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleRestored = (e: any) => {
+      const count = e.detail?.habitsCount ?? 0;
+      setRestoredBanner(
+        count > 0
+          ? `Welcome back! Restored ${count} habit${count > 1 ? "s" : ""} & data from this device.`
+          : "Welcome back! Restored your data from this device."
+      );
+      setTimeout(() => setRestoredBanner(null), 6000);
+    };
+
+    window.addEventListener("habbitrack_autobackup_restored", handleRestored);
+    return () => window.removeEventListener("habbitrack_autobackup_restored", handleRestored);
+  }, []);
+
   const handleDeleteHabitFromMenu = (habitId: string, purgeHistory = false) => {
     // 1. Instantly hide from UI (0ms feedback)
     setDeletedHabitIds((prev) => new Set(prev).add(habitId));
@@ -1948,6 +1965,37 @@ export default function Today() {
           currentStreak={celebrationData.currentStreak}
           habitColor={celebrationData.habitColor}
         />
+      )}
+
+      {/* Device Auto-Backup Reinstall Restoration Banner */}
+      {restoredBanner && (
+        <div
+          onClick={() => setRestoredBanner(null)}
+          style={{
+            position: "fixed",
+            top: "16px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "calc(100% - 32px)",
+            maxWidth: "420px",
+            zIndex: 100,
+            background: "var(--tint)",
+            border: "1px solid var(--pr)",
+            borderRadius: "16px",
+            padding: "12px 16px",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            cursor: "pointer",
+          }}
+        >
+          <span style={{ fontSize: "20px" }}>💾</span>
+          <div style={{ flex: 1, fontSize: "13px", fontWeight: 700, color: "var(--prt)", lineHeight: 1.4 }}>
+            {restoredBanner}
+          </div>
+          <span style={{ fontSize: "16px", color: "var(--mu)" }}>✕</span>
+        </div>
       )}
 
       {/* First-Time Habit Delete Onboarding Tip (Theme-Adaptive & Only Shown Once Ever) */}

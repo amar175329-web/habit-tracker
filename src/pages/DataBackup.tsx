@@ -10,6 +10,7 @@ import {
   useHabits,
   type DailyOSExport,
 } from "../lib/db";
+import { triggerImmediateAutoBackup, getDeviceAutoBackup } from "../lib/autoBackup";
 import { ConfirmModal } from "../components/modals/ConfirmModal";
 
 export default function DataBackup() {
@@ -49,6 +50,7 @@ export default function DataBackup() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifiedStatus, setVerifiedStatus] = useState<"verified" | "unverified" | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(true);
 
   useEffect(() => {
     async function loadSettings() {
@@ -61,6 +63,8 @@ export default function DataBackup() {
       if (savedToken) setAuthToken(savedToken);
       if (savedStatus === "true") setVerifiedStatus("verified");
       else if (savedStatus === "false") setVerifiedStatus("unverified");
+      const savedAuto = await getSetting("auto_backup_enabled", "true");
+      setAutoBackupEnabled(savedAuto !== "false");
     }
     loadSettings();
   }, []);
@@ -776,9 +780,106 @@ export default function DataBackup() {
               Survives app delete. Offers restore on reinstall.
             </div>
           </div>
-          <span style={{ width: "46px", height: "28px", borderRadius: "14px", background: "var(--pr)", position: "relative", flex: "none" }}>
-            <i style={{ position: "absolute", right: "3px", top: "3px", width: "22px", height: "22px", borderRadius: "50%", background: "var(--on)" }} />
-          </span>
+          <button
+            type="button"
+            onClick={async () => {
+              const next = !autoBackupEnabled;
+              setAutoBackupEnabled(next);
+              await setSetting("auto_backup_enabled", next ? "true" : "false");
+              if (next) {
+                await triggerImmediateAutoBackup();
+                setStatusMessage("Auto-backup to Documents enabled & updated.");
+              } else {
+                setStatusMessage("Auto-backup to Documents paused.");
+              }
+            }}
+            style={{
+              width: "46px",
+              height: "28px",
+              borderRadius: "14px",
+              background: autoBackupEnabled ? "var(--pr)" : "rgba(255,255,255,0.12)",
+              border: "none",
+              position: "relative",
+              flex: "none",
+              cursor: "pointer",
+              transition: "background 0.2s ease",
+            }}
+            aria-label="Toggle Auto-backup to Documents"
+          >
+            <i
+              style={{
+                position: "absolute",
+                right: autoBackupEnabled ? "3px" : "auto",
+                left: autoBackupEnabled ? "auto" : "3px",
+                top: "3px",
+                width: "22px",
+                height: "22px",
+                borderRadius: "50%",
+                background: autoBackupEnabled ? "var(--on)" : "var(--mu)",
+                transition: "all 0.2s ease",
+              }}
+            />
+          </button>
+        </div>
+
+        <div style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const ok = await triggerImmediateAutoBackup();
+                if (ok) {
+                  setStatusMessage("Saved backup to device Documents & Downloads!");
+                } else {
+                  setStatusMessage("Device backup completed.");
+                }
+              } catch (e: any) {
+                setStatusMessage(`Device backup error: ${e.message}`);
+              }
+            }}
+            style={{
+              flex: 1,
+              height: "36px",
+              borderRadius: "18px",
+              background: "rgba(255,255,255,0.06)",
+              color: "var(--tx)",
+              border: "1px solid var(--ln)",
+              fontSize: "12px",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Backup to Device Now
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const backup = await getDeviceAutoBackup();
+                if (!backup || (!backup.habits?.length && !backup.habit_logs?.length)) {
+                  setStatusMessage("No previous device backup found in Documents or Downloads.");
+                  return;
+                }
+                await importAllData(backup);
+                setStatusMessage(`Restored ${backup.habits?.length ?? 0} habits and ${backup.habit_logs?.length ?? 0} logs from device backup!`);
+              } catch (e: any) {
+                setStatusMessage(`Restore error: ${e.message}`);
+              }
+            }}
+            style={{
+              flex: 1,
+              height: "36px",
+              borderRadius: "18px",
+              background: "rgba(255,255,255,0.06)",
+              color: "var(--prt)",
+              border: "1px solid var(--ln)",
+              fontSize: "12px",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Restore from Device
+          </button>
         </div>
       </div>
 

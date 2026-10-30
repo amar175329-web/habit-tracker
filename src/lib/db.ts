@@ -75,6 +75,7 @@ export interface OutboxItem {
 export interface DailyOSExport {
   version: number;
   exportedAt: string;
+  appName?: string;
   habits: Habit[];
   deletedHabitIds?: string[];
   habit_logs: HabitLog[];
@@ -165,6 +166,26 @@ export class DailyOSDatabase extends Dexie {
 
 export const db = new DailyOSDatabase();
 
+export type DbChangeListener = (type: "change" | "clear") => void;
+const dbListeners = new Set<DbChangeListener>();
+
+export function subscribeDbChange(listener: DbChangeListener): () => void {
+  dbListeners.add(listener);
+  return () => {
+    dbListeners.delete(listener);
+  };
+}
+
+export function notifyDbChange(type: "change" | "clear" = "change"): void {
+  dbListeners.forEach((l) => {
+    try {
+      l(type);
+    } catch (e) {
+      console.warn("Db change listener error:", e);
+    }
+  });
+}
+
 export async function deduplicateHabits(): Promise<void> {
   const habits = await db.habits.toArray();
   const seen = new Set<string>();
@@ -245,6 +266,7 @@ export async function clearAllData(): Promise<void> {
       window.sessionStorage.clear();
     } catch {}
   }
+  notifyDbChange("clear");
 }
 
 /**
@@ -263,6 +285,7 @@ export async function clearAllEntries(): Promise<void> {
       await db.outbox.clear();
     }
   );
+  notifyDbChange("change");
 }
 
 /**
@@ -386,6 +409,7 @@ export async function toggleHabit(
 
   try {
     await db.habit_logs.put(row);
+    notifyDbChange("change");
     try {
       await db.outbox.add({
         table: "habit_logs",
@@ -430,6 +454,7 @@ export async function setHabitState(
   };
 
   await db.habit_logs.put(row);
+  notifyDbChange("change");
   try {
     await db.outbox.add({
       table: "habit_logs",
@@ -473,6 +498,7 @@ export async function saveSleep(
       ts: Date.now(),
     });
   });
+  notifyDbChange("change");
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("dailyos_sleep_updated", { detail: { date } }));
@@ -524,6 +550,7 @@ export async function saveMood(
       ts: Date.now(),
     });
   });
+  notifyDbChange("change");
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("dailyos_mood_updated", { detail: { date, score } }));
@@ -556,6 +583,7 @@ export async function saveReflection(
       ts: Date.now(),
     });
   });
+  notifyDbChange("change");
 }
 
 const HABITS_CACHE_KEY = "dailyos_habits_cache_v1";
@@ -632,6 +660,7 @@ export async function saveHabit(habit: Habit): Promise<void> {
   } catch {}
 
   await db.habits.put(habit);
+  notifyDbChange("change");
 
   try {
     await db.outbox.add({
@@ -695,6 +724,7 @@ export async function deleteHabit(id: string, purgeLogs: boolean = false): Promi
       await db.habits.delete(id);
     }
   }
+  notifyDbChange("change");
 }
 
 export async function restoreHabit(id: string): Promise<void> {
@@ -726,6 +756,7 @@ export async function restoreHabit(id: string): Promise<void> {
       });
     } catch {}
   }
+  notifyDbChange("change");
 }
 
 export async function getSetting(key: string, defaultValue = ""): Promise<string> {
@@ -777,6 +808,7 @@ export async function exportAllData(): Promise<DailyOSExport> {
   return {
     version: 1,
     exportedAt: new Date().toISOString(),
+    appName: "Habbitrack",
     habits,
     deletedHabitIds: Array.from(deleted),
     habit_logs,
@@ -816,6 +848,7 @@ export async function importAllData(data: DailyOSExport): Promise<void> {
       window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
     }
   }
+  notifyDbChange("change");
 }
 
 export { useHabits } from "./useHabits";

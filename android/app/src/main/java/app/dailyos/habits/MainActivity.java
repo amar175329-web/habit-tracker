@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.media.MediaScannerConnection;
@@ -36,8 +37,12 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -445,8 +450,176 @@ public class MainActivity extends BridgeActivity {
                         }
                     });
                 }
+
+                @JavascriptInterface
+                public boolean saveAutoBackup(final String jsonContent) {
+                    if (jsonContent == null || jsonContent.isEmpty()) return false;
+                    try {
+                        // 1. App-specific external storage safety copy
+                        File extFiles = getExternalFilesDir(null);
+                        if (extFiles != null) {
+                            File safetyCopy = new File(extFiles, "habbitrack_autobackup.json");
+                            try (FileOutputStream fos = new FileOutputStream(safetyCopy)) {
+                                fos.write(jsonContent.getBytes(StandardCharsets.UTF_8));
+                                fos.flush();
+                            }
+                        }
+
+                        // 2. Public Documents directory (survives app uninstall!)
+                        try {
+                            File docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+                            File appDocsDir = new File(docsDir, "Habbitrack");
+                            if (!appDocsDir.exists()) {
+                                appDocsDir.mkdirs();
+                            }
+                            File docBackup = new File(appDocsDir, "habbitrack_autobackup.json");
+                            try (FileOutputStream fos = new FileOutputStream(docBackup)) {
+                                fos.write(jsonContent.getBytes(StandardCharsets.UTF_8));
+                                fos.flush();
+                            }
+                            MediaScannerConnection.scanFile(MainActivity.this, new String[]{docBackup.getAbsolutePath()}, new String[]{"application/json"}, null);
+                        } catch (Throwable t) {
+                            Log.w("MainActivity", "Public documents backup write fallback", t);
+                        }
+
+                        // 3. Public Downloads directory copy
+                        try {
+                            File dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                            if (dlDir != null && dlDir.exists()) {
+                                File dlBackup = new File(dlDir, "habbitrack_autobackup.json");
+                                try (FileOutputStream fos = new FileOutputStream(dlBackup)) {
+                                    fos.write(jsonContent.getBytes(StandardCharsets.UTF_8));
+                                    fos.flush();
+                                }
+                                MediaScannerConnection.scanFile(MainActivity.this, new String[]{dlBackup.getAbsolutePath()}, new String[]{"application/json"}, null);
+                            }
+                        } catch (Throwable t) {
+                            Log.w("MainActivity", "Public downloads backup write fallback", t);
+                        }
+
+                        return true;
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Failed to save auto-backup", e);
+                    }
+                    return false;
+                }
+
+                @JavascriptInterface
+                public String getAutoBackup() {
+                    try {
+                        // 1. Documents/Habbitrack/habbitrack_autobackup.json
+                        File docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+                        File docBackup = new File(new File(docsDir, "Habbitrack"), "habbitrack_autobackup.json");
+                        if (docBackup.exists() && docBackup.canRead() && docBackup.length() > 0) {
+                            String content = readFileToString(docBackup);
+                            if (content != null && content.length() > 10) return content;
+                        }
+
+                        // 2. Documents/habbitrack_autobackup.json
+                        File docBackupFlat = new File(docsDir, "habbitrack_autobackup.json");
+                        if (docBackupFlat.exists() && docBackupFlat.canRead() && docBackupFlat.length() > 0) {
+                            String content = readFileToString(docBackupFlat);
+                            if (content != null && content.length() > 10) return content;
+                        }
+
+                        // 3. Downloads/habbitrack_autobackup.json
+                        File dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                        File dlBackup = new File(dlDir, "habbitrack_autobackup.json");
+                        if (dlBackup.exists() && dlBackup.canRead() && dlBackup.length() > 0) {
+                            String content = readFileToString(dlBackup);
+                            if (content != null && content.length() > 10) return content;
+                        }
+
+                        // 4. Any exported backup file in Downloads (newest first)
+                        if (dlDir != null && dlDir.exists()) {
+                            File[] files = dlDir.listFiles((dir, name) -> name != null && name.startsWith("habbitrack-backup-") && name.endsWith(".json"));
+                            if (files != null && files.length > 0) {
+                                File newest = null;
+                                for (File f : files) {
+                                    if (newest == null || f.lastModified() > newest.lastModified()) {
+                                        newest = f;
+                                    }
+                                }
+                                if (newest != null && newest.canRead() && newest.length() > 0) {
+                                    String content = readFileToString(newest);
+                                    if (content != null && content.length() > 10) return content;
+                                }
+                            }
+                        }
+
+                        // 5. MediaStore query on Android 10+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            String[] projection = new String[]{MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME};
+                            String selection = MediaStore.Downloads.DISPLAY_NAME + " = ? OR " + MediaStore.Downloads.DISPLAY_NAME + " LIKE ?";
+                            String[] selectionArgs = new String[]{"habbitrack_autobackup.json", "habbitrack-backup-%.json"};
+                            String sortOrder = MediaStore.Downloads.DATE_MODIFIED + " DESC";
+                            try (Cursor cursor = getContentResolver().query(MediaStore.Downloads.EXTERNAL_CONTENT_URI, projection, selection, selectionArgs, sortOrder)) {
+                                if (cursor != null && cursor.moveToFirst()) {
+                                    long id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID));
+                                    Uri contentUri = Uri.withAppendedPath(MediaStore.Downloads.EXTERNAL_CONTENT_URI, String.valueOf(id));
+                                    try (InputStream is = getContentResolver().openInputStream(contentUri)) {
+                                        if (is != null) {
+                                            String content = readStreamToString(is);
+                                            if (content != null && content.length() > 10) return content;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Failed to retrieve auto-backup", e);
+                    }
+                    return null;
+                }
+
+                @JavascriptInterface
+                public boolean clearAutoBackup() {
+                    try {
+                        File docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+                        File docBackup = new File(new File(docsDir, "Habbitrack"), "habbitrack_autobackup.json");
+                        if (docBackup.exists()) docBackup.delete();
+
+                        File docBackupFlat = new File(docsDir, "habbitrack_autobackup.json");
+                        if (docBackupFlat.exists()) docBackupFlat.delete();
+
+                        File dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                        File dlBackup = new File(dlDir, "habbitrack_autobackup.json");
+                        if (dlBackup.exists()) dlBackup.delete();
+
+                        File extFiles = getExternalFilesDir(null);
+                        if (extFiles != null) {
+                            File safetyCopy = new File(extFiles, "habbitrack_autobackup.json");
+                            if (safetyCopy.exists()) safetyCopy.delete();
+                        }
+                        return true;
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Failed to clear auto-backup", e);
+                    }
+                    return false;
+                }
             }, "AndroidTheme");
         } catch (Exception ignored) {}
+    }
+
+    private String readFileToString(File file) {
+        try (FileInputStream fis = new FileInputStream(file)) {
+            return readStreamToString(fis);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String readStreamToString(InputStream is) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append('\n');
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private void setupThemeBridge() {
