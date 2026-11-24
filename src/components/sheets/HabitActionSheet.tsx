@@ -9,6 +9,7 @@ export interface HabitActionSheetProps {
   isExpanded: boolean;
   onToggleWidth: () => void;
   onEdit: () => void;
+  onEditWhy?: () => void;
   onDelete: (purgeHistory: boolean) => void;
   currentStreak?: number;
   bestStreak?: number;
@@ -24,6 +25,7 @@ export function HabitActionSheet({
   isExpanded,
   onToggleWidth,
   onEdit,
+  onEditWhy,
   onDelete,
   currentStreak = 0,
   bestStreak = 0,
@@ -484,6 +486,35 @@ export function HabitActionSheet({
               </div>
               <span style={{ color: "var(--mu)", fontSize: "18px" }}>›</span>
             </button>
+
+            {/* Action 2b: Edit Why Line ("Main ye kyun kar raha hoon") */}
+            {onEditWhy && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onEditWhy();
+                  onClose();
+                }}
+                style={btnStyle}
+              >
+                <span style={iconCircleStyle}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                </span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: "14.5px" }}>Main ye kyun kar raha hoon</div>
+                  <div style={{ fontSize: "12px", color: "var(--mu)", marginTop: "2px" }}>
+                    Your personal reason & motivation
+                  </div>
+                </div>
+                <span style={{ color: "var(--mu)", fontSize: "18px" }}>›</span>
+              </button>
+            )}
 
             {/* Action 3: Delete Habit (Triggers Confirmation) */}
             <button

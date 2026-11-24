@@ -1,10 +1,17 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { clearAllData, useHabits, db, deleteHabit, restoreHabit } from "../lib/db";
 import { getIconPath } from "../lib/icons";
 import { useTheme } from "../lib/theme";
 import { ConfirmModal } from "../components/modals/ConfirmModal";
+import {
+  getReminderSettings,
+  saveReminderSettings,
+  rescheduleRollingNotifications,
+  type ReminderSettings,
+} from "../lib/notifications";
+import { LocalNotifications } from "@capacitor/local-notifications";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -18,6 +25,54 @@ export default function Settings() {
   const [wipedModalOpen, setWipedModalOpen] = useState(false);
   const [purgeTarget, setPurgeTarget] = useState<{ id: string; name: string; logCount: number } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [reminders, setReminders] = useState<ReminderSettings>(() => getReminderSettings());
+  const [permDenied, setPermDenied] = useState(false);
+
+  useEffect(() => {
+    LocalNotifications.checkPermissions()
+      .then((p) => {
+        if (p.display === "denied") setPermDenied(true);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleToggleMaster = async () => {
+    const nextVal = !reminders.masterEnabled;
+    if (nextVal) {
+      try {
+        const perm = await LocalNotifications.requestPermissions();
+        if (perm.display !== "granted") {
+          setPermDenied(true);
+          setToastMessage("Notification permission denied");
+          return;
+        }
+        setPermDenied(false);
+      } catch {}
+    }
+    const updated = { ...reminders, masterEnabled: nextVal };
+    setReminders(updated);
+    saveReminderSettings(updated);
+    rescheduleRollingNotifications(allHabits, allLogs, 0);
+  };
+
+  const handleUpdateReminder = (key: keyof ReminderSettings, val: any) => {
+    const updated = { ...reminders, [key]: val };
+    setReminders(updated);
+    saveReminderSettings(updated);
+    rescheduleRollingNotifications(allHabits, allLogs, 0);
+  };
+
+  const handleOpenSystemSettings = () => {
+    try {
+      if ((window as any).AndroidSettings?.openNotificationSettings) {
+        (window as any).AndroidSettings.openNotificationSettings();
+      } else {
+        alert("Please enable notifications in Android Settings > Apps > Habit Tracker > Notifications.");
+      }
+    } catch {
+      alert("Please enable notifications in Android Settings > Apps > Habit Tracker > Notifications.");
+    }
+  };
 
   // Derive archived habits and any orphan logs from past deleted habits
   const archivedHabits = useMemo(() => {
@@ -182,6 +237,265 @@ export default function Settings() {
             );
           })}
         </div>
+      </div>
+
+      {/* Reminders & Notifications Card */}
+      <div
+        style={{
+          background: "var(--card)",
+          border: "1px solid var(--ln)",
+          borderRadius: "26px",
+          padding: "18px",
+          marginTop: "12px",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: reminders.masterEnabled ? "14px" : "0" }}>
+          <div>
+            <div style={{ fontSize: "11px", letterSpacing: ".14em", fontWeight: 700, color: "var(--mu)" }}>
+              REMINDERS
+            </div>
+            <div style={{ fontSize: "14px", fontWeight: 700, marginTop: "2px" }}>
+              Daily & Streak Notifications
+            </div>
+          </div>
+          {/* Master Toggle Switch */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={reminders.masterEnabled}
+            onClick={handleToggleMaster}
+            style={{
+              width: "48px",
+              height: "28px",
+              borderRadius: "14px",
+              border: "none",
+              background: reminders.masterEnabled ? "var(--pr)" : "var(--tr)",
+              cursor: "pointer",
+              position: "relative",
+              transition: "background 0.2s ease",
+              padding: "2px",
+            }}
+          >
+            <div
+              style={{
+                width: "24px",
+                height: "24px",
+                borderRadius: "50%",
+                background: "#ffffff",
+                transform: reminders.masterEnabled ? "translateX(20px)" : "translateX(0px)",
+                transition: "transform 0.2s ease",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+              }}
+            />
+          </button>
+        </div>
+
+        {permDenied && (
+          <div
+            style={{
+              background: "rgba(239, 68, 68, 0.1)",
+              border: "1px solid rgba(239, 68, 68, 0.25)",
+              borderRadius: "16px",
+              padding: "12px 14px",
+              marginTop: "12px",
+              marginBottom: "14px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "10px",
+            }}
+          >
+            <div style={{ fontSize: "12.5px", color: "var(--tx)", fontWeight: 600 }}>
+              System notifications are blocked.
+            </div>
+            <button
+              type="button"
+              onClick={handleOpenSystemSettings}
+              style={{
+                fontSize: "12px",
+                fontWeight: 700,
+                color: "#ffffff",
+                background: "var(--co)",
+                border: "none",
+                borderRadius: "12px",
+                padding: "6px 12px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Open system settings
+            </button>
+          </div>
+        )}
+
+        {reminders.masterEnabled && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", paddingTop: "14px", borderTop: "1px solid var(--ln)" }}>
+            {/* Daily Time Picker */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "13.5px", fontWeight: 600 }}>Daily Reminder Time</span>
+              <input
+                type="time"
+                value={reminders.dailyTime}
+                onChange={(e) => handleUpdateReminder("dailyTime", e.target.value)}
+                style={{
+                  background: "var(--bg)",
+                  border: "1px solid var(--ln)",
+                  borderRadius: "12px",
+                  padding: "6px 10px",
+                  color: "var(--tx)",
+                  fontSize: "13.5px",
+                  fontWeight: 700,
+                  fontFamily: "var(--num)",
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            {/* Streak-at-risk (9:30 PM) */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: "13.5px", fontWeight: 600 }}>Streak at risk (9:30 PM)</div>
+                <div style={{ fontSize: "11.5px", color: "var(--mu)" }}>Alert when active streak is about to break</div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={reminders.streakAtRiskEnabled}
+                onClick={() => handleUpdateReminder("streakAtRiskEnabled", !reminders.streakAtRiskEnabled)}
+                style={{
+                  width: "42px",
+                  height: "24px",
+                  borderRadius: "12px",
+                  border: "none",
+                  background: reminders.streakAtRiskEnabled ? "var(--pr)" : "var(--tr)",
+                  cursor: "pointer",
+                  position: "relative",
+                  transition: "background 0.2s ease",
+                  padding: "2px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    borderRadius: "50%",
+                    background: "#ffffff",
+                    transform: reminders.streakAtRiskEnabled ? "translateX(18px)" : "translateX(0px)",
+                    transition: "transform 0.2s ease",
+                  }}
+                />
+              </button>
+            </div>
+
+            {/* Badge Near */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: "13.5px", fontWeight: 600 }}>Badge Near</div>
+                <div style={{ fontSize: "11.5px", color: "var(--mu)" }}>Alert when 1 day away from a milestone</div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={reminders.badgeNearEnabled}
+                onClick={() => handleUpdateReminder("badgeNearEnabled", !reminders.badgeNearEnabled)}
+                style={{
+                  width: "42px",
+                  height: "24px",
+                  borderRadius: "12px",
+                  border: "none",
+                  background: reminders.badgeNearEnabled ? "var(--pr)" : "var(--tr)",
+                  cursor: "pointer",
+                  position: "relative",
+                  transition: "background 0.2s ease",
+                  padding: "2px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    borderRadius: "50%",
+                    background: "#ffffff",
+                    transform: reminders.badgeNearEnabled ? "translateX(18px)" : "translateX(0px)",
+                    transition: "transform 0.2s ease",
+                  }}
+                />
+              </button>
+            </div>
+
+            {/* Comeback */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: "13.5px", fontWeight: 600 }}>Comeback</div>
+                <div style={{ fontSize: "11.5px", color: "var(--mu)" }}>Gentle encouragement after missed days</div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={reminders.comebackEnabled}
+                onClick={() => handleUpdateReminder("comebackEnabled", !reminders.comebackEnabled)}
+                style={{
+                  width: "42px",
+                  height: "24px",
+                  borderRadius: "12px",
+                  border: "none",
+                  background: reminders.comebackEnabled ? "var(--pr)" : "var(--tr)",
+                  cursor: "pointer",
+                  position: "relative",
+                  transition: "background 0.2s ease",
+                  padding: "2px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    borderRadius: "50%",
+                    background: "#ffffff",
+                    transform: reminders.comebackEnabled ? "translateX(18px)" : "translateX(0px)",
+                    transition: "transform 0.2s ease",
+                  }}
+                />
+              </button>
+            </div>
+
+            {/* Show my "why" line */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: "13.5px", fontWeight: 600 }}>Show my "why" line</div>
+                <div style={{ fontSize: "11.5px", color: "var(--mu)" }}>Include your personal motivation in reminders</div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={reminders.showWhyLineEnabled}
+                onClick={() => handleUpdateReminder("showWhyLineEnabled", !reminders.showWhyLineEnabled)}
+                style={{
+                  width: "42px",
+                  height: "24px",
+                  borderRadius: "12px",
+                  border: "none",
+                  background: reminders.showWhyLineEnabled ? "var(--pr)" : "var(--tr)",
+                  cursor: "pointer",
+                  position: "relative",
+                  transition: "background 0.2s ease",
+                  padding: "2px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    borderRadius: "50%",
+                    background: "#ffffff",
+                    transform: reminders.showWhyLineEnabled ? "translateX(18px)" : "translateX(0px)",
+                    transition: "transform 0.2s ease",
+                  }}
+                />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Active Habits Management Card */}

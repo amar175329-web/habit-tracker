@@ -10,6 +10,7 @@ export interface Habit {
   isActive: boolean;
   createdAt: string;
   archivedAt?: string;
+  why?: string;
 }
 
 export interface HabitLog {

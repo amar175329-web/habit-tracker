@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { App as CapApp } from "@capacitor/app";
+import { LocalNotifications } from "@capacitor/local-notifications";
 import { ThemeProvider } from "./lib/theme";
 import { queryClient as qc } from "./lib/queryClient";
 import { initDatabase, purgeLegacyStorage, db, type MoodLog } from "./lib/db";
@@ -117,6 +118,15 @@ export default function App() {
         });
       });
     }
+
+    // Tap notification opens Today
+    try {
+      LocalNotifications.addListener("localNotificationActionPerformed", () => {
+        if (window.location.pathname !== "/") {
+          window.location.href = "/";
+        }
+      });
+    } catch {}
 
     // Hardware back-button listener for Android: closes sheets first, then goes back, then exits
     try {

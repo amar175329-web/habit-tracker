@@ -7,7 +7,7 @@ import { calculateHabitBestStreak } from "./habitRules";
 
 export { calculateHabitBestStreak };
 
-export const BADGE_MILESTONES = [3, 7, 14, 30, 60, 100, 150, 200, 365] as const;
+export const BADGE_MILESTONES = [3, 7, 14, 30, 60, 100, 150, 200, 300, 365] as const;
 
 export const SHOWN_MILESTONES_STORAGE_KEY = "habbitrack_shown_milestones";
 export const LAST_CELEBRATION_DATES_KEY = "habbitrack_last_celebration_dates";

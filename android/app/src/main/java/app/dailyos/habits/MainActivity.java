@@ -348,6 +348,101 @@ public class MainActivity extends BridgeActivity {
                 }
 
                 @JavascriptInterface
+                public void setAppIcon(final String aliasName) {
+                    try {
+                        android.content.pm.PackageManager pm = getPackageManager();
+                        String pkgName = getPackageName();
+
+                        String[] allAliases = new String[] {
+                            pkgName + ".MainActivity",
+                            pkgName + ".MainActivityAliasSpark",
+                            pkgName + ".MainActivityAliasFlame",
+                            pkgName + ".MainActivityAliasGlow",
+                            pkgName + ".MainActivityAliasRing",
+                            pkgName + ".MainActivityAliasGold",
+                            pkgName + ".MainActivityAliasCrown",
+                            pkgName + ".MainActivityAliasMissed1",
+                            pkgName + ".MainActivityAliasMissed2",
+                            pkgName + ".MainActivityAliasMissed3to6",
+                            pkgName + ".MainActivityAliasMissed7Plus"
+                        };
+
+                        String targetAlias = aliasName.contains(".") ? aliasName : pkgName + "." + aliasName;
+
+                        for (String a : allAliases) {
+                            int state = a.equals(targetAlias)
+                                ? android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                                : android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+                            pm.setComponentEnabledSetting(
+                                new android.content.ComponentName(pkgName, a),
+                                state,
+                                android.content.pm.PackageManager.DONT_KILL_APP
+                            );
+                        }
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Failed to switch app icon alias", e);
+                    }
+                }
+
+                @JavascriptInterface
+                public void openNotificationSettings() {
+                    try {
+                        Intent intent = new Intent();
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            intent.setAction(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                            intent.putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getPackageName());
+                        } else {
+                            intent.setAction(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            intent.setData(Uri.fromParts("package", getPackageName(), null));
+                        }
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Failed to open notification settings", e);
+                    }
+                }
+
+                @JavascriptInterface
+                public void updateWidgets(final String dataJson) {
+                    try {
+                        org.json.JSONObject obj = new org.json.JSONObject(dataJson);
+                        SharedPreferences prefs = getSharedPreferences("habbitrack_widget_prefs", Context.MODE_PRIVATE);
+                        SharedPreferences.Editor editor = prefs.edit();
+
+                        if (obj.has("val2x2")) editor.putString(HabitWidget2x2Provider.KEY_VALUE, obj.getString("val2x2"));
+                        if (obj.has("lbl2x2")) editor.putString(HabitWidget2x2Provider.KEY_LABEL, obj.getString("lbl2x2"));
+                        if (obj.has("icn2x2")) editor.putString(HabitWidget2x2Provider.KEY_ICON, obj.getString("icn2x2"));
+
+                        if (obj.has("streak")) editor.putString(HabitWidget4x2Provider.KEY_STREAK, obj.getString("streak"));
+                        if (obj.has("theme")) editor.putString(HabitWidget4x2Provider.KEY_THEME, obj.getString("theme"));
+
+                        if (obj.has("h1Name")) editor.putString(HabitWidget4x2Provider.KEY_HABIT_1_NAME, obj.getString("h1Name"));
+                        if (obj.has("h1Done")) editor.putBoolean(HabitWidget4x2Provider.KEY_HABIT_1_DONE, obj.getBoolean("h1Done"));
+
+                        if (obj.has("h2Name")) editor.putString(HabitWidget4x2Provider.KEY_HABIT_2_NAME, obj.getString("h2Name"));
+                        if (obj.has("h2Done")) editor.putBoolean(HabitWidget4x2Provider.KEY_HABIT_2_DONE, obj.getBoolean("h2Done"));
+
+                        if (obj.has("h3Name")) editor.putString(HabitWidget4x2Provider.KEY_HABIT_3_NAME, obj.getString("h3Name"));
+                        if (obj.has("h3Done")) editor.putBoolean(HabitWidget4x2Provider.KEY_HABIT_3_DONE, obj.getBoolean("h3Done"));
+
+                        editor.apply();
+
+                        android.appwidget.AppWidgetManager awm = android.appwidget.AppWidgetManager.getInstance(MainActivity.this);
+                        int[] ids2x2 = awm.getAppWidgetIds(new android.content.ComponentName(MainActivity.this, HabitWidget2x2Provider.class));
+                        for (int id : ids2x2) {
+                            HabitWidget2x2Provider.updateWidget(MainActivity.this, awm, id);
+                        }
+
+                        int[] ids4x2 = awm.getAppWidgetIds(new android.content.ComponentName(MainActivity.this, HabitWidget4x2Provider.class));
+                        for (int id : ids4x2) {
+                            HabitWidget4x2Provider.updateWidget(MainActivity.this, awm, id);
+                        }
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Failed to update widgets", e);
+                    }
+                }
+
+                @JavascriptInterface
                 public void share(final String title, final String text, final String url) {
                     runOnUiThread(() -> {
                         try {

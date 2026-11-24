@@ -43,8 +43,16 @@ import { MenuSheet } from "../components/sheets/MenuSheet";
 import { FeelingsSheet } from "../components/sheets/FeelingsSheet";
 import { HabitActionSheet } from "../components/sheets/HabitActionSheet";
 import { StreakSheet } from "../components/sheets/StreakSheet";
+import { ReminderPromptBanner } from "../components/notifications/ReminderPromptBanner";
+import { shouldShowReminderBanner, rescheduleRollingNotifications } from "../lib/notifications";
+import { syncAppIconTier } from "../lib/appIcons";
+import { calculateWidgetPayload, updateNativeWidgets } from "../lib/widgets";
 import { StreakCelebrationSheet } from "../components/sheets/StreakCelebrationSheet";
 import { ConfirmModal } from "../components/modals/ConfirmModal";
+import { WelcomeBackModal } from "../components/modals/WelcomeBackModal";
+import { HabitWhySheet } from "../components/sheets/HabitWhySheet";
+import { WeeklyRecapCard } from "../components/cards/WeeklyRecapCard";
+import { useTheme } from "../lib/theme";
 import {
   shouldCelebrateStreak,
   recordMilestoneShown,
@@ -68,6 +76,7 @@ export default function Today() {
   const isViewingToday = date === todayStr;
   const isPastDay = date < todayStr;
   const isFutureDay = date > todayStr;
+  const { resolvedTheme } = useTheme();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [feelingsOpen, setFeelingsOpen] = useState(false);
@@ -79,6 +88,10 @@ export default function Today() {
     currentStreak: number;
     habitColor?: string;
   } | null>(null);
+
+  const [welcomeBackOpen, setWelcomeBackOpen] = useState(false);
+  const [whySheetOpen, setWhySheetOpen] = useState(false);
+  const [selectedWhyHabit, setSelectedWhyHabit] = useState<Habit | null>(null);
 
   const currentWeekStart = useMemo(() => weekStart(todayStr), [todayStr]);
   const unlockedPasses = useLiveQuery(
@@ -220,6 +233,7 @@ export default function Today() {
   }, [dbHabits, deletedHabitIds, cacheVersion]);
   const currentDayLogs = useLiveQuery(() => db.habit_logs.where("date").equals(date).toArray(), [date]) ?? [];
   const allLogs = useLiveQuery(() => db.habit_logs.toArray(), []) ?? [];
+  const allHabitLogs = allLogs;
   const currentSleep = useLiveQuery(() => db.sleep_logs.get(date), [date, cacheVersion]);
   const dbMood = useLiveQuery(() => db.mood_logs.get(date), [date, cacheVersion]);
   const [optimisticMood, setOptimisticMood] = useState<{ score?: MoodScore; changeCount?: number } | null>(null);
@@ -503,6 +517,115 @@ export default function Today() {
   }, [allLogs, todayStr, firstUseDate, usedFreezeDates]);
 
   const currentStreak = overallStreakData.currentStreak;
+
+  const [showReminderPrompt, setShowReminderPrompt] = useState(false);
+
+  useEffect(() => {
+    if (habits && habits.length >= 1) {
+      setShowReminderPrompt(shouldShowReminderBanner(habits.length, todayStr));
+    }
+  }, [habits, todayStr]);
+
+  // Rolling 7-day schedule, re-schedule on app open and any habit change
+  useEffect(() => {
+    if (habits && habits.length > 0) {
+      rescheduleRollingNotifications(habits, allHabitLogs, currentStreak, todayStr);
+    }
+  }, [habits, allHabitLogs, currentStreak, todayStr]);
+
+  // Synchronize app launcher icon tier at most once a day on startup
+  useEffect(() => {
+    const lastActiveLog = allLogs
+      .filter((l) => (l.state ?? 0) > 0)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+
+    let missedDays = 0;
+    if (lastActiveLog) {
+      const diffMs = new Date(todayStr).getTime() - new Date(lastActiveLog.date).getTime();
+      missedDays = Math.max(0, Math.floor(diffMs / 86400000) - 1);
+    }
+
+    syncAppIconTier({
+      streak: currentStreak,
+      missedDays,
+      todayStr,
+    });
+
+    // Welcome Back Modal: after 2+ missed days (shown at most once per calendar day)
+    if (missedDays >= 2) {
+      const shownKey = `habbitrack_welcome_back_shown_${todayStr}`;
+      try {
+        if (!localStorage.getItem(shownKey)) {
+          setWelcomeBackOpen(true);
+        }
+      } catch {}
+    }
+  }, [currentStreak, allLogs, todayStr]);
+
+  // Habit whose streak is at risk (currentStreak >= 3, active today, not completed)
+  const streakAtRiskHabit = useMemo(() => {
+    if (!isViewingToday || currentStreak < 3) return null;
+    return (
+      displayedHabits.find((h) => {
+        const st = habitStateMap.get(h.id) ?? 0;
+        return st === 0 && Boolean(h.why && h.why.trim());
+      }) ||
+      displayedHabits.find((h) => {
+        const st = habitStateMap.get(h.id) ?? 0;
+        return st === 0;
+      }) ||
+      null
+    );
+  }, [isViewingToday, currentStreak, displayedHabits, habitStateMap]);
+
+  // Weekly recap computation for WeeklyRecapCard
+  const weeklyRecapData = useMemo(() => {
+    const states = dayRings.map((d) => ({
+      dayLabel: d.dayLabel,
+      isCompleted: Boolean(!d.isFuture && !d.isMissed && ((d.score ?? 0) > 0 || d.isFrozen)),
+      isToday: Boolean(d.isToday),
+    }));
+    const completedCount = states.filter((d) => d.isCompleted).length;
+    return {
+      completedCount,
+      dayStates: states,
+    };
+  }, [dayRings]);
+
+  // Sync Android Home Widgets on habit toggle / change
+  useEffect(() => {
+    if (habits) {
+      const todayLogs = allHabitLogs.filter((l) => l.date === todayStr);
+      const payload = calculateWidgetPayload({
+        habits,
+        todayLogs,
+        currentStreak,
+        theme: resolvedTheme,
+      });
+      updateNativeWidgets(payload);
+    }
+  }, [habits, allHabitLogs, currentStreak, resolvedTheme, todayStr]);
+
+  // Midnight timer to refresh widgets at 00:00:01
+  useEffect(() => {
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+    const msUntilMidnight = Math.max(1000, midnight.getTime() - now.getTime());
+
+    const timer = setTimeout(() => {
+      if (habits) {
+        const payload = calculateWidgetPayload({
+          habits,
+          todayLogs: [],
+          currentStreak,
+          theme: resolvedTheme,
+        });
+        updateNativeWidgets(payload);
+      }
+    }, msUntilMidnight);
+
+    return () => clearTimeout(timer);
+  }, [habits, currentStreak, resolvedTheme]);
 
   // Per-habit streaks
   const habitStreaksList = useMemo(() => {
@@ -1281,6 +1404,17 @@ export default function Today() {
           </div>
         )}
 
+        {/* In-app reminder top banner prompt */}
+        {showReminderPrompt && (
+          <ReminderPromptBanner
+            onAccepted={() => {
+              setShowReminderPrompt(false);
+              rescheduleRollingNotifications(habits, allHabitLogs, currentStreak, todayStr);
+            }}
+            onDismissed={() => setShowReminderPrompt(false)}
+          />
+        )}
+
         {/* Rule 23: Backup safety card (after 7+ days of data without cloud/backup) */}
         {shouldShowBackupSafety && (
           <div
@@ -1402,6 +1536,59 @@ export default function Today() {
             <DayRings days={dayRings} onSelectDay={handleSelectRingDay} className="mt-3" />
           )}
         </div>
+
+        {/* Main ye kyun kar raha hoon / Streak at risk motivation banner */}
+        {isViewingToday && streakAtRiskHabit && (
+          <div
+            onClick={() => {
+              setSelectedWhyHabit(streakAtRiskHabit);
+              setWhySheetOpen(true);
+            }}
+            style={{
+              marginTop: "16px",
+              background: "var(--card)",
+              border: "1px solid var(--ln)",
+              borderLeft: "4px solid #f97316",
+              borderRadius: "20px",
+              padding: "14px 16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              cursor: "pointer",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.04)",
+            }}
+          >
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "14px",
+                background: "rgba(249, 115, 22, 0.12)",
+                color: "#f97316",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z" />
+              </svg>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#f97316" }}>
+                Main ye kyun kar raha hoon · {streakAtRiskHabit.name}
+              </div>
+              <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--tx)", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {streakAtRiskHabit.why ? `“${streakAtRiskHabit.why}”` : "Tap to add your personal reason"}
+              </div>
+              <div style={{ fontSize: "11.5px", color: "var(--mu)", marginTop: "2px" }}>
+                {currentStreak}-day streak khatre mein hai · Aaj ka tick bachayega
+              </div>
+            </div>
+            <span style={{ color: "var(--mu)", fontSize: "18px" }}>›</span>
+          </div>
+        )}
 
         {/* Habits Grid / First-Run Zero Habits Empty State */}
         {habits.length === 0 ? (
@@ -1897,6 +2084,16 @@ export default function Today() {
               : "No reflection recorded for this day."}
           </div>
         </div>
+
+        {/* Weekly Consistency Recap Card */}
+        {habits.length > 0 && (
+          <WeeklyRecapCard
+            completedDaysCount={weeklyRecapData.completedCount}
+            totalDaysInWeek={7}
+            dayStates={weeklyRecapData.dayStates}
+            currentStreak={currentStreak}
+          />
+        )}
       </div>
 
       {/* Sheets */}
@@ -1926,12 +2123,43 @@ export default function Today() {
           isExpanded={fullWidthHabits.has(activeMenuHabit.id)}
           onToggleWidth={() => handleToggleHabitWidth(activeMenuHabit.id)}
           onEdit={() => navigate(`/new-habit?edit=${activeMenuHabit.id}`)}
+          onEditWhy={() => {
+            setSelectedWhyHabit(activeMenuHabit);
+            setWhySheetOpen(true);
+          }}
           onDelete={(purge) => handleDeleteHabitFromMenu(activeMenuHabit.id, purge)}
           currentStreak={activeHabitStreaks.currentStreak}
           bestStreak={activeHabitStreaks.bestStreak}
           habitColor={(activeMenuHabit as any).color}
         />
       )}
+
+      {/* Habit Why Editing Sheet ("Main ye kyun kar raha hoon") */}
+      <HabitWhySheet
+        isOpen={whySheetOpen}
+        onClose={() => setWhySheetOpen(false)}
+        habit={selectedWhyHabit}
+        onSaved={() => setCacheVersion((v) => v + 1)}
+      />
+
+      {/* Welcome Back Screen Modal (after 2+ missed days, no red) */}
+      <WelcomeBackModal
+        isOpen={welcomeBackOpen}
+        onClose={() => {
+          try {
+            localStorage.setItem(`habbitrack_welcome_back_shown_${todayStr}`, "true");
+          } catch {}
+          setWelcomeBackOpen(false);
+        }}
+        onQuickVersion={() => {
+          try {
+            localStorage.setItem(`habbitrack_welcome_back_shown_${todayStr}`, "true");
+          } catch {}
+          setWelcomeBackOpen(false);
+          const el = document.getElementById("habits-section");
+          if (el) el.scrollIntoView({ behavior: "smooth" });
+        }}
+      />
 
       {/* Streak Sheet */}
       <StreakSheet

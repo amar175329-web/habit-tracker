@@ -38,7 +38,9 @@ describe("streakMilestones logic & celebrations", () => {
       expect(getNextAward(149)).toBe(150);
       expect(getNextAward(150)).toBe(200);
       expect(getNextAward(199)).toBe(200);
-      expect(getNextAward(200)).toBe(365);
+      expect(getNextAward(200)).toBe(300);
+      expect(getNextAward(299)).toBe(300);
+      expect(getNextAward(300)).toBe(365);
       expect(getNextAward(364)).toBe(365);
     });
 

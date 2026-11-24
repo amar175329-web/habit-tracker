@@ -113,15 +113,51 @@ export default function NewHabit() {
     return false;
   });
 
+  const [why, setWhy] = useState(() => {
+    try {
+      const rawDraft = sessionStorage.getItem(HABIT_DRAFT_KEY);
+      if (rawDraft) {
+        const draft = JSON.parse(rawDraft);
+        if (draft.editId === (editId || null) && typeof draft.why === "string") {
+          return draft.why;
+        }
+      }
+    } catch {}
+    if (editId) {
+      const found = getCachedHabits().find((h) => h.id === editId);
+      if (found?.why) return found.why;
+    }
+    return "";
+  });
+
   useEffect(() => {
     if (existingHabit) {
       setName((prev: string) => (!prev ? existingHabit.name : prev));
       setIcon((prev: string) => (prev === "check" ? existingHabit.icon : prev));
       setGoalDays((prev: number) => (prev === 7 && existingHabit.goalDays !== 7 ? existingHabit.goalDays : prev));
       setIsCustomDays((prev: boolean) => (!prev && existingHabit.goalDays < 7 ? true : prev));
+      if (existingHabit.why) setWhy(existingHabit.why);
       setUserPickedIcon(true);
     }
   }, [existingHabit]);
+
+  // Persist form draft continuously so choosing an icon or navigating never clears the habit name
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        HABIT_DRAFT_KEY,
+        JSON.stringify({
+          editId: editId || null,
+          name,
+          icon,
+          goalDays,
+          isCustomDays,
+          userPickedIcon,
+          why,
+        })
+      );
+    } catch {}
+  }, [editId, name, icon, goalDays, isCustomDays, userPickedIcon, why]);
 
   // Check if an icon was picked from IconPicker
   useEffect(() => {
@@ -143,6 +179,19 @@ export default function NewHabit() {
   };
 
   const handleOpenIconPicker = () => {
+    try {
+      sessionStorage.setItem(
+        HABIT_DRAFT_KEY,
+        JSON.stringify({
+          editId: editId || null,
+          name,
+          icon,
+          goalDays,
+          isCustomDays,
+          userPickedIcon,
+        })
+      );
+    } catch {}
     setIconPickerOpen(true);
   };
 
@@ -198,6 +247,7 @@ export default function NewHabit() {
       sort: targetSort,
       isActive: true,
       createdAt: existing?.createdAt ?? new Date().toISOString(),
+      why: why.trim() || undefined,
     };
 
     // Clean up draft and icon picker keys
@@ -484,6 +534,44 @@ export default function NewHabit() {
             </div>
             <span style={{ color: "var(--mu)", fontSize: "16px" }}>›</span>
           </div>
+        </div>
+
+        {/* Why line: Main ye kyun kar raha hoon */}
+        <div
+          style={{
+            background: "var(--card)",
+            border: "1px solid var(--ln)",
+            borderRadius: "26px",
+            padding: "18px",
+            marginTop: "14px",
+          }}
+        >
+          <div style={{ fontSize: "11px", letterSpacing: ".14em", fontWeight: 700, color: "var(--mu)", marginBottom: "4px" }}>
+            MAIN YE KYUN KAR RAHA HOON
+          </div>
+          <div style={{ fontSize: "12px", color: "var(--mu)", marginBottom: "10px" }}>
+            Personal motivation line shown in reminders &amp; when streak is at risk.
+          </div>
+          <input
+            type="text"
+            placeholder="e.g. Meri sehat meri zimmedari hai"
+            value={why}
+            onChange={(e) => setWhy(e.target.value)}
+            style={{
+              width: "100%",
+              height: "44px",
+              padding: "0 14px",
+              borderRadius: "14px",
+              background: "var(--bg)",
+              border: "1px solid var(--ln)",
+              fontSize: "14px",
+              fontWeight: 600,
+              color: "var(--tx)",
+              fontFamily: "inherit",
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
         </div>
 
         {/* Frequency Card */}

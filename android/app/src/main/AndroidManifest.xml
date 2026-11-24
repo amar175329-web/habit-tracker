@@ -29,6 +29,172 @@
 
         </activity>
 
+        <!-- Dynamic Launcher Activity Aliases for Streak & Comeback Tiers -->
+        <activity-alias
+            android:name=".MainActivityAliasSpark"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_spark"
+            android:roundIcon="@mipmap/ic_launcher_spark_round"
+            android:label="@string/app_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityAliasFlame"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_flame"
+            android:roundIcon="@mipmap/ic_launcher_flame_round"
+            android:label="@string/app_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityAliasGlow"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_glow"
+            android:roundIcon="@mipmap/ic_launcher_glow_round"
+            android:label="@string/app_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityAliasRing"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_ring"
+            android:roundIcon="@mipmap/ic_launcher_ring_round"
+            android:label="@string/app_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityAliasGold"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_gold"
+            android:roundIcon="@mipmap/ic_launcher_gold_round"
+            android:label="@string/app_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityAliasCrown"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_crown"
+            android:roundIcon="@mipmap/ic_launcher_crown_round"
+            android:label="@string/app_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityAliasMissed1"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_missed1"
+            android:roundIcon="@mipmap/ic_launcher_missed1_round"
+            android:label="@string/app_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityAliasMissed2"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_missed2"
+            android:roundIcon="@mipmap/ic_launcher_missed2_round"
+            android:label="@string/app_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityAliasMissed3to6"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_missed3to6"
+            android:roundIcon="@mipmap/ic_launcher_missed3to6_round"
+            android:label="@string/app_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityAliasMissed7Plus"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_missed7plus"
+            android:roundIcon="@mipmap/ic_launcher_missed7plus_round"
+            android:label="@string/app_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Home Screen Widgets -->
+        <receiver
+            android:name=".HabitWidget2x2Provider"
+            android:label="Habit Progress (2x2)"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_2x2_info" />
+        </receiver>
+
+        <receiver
+            android:name=".HabitWidget4x2Provider"
+            android:label="Habit Tracker (4x2)"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_4x2_info" />
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -43,5 +209,7 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 </manifest>
