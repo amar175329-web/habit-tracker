@@ -4,6 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db, toggleHabit, useHabits, useEditPass, markDateUnlocked, getSessionUnlockedDates } from "../lib/db";
 import { weekStart, isHabitActiveOnDate, streakDays } from "../lib/habitRules";
 import { getIconPath } from "../lib/icons";
+import { getHabitCreatedDate } from "../lib/date";
 import { formatTime12h } from "../lib/sleep";
 import { classifyEmotion } from "../lib/emotions";
 import { shouldCelebrateStreak, recordMilestoneShown } from "../lib/streakMilestones";
@@ -149,7 +150,7 @@ export default function DayDetail() {
       if (habit) {
         const habitLogs = new Map(logsByHabit.get(habitId) ?? new Map());
         habitLogs.set(todayStr, next);
-        const firstDate = habit.createdAt?.slice(0, 10) || todayStr;
+        const firstDate = getHabitCreatedDate(habit.createdAt);
         const newStreak = streakDays(habitLogs, habit.goalDays, todayStr, firstDate, usedFreezeDates);
         const evaluation = shouldCelebrateStreak({
           habitId: habit.id,

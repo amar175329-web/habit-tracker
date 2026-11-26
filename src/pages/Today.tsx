@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { App as CapApp } from "@capacitor/app";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   db,
@@ -35,6 +36,7 @@ import {
 } from "../lib/habitRules";
 import { canEdit, passesLeft } from "../lib/editPasses";
 import { getIconPath } from "../lib/icons";
+import { getLocalTodayStr, getHabitCreatedDate } from "../lib/date";
 import { MomentumGauge } from "../components/signature/MomentumGauge";
 import { DayRings, type DayRingItem } from "../components/signature/DayRings";
 import { HabitTile, type HabitState } from "../components/signature/HabitTile";
@@ -63,13 +65,43 @@ export default function Today() {
   const { date: paramDate } = useParams();
   const navigate = useNavigate();
 
-  // Compute Today's canonical date in local timezone YYYY-MM-DD
-  const todayStr = useMemo(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
+  // Dynamic Today's canonical date in local timezone YYYY-MM-DD
+  const [todayStr, setTodayStr] = useState(() => getLocalTodayStr());
+
+  useEffect(() => {
+    const updateToday = () => {
+      const cur = getLocalTodayStr();
+      setTodayStr((prev) => (prev !== cur ? cur : prev));
+    };
+
+    const intervalTimer = setInterval(updateToday, 30000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") updateToday();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", updateToday);
+
+    let capHandler: any = null;
+    try {
+      capHandler = CapApp.addListener("appStateChange", ({ isActive }) => {
+        if (isActive) updateToday();
+      });
+    } catch {}
+
+    return () => {
+      clearInterval(intervalTimer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("focus", updateToday);
+      if (capHandler) {
+        Promise.resolve(capHandler)
+          .then((h) => {
+            if (h && typeof h.remove === "function") {
+              h.remove();
+            }
+          })
+          .catch(() => {});
+      }
+    };
   }, []);
 
   const date = paramDate && /^\d{4}-\d{2}-\d{2}$/.test(paramDate) ? paramDate : todayStr;
@@ -455,7 +487,7 @@ export default function Today() {
   const firstUseDate = useMemo(() => {
     if (habits.length === 0) return todayStr;
     return habits.reduce((earliest, h) => {
-      const d = h.createdAt?.slice(0, 10) || todayStr;
+      const d = getHabitCreatedDate(h.createdAt);
       return d < earliest ? d : earliest;
     }, todayStr);
   }, [habits, todayStr]);
@@ -631,7 +663,7 @@ export default function Today() {
   const habitStreaksList = useMemo(() => {
     return habits.map((h) => {
       const logs = logsByHabit.get(h.id) ?? new Map();
-      const s = streakDays(logs, h.goalDays, todayStr, h.createdAt?.slice(0, 10) || "2026-10-01", usedFreezeDates);
+      const s = streakDays(logs, h.goalDays, todayStr, getHabitCreatedDate(h.createdAt), usedFreezeDates);
       return {
         id: h.id,
         name: h.name,
@@ -645,7 +677,7 @@ export default function Today() {
   const activeHabitStreaks = useMemo(() => {
     if (!activeMenuHabit) return { currentStreak: 0, bestStreak: 0 };
     const habitLogs = logsByHabit.get(activeMenuHabit.id) ?? new Map<string, number>();
-    const firstDate = activeMenuHabit.createdAt?.slice(0, 10) || "2026-10-01";
+    const firstDate = getHabitCreatedDate(activeMenuHabit.createdAt);
     const current = streakDays(habitLogs, activeMenuHabit.goalDays, todayStr, firstDate, usedFreezeDates);
     const best = calculateHabitBestStreak(habitLogs, activeMenuHabit.goalDays, todayStr, firstDate, usedFreezeDates);
     return { currentStreak: current, bestStreak: best };
@@ -690,7 +722,7 @@ export default function Today() {
       if (habit) {
         const habitLogs = new Map(logsByHabit.get(habitId) ?? new Map());
         habitLogs.set(todayStr, next);
-        const firstDate = habit.createdAt?.slice(0, 10) || "2026-10-01";
+        const firstDate = getHabitCreatedDate(habit.createdAt);
         const newStreak = streakDays(habitLogs, habit.goalDays, todayStr, firstDate, usedFreezeDates);
         const evaluation = shouldCelebrateStreak({
           habitId: habit.id,
@@ -822,6 +854,7 @@ export default function Today() {
       if (
         ring.date &&
         ring.date < todayStr &&
+        ring.date >= firstUseDate &&
         ring.isMissed &&
         !ring.isFrozen &&
         !ring.isNeutral &&
@@ -833,7 +866,7 @@ export default function Today() {
       }
     }
     return null;
-  }, [isViewingToday, availableFreezes, dayRings, todayStr, dismissedFreezePromptDate]);
+  }, [isViewingToday, availableFreezes, dayRings, todayStr, firstUseDate, dismissedFreezePromptDate]);
 
   const handleApplyFreeze = async () => {
     if (!missedDayToFreeze) return;
@@ -1730,7 +1763,7 @@ export default function Today() {
               const habitLogs = logsByHabit.get(h.id) ?? new Map();
               const doneCount = goalDaysDone(habitLogs, date);
               const isWeekDone = doneCount >= h.goalDays;
-              const habitStreak = streakDays(habitLogs, h.goalDays, date, h.createdAt?.slice(0, 10) || "2026-10-01");
+              const habitStreak = streakDays(habitLogs, h.goalDays, date, getHabitCreatedDate(h.createdAt));
               const svgPath = getIconPath(h.icon);
 
               // Subtitle

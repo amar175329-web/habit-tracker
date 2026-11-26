@@ -81,7 +81,10 @@ export function goalDaysDone(
   return n;
 }
 
+import { getHabitCreatedDate } from "./date";
+
 export const STREAK_BADGES = [3, 7, 14, 30, 60, 100, 150, 200, 300, 365];
+export { getHabitCreatedDate };
 
 /**
  * Calculates consecutive active days ending on today (or yesterday if today is not yet logged).
@@ -303,7 +306,7 @@ export function isHabitActiveOnDate(
   hasCompletedLog: boolean = false
 ): boolean {
   if (hasCompletedLog) return true;
-  const createdDate = habit.createdAt ? habit.createdAt.slice(0, 10) : "";
+  const createdDate = getHabitCreatedDate(habit.createdAt);
   if (createdDate && targetDate < createdDate) {
     return false;
   }

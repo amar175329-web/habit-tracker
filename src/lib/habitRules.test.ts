@@ -171,4 +171,13 @@ describe("habitRules logic & scoring", () => {
     expect(isHabitActiveOnDate(habit, "2026-10-25", true)).toBe(true);
     expect(isHabitActiveOnDate(habit, "2026-10-26", false)).toBe(false);
   });
+
+  it("does not show habit on Thursday if created on Friday", () => {
+    const fridayHabit = {
+      createdAt: "2026-11-27T00:25:00",
+      isActive: true,
+    };
+    expect(isHabitActiveOnDate(fridayHabit, "2026-11-26", false)).toBe(false);
+    expect(isHabitActiveOnDate(fridayHabit, "2026-11-27", false)).toBe(true);
+  });
 });

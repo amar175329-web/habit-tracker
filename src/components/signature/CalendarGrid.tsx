@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { getLocalTodayStr } from "../../lib/date";
 
 export interface CalendarGridProps {
   year?: number;
@@ -15,7 +16,7 @@ export function CalendarGrid({
   year = new Date().getFullYear(),
   month = new Date().getMonth() + 1,
   dayScores = {},
-  todayKey = new Date().toISOString().slice(0, 10),
+  todayKey = getLocalTodayStr(),
   selectedDate,
   onSelectDate,
   className = "",

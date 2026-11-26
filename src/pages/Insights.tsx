@@ -10,6 +10,7 @@ import {
 } from "../lib/habitRules";
 import { TerrainChart, type TerrainPoint } from "../components/signature/TerrainChart";
 import { getIconPath } from "../lib/icons";
+import { getHabitCreatedDate } from "../lib/date";
 
 export default function Insights() {
   const [range, setRange] = useState<"7D" | "14D" | "30D" | "ALL">("7D");
@@ -56,7 +57,7 @@ export default function Insights() {
       });
       habits.forEach((h) => {
         if (h.createdAt) {
-          const cDate = h.createdAt.slice(0, 10);
+          const cDate = getHabitCreatedDate(h.createdAt);
           if (cDate && cDate < earliestDate) earliestDate = cDate;
         }
       });
@@ -210,7 +211,7 @@ export default function Insights() {
     return habits.map((h) => {
       const logs = logsByHabit.get(h.id) ?? new Map();
       const doneThisWeek = goalDaysDone(logs, todayStr);
-      const streak = streakDays(logs, h.goalDays, todayStr, h.createdAt?.slice(0, 10) || "2026-10-01");
+      const streak = streakDays(logs, h.goalDays, todayStr, getHabitCreatedDate(h.createdAt));
       const pct = Math.min(100, Math.round((doneThisWeek / h.goalDays) * 100));
 
       return {

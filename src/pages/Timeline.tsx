@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, useHabits } from "../lib/db";
 import { getIconPath } from "../lib/icons";
+import { getLocalTodayStr } from "../lib/date";
 import { formatPoints } from "../lib/habitRules";
 
 export default function Timeline() {
@@ -27,8 +28,7 @@ export default function Timeline() {
     allReflections.forEach((r) => datesSet.add(r.date));
 
     // Also include today and yesterday if empty
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+    const todayStr = getLocalTodayStr();
     datesSet.add(todayStr);
 
     const sortedDates = Array.from(datesSet).sort().reverse();

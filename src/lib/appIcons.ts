@@ -1,3 +1,5 @@
+import { getLocalTodayStr } from "./date";
+
 /**
  * App Icon Tier Management for Habit Tracker
  * Supports dynamic launcher activity-aliases:
@@ -93,7 +95,7 @@ export function syncAppIconTier(params: {
   todayStr?: string;
   force?: boolean;
 }): { changed: boolean; tier: AppIconTier } {
-  const today = params.todayStr || new Date().toISOString().slice(0, 10);
+  const today = params.todayStr || getLocalTodayStr();
   const targetTier = getAppIconTier({
     streak: params.streak,
     missedDays: params.missedDays,

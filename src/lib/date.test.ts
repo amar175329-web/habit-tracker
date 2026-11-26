@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toDateKey, isValidDateKey, addDays } from "./date";
+import { toDateKey, isValidDateKey, addDays, getLocalTodayStr, getLocalIsoString, getHabitCreatedDate } from "./date";
 
 describe("date isolation", () => {
   it("validates YYYY-MM-DD", () => {
@@ -21,5 +21,18 @@ describe("date isolation", () => {
     const k1 = "2026-09-01";
     const k2 = "2026-09-02";
     expect(k1).not.toBe(k2);
+  });
+  it("getLocalTodayStr returns valid YYYY-MM-DD", () => {
+    const today = getLocalTodayStr();
+    expect(isValidDateKey(today)).toBe(true);
+  });
+  it("getLocalIsoString returns valid YYYY-MM-DDTHH:MM:SS", () => {
+    const iso = getLocalIsoString();
+    expect(iso).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
+    expect(iso.slice(0, 10)).toBe(getLocalTodayStr());
+  });
+  it("getHabitCreatedDate properly converts dates", () => {
+    expect(getHabitCreatedDate("2026-11-27")).toBe("2026-11-27");
+    expect(getHabitCreatedDate("2026-11-27T10:30:00")).toBe("2026-11-27");
   });
 });

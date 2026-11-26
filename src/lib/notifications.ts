@@ -4,6 +4,7 @@
  */
 
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { getLocalTodayStr } from "./date";
 import type { Habit, HabitLog } from "./db";
 
 export type NotificationAccent = "teal" | "orange" | "grey" | "gold";
@@ -294,7 +295,7 @@ export function getReminderPromptState(): ReminderPromptState {
  */
 export function shouldShowReminderBanner(
   habitCount: number,
-  todayStr = new Date().toISOString().slice(0, 10)
+  todayStr = getLocalTodayStr()
 ): boolean {
   if (habitCount < 1) return false;
   const settings = getReminderSettings();
@@ -347,7 +348,7 @@ export async function acceptReminderPrompt(): Promise<boolean> {
  * Action: User clicks "Baad mein"
  */
 export function dismissReminderPrompt(
-  todayStr = new Date().toISOString().slice(0, 10)
+  todayStr = getLocalTodayStr()
 ): void {
   const current = getReminderPromptState();
   const next = {
@@ -371,7 +372,7 @@ export async function rescheduleRollingNotifications(
   habits: Habit[],
   habitLogs: HabitLog[],
   currentStreak: number,
-  todayStr = new Date().toISOString().slice(0, 10)
+  todayStr = getLocalTodayStr()
 ): Promise<void> {
   const settings = getReminderSettings();
   if (!settings.masterEnabled) {

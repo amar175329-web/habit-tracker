@@ -1,4 +1,5 @@
 import Dexie, { type Table } from "dexie";
+import { getLocalTodayStr } from "./date";
 import { isHabitEditable, isReflectionEditable, isSleepOrMoodEditable, weekStart } from "./habitRules";
 
 export interface Habit {
@@ -704,7 +705,7 @@ export async function deleteHabit(id: string, purgeLogs: boolean = false): Promi
   } else {
     // Soft delete / Archive: Keep past history intact!
     // Leaves all past habit_logs untouched for past streaks, heatmaps, charts and reports.
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getLocalTodayStr();
     const existing = await db.habits.get(id);
     if (existing) {
       const updated: Habit = {

@@ -15,6 +15,39 @@ export function todayKey(tz = APP_TZ): string {
   return toDateKey(new Date(), tz);
 }
 
+export function getLocalTodayStr(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export function getLocalIsoString(d = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+  return `${y}-${m}-${day}T${hh}:${mm}:${ss}`;
+}
+
+export function getHabitCreatedDate(createdAt?: string): string {
+  if (!createdAt) return getLocalTodayStr();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(createdAt)) return createdAt;
+  try {
+    const d = new Date(createdAt);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+  } catch {}
+  return createdAt.slice(0, 10);
+}
+
 export function parseDateKey(key: string): { year: number; month: number; day: number } {
   const [y, m, d] = key.split("-").map(Number);
   return { year: y, month: m, day: d };

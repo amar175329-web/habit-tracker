@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { getLocalTodayStr } from "../../lib/date";
 import { STREAK_BADGES, toMs, fromMs, isHabitActiveOnDate } from "../../lib/habitRules";
 import { getIconPath } from "../../lib/icons";
 import { formatTime12h } from "../../lib/sleep";
@@ -43,7 +44,7 @@ export function StreakSheet({
   maxFreezes = 2,
   onUseFreeze,
   onGoToToday,
-  todayStr = new Date().toISOString().slice(0, 10),
+  todayStr = getLocalTodayStr(),
   allHabits = [],
   allHabitLogs = [],
   allSleepLogs = [],

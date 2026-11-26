@@ -13,6 +13,7 @@ import {
   type Habit,
 } from "../lib/db";
 import { autoPickIcon, getIconPath } from "../lib/icons";
+import { getLocalIsoString } from "../lib/date";
 import { IconPickerSheet } from "../components/sheets/IconPickerSheet";
 import { ConfirmModal } from "../components/modals/ConfirmModal";
 
@@ -246,7 +247,7 @@ export default function NewHabit() {
       goalDays: isCustomDays ? goalDays : 7,
       sort: targetSort,
       isActive: true,
-      createdAt: existing?.createdAt ?? new Date().toISOString(),
+      createdAt: existing?.createdAt ?? getLocalIsoString(),
       why: why.trim() || undefined,
     };
 
