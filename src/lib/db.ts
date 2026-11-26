@@ -221,6 +221,30 @@ export async function initDatabase(seedZero = true): Promise<void> {
 }
 
 /**
+ * Loads default starter habits (Workout, Study, AI, Book Listening, Video)
+ */
+export async function loadStarterHabits(): Promise<number> {
+  let added = 0;
+  for (const h of DEFAULT_HABITS) {
+    const existing = await db.habits.get(h.id);
+    if (!existing) {
+      await db.habits.put(h);
+      added++;
+    }
+  }
+  const deleted = getDeletedHabitIds();
+  DEFAULT_HABITS.forEach((h) => deleted.delete(h.id));
+  try {
+    sessionStorage.setItem("dailyos_deleted_habit_ids", JSON.stringify(Array.from(deleted)));
+  } catch {}
+  notifyDbChange("change");
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("dailyos_habits_updated"));
+  }
+  return added;
+}
+
+/**
  * Completely wipe all data across all Dexie tables and legacy localStorage keys
  * (clean slate: 0 habits, 0 logs, 0 reflections, 0 settings)
  */

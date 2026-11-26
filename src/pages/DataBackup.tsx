@@ -8,6 +8,7 @@ import {
   getSetting,
   setSetting,
   useHabits,
+  loadStarterHabits,
   type DailyOSExport,
 } from "../lib/db";
 import { triggerImmediateAutoBackup, getDeviceAutoBackup } from "../lib/autoBackup";
@@ -881,6 +882,36 @@ export default function DataBackup() {
             Restore from Device
           </button>
         </div>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const added = await loadStarterHabits();
+              setStatusMessage("Loaded starter habits (Workout, AI, Study, Book Listening, Video)!");
+              setFeedback({
+                type: "success",
+                message: `Successfully loaded starter habits! Added ${added} habits.`,
+              });
+            } catch (e: any) {
+              setStatusMessage(`Error loading starter habits: ${e.message}`);
+            }
+          }}
+          style={{
+            width: "100%",
+            height: "40px",
+            borderRadius: "20px",
+            background: "var(--tint)",
+            color: "var(--prt)",
+            border: "1px solid var(--pr)",
+            fontSize: "13px",
+            fontWeight: 800,
+            cursor: "pointer",
+            marginTop: "10px",
+            fontFamily: "inherit",
+          }}
+        >
+          Load Starter Habits (Workout, AI, Study...)
+        </button>
       </div>
 
       <ConfirmModal

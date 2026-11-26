@@ -18,6 +18,7 @@ import {
   exportAllData,
   importAllData,
   setSetting,
+  loadStarterHabits,
   type Habit,
   type DailyOSExport,
 } from "../lib/db";
@@ -37,6 +38,7 @@ import {
 import { canEdit, passesLeft } from "../lib/editPasses";
 import { getIconPath } from "../lib/icons";
 import { getLocalTodayStr, getHabitCreatedDate } from "../lib/date";
+import { getDeviceAutoBackup } from "../lib/autoBackup";
 import { MomentumGauge } from "../components/signature/MomentumGauge";
 import { DayRings, type DayRingItem } from "../components/signature/DayRings";
 import { HabitTile, type HabitState } from "../components/signature/HabitTile";
@@ -1727,6 +1729,87 @@ export default function Today() {
                   }}
                 >
                   Use cloud key
+                </button>
+                <button
+                  type="button"
+                  data-testid="restore-device-backup-btn"
+                  onClick={async () => {
+                    try {
+                      const backup = await getDeviceAutoBackup();
+                      if (backup && ((backup.habits && backup.habits.length > 0) || (backup.habit_logs && backup.habit_logs.length > 0))) {
+                        await importAllData(backup);
+                        setModalConfig({
+                          isOpen: true,
+                          title: "Restored from Device",
+                          description: `Successfully restored ${backup.habits?.length ?? 0} habits and ${backup.habit_logs?.length ?? 0} logs from your device storage!`,
+                          confirmLabel: "Great",
+                          variant: "primary",
+                          icon: "info",
+                        });
+                      } else {
+                        setModalConfig({
+                          isOpen: true,
+                          title: "No Device Backup Found",
+                          description: "No previous auto-backup found in Documents or Downloads on this device. You can tap 'Load starter habits' to load Workout, AI, Study, etc.",
+                          confirmLabel: "Understood",
+                          variant: "primary",
+                          icon: "info",
+                        });
+                      }
+                    } catch (e: any) {
+                      setModalConfig({
+                        isOpen: true,
+                        title: "Restore Error",
+                        description: e.message || "Could not read backup from device.",
+                        confirmLabel: "OK",
+                        variant: "danger",
+                        icon: "warning",
+                      });
+                    }
+                  }}
+                  style={{
+                    height: "42px",
+                    padding: "0 18px",
+                    borderRadius: "21px",
+                    border: "1px solid var(--pr)",
+                    background: "var(--pr)",
+                    color: "#FFFFFF",
+                    fontFamily: "inherit",
+                    fontWeight: 800,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Restore from Device
+                </button>
+                <button
+                  type="button"
+                  data-testid="load-starter-habits-btn"
+                  onClick={async () => {
+                    const added = await loadStarterHabits();
+                    setModalConfig({
+                      isOpen: true,
+                      title: "Starter Habits Loaded",
+                      description: `Loaded ${added} starter habits (Workout, AI, Study, Book Listening, Video)!`,
+                      confirmLabel: "Great",
+                      variant: "primary",
+                      icon: "info",
+                    });
+                  }}
+                  style={{
+                    height: "42px",
+                    padding: "0 18px",
+                    borderRadius: "21px",
+                    border: "1px solid var(--pr)",
+                    background: "var(--tint)",
+                    color: "var(--prt)",
+                    fontFamily: "inherit",
+                    fontWeight: 800,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Load starter habits
                 </button>
               </div>
             </div>
