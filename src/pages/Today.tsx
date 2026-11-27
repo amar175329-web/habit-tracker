@@ -851,6 +851,9 @@ export default function Today() {
 
   const missedDayToFreeze = useMemo(() => {
     if (!isViewingToday || availableFreezes <= 0) return null;
+    // Never prompt to freeze a 0-day streak (must have at least 1 completed log before the missed day)
+    const hasPriorActivity = allHabitLogs.some((l) => l.date < todayStr && (l.state ?? 0) >= 1);
+    if (!hasPriorActivity) return null;
     for (let i = dayRings.length - 1; i >= 0; i--) {
       const ring = dayRings[i];
       if (
@@ -868,7 +871,7 @@ export default function Today() {
       }
     }
     return null;
-  }, [isViewingToday, availableFreezes, dayRings, todayStr, firstUseDate, dismissedFreezePromptDate]);
+  }, [isViewingToday, availableFreezes, allHabitLogs, dayRings, todayStr, firstUseDate, dismissedFreezePromptDate]);
 
   const handleApplyFreeze = async () => {
     if (!missedDayToFreeze) return;
@@ -902,8 +905,9 @@ export default function Today() {
 
   const shouldShowBackupSafety = useMemo(() => {
     if (dismissedBackupSafety || habits.length === 0 || !isViewingToday) return false;
-    const daysSinceFirstUse = (toMs(todayStr) - toMs(firstUseDate)) / 86400000;
-    if (daysSinceFirstUse < 7) return false;
+    // Require 7+ actual logged days (not just old createdAt timestamp)
+    const uniqueLoggedDays = new Set(allHabitLogs.filter((l) => (l.state ?? 0) >= 1).map((l) => l.date)).size;
+    if (uniqueLoggedDays < 7) return false;
     const isCloudVerified = tursoVerifiedSetting?.value === "true";
     if (isCloudVerified) return false;
     const lastBackupIso = lastBackupSetting?.value;

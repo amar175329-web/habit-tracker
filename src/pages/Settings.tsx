@@ -9,6 +9,7 @@ import {
   getReminderSettings,
   saveReminderSettings,
   rescheduleRollingNotifications,
+  sendTestNotification,
   type ReminderSettings,
 } from "../lib/notifications";
 import { LocalNotifications } from "@capacitor/local-notifications";
@@ -494,6 +495,37 @@ export default function Settings() {
                 />
               </button>
             </div>
+
+            <button
+              type="button"
+              data-testid="test-notification-btn"
+              onClick={async () => {
+                const res = await sendTestNotification();
+                if (res.ok) {
+                  setToastMessage("Test notification 3 seconds mein aayegi!");
+                  setTimeout(() => setToastMessage(null), 3500);
+                } else {
+                  setPermDenied(true);
+                  setToastMessage(res.error || "Notification permission denied");
+                  setTimeout(() => setToastMessage(null), 3500);
+                }
+              }}
+              style={{
+                width: "100%",
+                height: "40px",
+                marginTop: "6px",
+                borderRadius: "20px",
+                border: "1px solid var(--pr)",
+                background: "var(--tint)",
+                color: "var(--prt)",
+                fontFamily: "inherit",
+                fontWeight: 800,
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              Send test notification (3s)
+            </button>
           </div>
         )}
       </div>

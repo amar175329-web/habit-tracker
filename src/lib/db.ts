@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import { getLocalTodayStr } from "./date";
+import { getLocalTodayStr, getLocalIsoString } from "./date";
 import { isHabitEditable, isReflectionEditable, isSleepOrMoodEditable, weekStart } from "./habitRules";
 
 export interface Habit {
@@ -215,7 +215,21 @@ export async function deduplicateHabits(): Promise<void> {
 export async function initDatabase(seedZero = true): Promise<void> {
   const count = await db.habits.count();
   if (count === 0 && !seedZero) {
-    await db.habits.bulkAdd(DEFAULT_HABITS);
+    const nowIso = getLocalIsoString();
+    await db.habits.bulkAdd(DEFAULT_HABITS.map((h) => ({ ...h, createdAt: nowIso })));
+  } else if (count > 0) {
+    // Fix legacy starter habits seeded with hardcoded 2026-10-01 createdAt when user has no logs before today
+    const today = getLocalTodayStr();
+    const priorLogs = await db.habit_logs.where("date").below(today).count();
+    if (priorLogs === 0) {
+      const habits = await db.habits.toArray();
+      const nowIso = getLocalIsoString();
+      for (const h of habits) {
+        if (h.createdAt === "2026-10-01T00:00:00.000Z") {
+          await db.habits.update(h.id, { createdAt: nowIso });
+        }
+      }
+    }
   }
   await deduplicateHabits().catch(() => {});
 }
@@ -225,10 +239,11 @@ export async function initDatabase(seedZero = true): Promise<void> {
  */
 export async function loadStarterHabits(): Promise<number> {
   let added = 0;
+  const nowIso = getLocalIsoString();
   for (const h of DEFAULT_HABITS) {
     const existing = await db.habits.get(h.id);
     if (!existing) {
-      await db.habits.put(h);
+      await db.habits.put({ ...h, createdAt: nowIso });
       added++;
     }
   }

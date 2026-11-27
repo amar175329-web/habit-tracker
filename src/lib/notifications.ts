@@ -399,13 +399,16 @@ export async function rescheduleRollingNotifications(
   if (activeHabits.length === 0) return;
 
   const candidateNotifications: { id: number; title: string; body: string; date: Date }[] = [];
-  const baseDate = new Date(todayStr);
+  const baseDate = new Date(todayStr + "T00:00:00");
 
   const [dailyHour, dailyMinute] = settings.dailyTime.split(":").map(Number);
 
   for (let offset = 0; offset < 7; offset++) {
-    const targetDate = new Date(baseDate.getTime() + offset * 86400000);
-    const dateStr = targetDate.toISOString().slice(0, 10);
+    const targetDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + offset);
+    const yyyy = targetDate.getFullYear();
+    const mm = String(targetDate.getMonth() + 1).padStart(2, "0");
+    const dd = String(targetDate.getDate()).padStart(2, "0");
+    const dateStr = `${yyyy}-${mm}-${dd}`;
 
     // Filter habits scheduled for this day
     const dayLogs = habitLogs.filter((l) => l.date === dateStr);
@@ -476,14 +479,43 @@ export async function rescheduleRollingNotifications(
           id: item.id,
           title: item.title,
           body: item.body,
-          schedule: { at: item.date },
-          sound: "beep.wav",
-          smallIcon: "ic_stat_icon_config_sample",
+          schedule: { at: item.date, allowWhileIdle: true },
+          smallIcon: "ic_stat_habbitrack",
+          iconColor: "#0D7B6C",
           actionTypeId: "OPEN_TODAY",
         })),
       });
     }
   } catch (err) {
     console.warn("Failed to schedule local notifications:", err);
+  }
+}
+
+/**
+ * Triggers a live test notification 3 seconds from now to verify delivery & appearance on device.
+ */
+export async function sendTestNotification(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const perm = await LocalNotifications.requestPermissions();
+    if (perm.display !== "granted") {
+      return { ok: false, error: "Notification permission denied" };
+    }
+    const fireAt = new Date(Date.now() + 3000);
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: 9999,
+          title: TEMPLATES.A_DAILY.title,
+          body: TEMPLATES.A_DAILY.body,
+          schedule: { at: fireAt, allowWhileIdle: true },
+          smallIcon: "ic_stat_habbitrack",
+          iconColor: "#0D7B6C",
+          actionTypeId: "OPEN_TODAY",
+        },
+      ],
+    });
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || "Failed to send test notification" };
   }
 }
