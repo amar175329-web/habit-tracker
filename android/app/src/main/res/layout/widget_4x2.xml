@@ -119,14 +119,16 @@
 
             <TextView
                 android:id="@+id/widget_4x2_name_1"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:layout_marginStart="6dp"
                 android:text="Workout"
                 android:textColor="#334155"
                 android:textSize="12sp"
                 android:textStyle="bold"
-                android:singleLine="true" />
+                android:singleLine="true"
+                android:ellipsize="end" />
         </LinearLayout>
 
         <!-- Habit 2 -->
@@ -149,14 +151,16 @@
 
             <TextView
                 android:id="@+id/widget_4x2_name_2"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:layout_marginStart="6dp"
                 android:text="Study"
                 android:textColor="#334155"
                 android:textSize="12sp"
                 android:textStyle="bold"
-                android:singleLine="true" />
+                android:singleLine="true"
+                android:ellipsize="end" />
         </LinearLayout>
 
         <!-- Habit 3 -->
@@ -164,7 +168,7 @@
             android:id="@+id/widget_4x2_row_3"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
+            android:layout_gravity="center_vertical"
             android:paddingVertical="2dp"
             android:orientation="horizontal">
 
@@ -179,14 +183,16 @@
 
             <TextView
                 android:id="@+id/widget_4x2_name_3"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:layout_marginStart="6dp"
                 android:text="Book listening"
                 android:textColor="#334155"
                 android:textSize="12sp"
                 android:textStyle="bold"
-                android:singleLine="true" />
+                android:singleLine="true"
+                android:ellipsize="end" />
         </LinearLayout>
 
     </LinearLayout>
