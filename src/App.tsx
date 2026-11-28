@@ -27,6 +27,7 @@ import IconPicker from "./pages/IconPicker";
 import DataBackup from "./pages/DataBackup";
 import ExportPage from "./pages/Export";
 import MoodSleepHistory from "./pages/MoodSleepHistory";
+import InstallGuide from "./pages/InstallGuide";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -50,6 +51,7 @@ function AppNavigation() {
     "/data-backup",
     "/export",
     "/mood-sleep-history",
+    "/install",
   ];
 
   const shouldHide = hiddenPaths.some((p) => location.pathname.startsWith(p)) || location.pathname.startsWith("/reflection/");
@@ -182,6 +184,7 @@ export default function App() {
               <Route path="/data-backup" element={<DataBackup />} />
               <Route path="/export" element={<ExportPage />} />
               <Route path="/mood-sleep-history" element={<MoodSleepHistory />} />
+              <Route path="/install" element={<InstallGuide />} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

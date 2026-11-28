@@ -1,5 +1,6 @@
 import Dexie, { type Table } from "dexie";
 import { getLocalTodayStr, getLocalIsoString } from "./date";
+import { IS_LOCAL_ONLY } from "./envMode";
 import { isHabitEditable, isReflectionEditable, isSleepOrMoodEditable, weekStart } from "./habitRules";
 
 export interface Habit {
@@ -283,9 +284,9 @@ export async function clearAllData(): Promise<void> {
     }
   );
 
-  // Trigger server-side complete data purge if hosted
+  // Trigger server-side complete data purge if hosted (strictly disabled in VITE_LOCAL_ONLY mode)
   try {
-    if (typeof window !== "undefined" && window.location && window.location.origin?.startsWith("http")) {
+    if (!IS_LOCAL_ONLY && typeof window !== "undefined" && window.location && window.location.origin?.startsWith("http")) {
       fetch("/api/purge-all-data", { method: "POST" }).catch(() => {});
     }
   } catch {}

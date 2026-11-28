@@ -11,3 +11,14 @@ createRoot(rootElement).render(
     <App />
   </StrictMode>,
 );
+
+// Register PWA service worker for offline use on web browsers (skip inside native Capacitor)
+if (
+  typeof window !== 'undefined' &&
+  'serviceWorker' in navigator &&
+  !(window as any).Capacitor?.isNativePlatform?.()
+) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}

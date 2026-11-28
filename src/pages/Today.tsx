@@ -47,6 +47,7 @@ import { FeelingsSheet } from "../components/sheets/FeelingsSheet";
 import { HabitActionSheet } from "../components/sheets/HabitActionSheet";
 import { StreakSheet } from "../components/sheets/StreakSheet";
 import { ReminderPromptBanner } from "../components/notifications/ReminderPromptBanner";
+import { InstallHintBanner } from "../components/notifications/InstallHintBanner";
 import { shouldShowReminderBanner, rescheduleRollingNotifications } from "../lib/notifications";
 import { syncAppIconTier } from "../lib/appIcons";
 import { calculateWidgetPayload, updateNativeWidgets } from "../lib/widgets";
@@ -1444,6 +1445,9 @@ export default function Today() {
             </div>
           </div>
         )}
+
+        {/* First-visit PWA install hint (web only, hidden inside native app / installed PWA) */}
+        <InstallHintBanner />
 
         {/* In-app reminder top banner prompt */}
         {showReminderPrompt && (

@@ -1,6 +1,7 @@
 // Central API client — same-origin, httpOnly cookie (credentials: include)
 import { emitSyncEvent } from "./sync";
 import { queryClient } from "./queryClient";
+import { IS_LOCAL_ONLY } from "./envMode";
 
 export type HabitId = "workout" | "study" | "ai" | "book" | "video";
 export type HabitState = 0 | 1 | 2;
@@ -32,6 +33,9 @@ class ApiError extends Error {
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  if (IS_LOCAL_ONLY) {
+    throw new ApiError("Local-only mode: /api calls are disabled", 0);
+  }
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("dailyos:token") : null;
   const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
   const res = await fetch(path, {
