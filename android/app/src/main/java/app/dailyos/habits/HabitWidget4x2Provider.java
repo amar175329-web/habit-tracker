@@ -33,11 +33,11 @@ public class HabitWidget4x2Provider extends AppWidgetProvider {
         String streak = prefs.getString(KEY_STREAK, "0");
         String theme = prefs.getString(KEY_THEME, "light");
 
-        String h1Name = prefs.getString(KEY_HABIT_1_NAME, "Workout");
+        String h1Name = prefs.getString(KEY_HABIT_1_NAME, "Add your first habit");
         boolean h1Done = prefs.getBoolean(KEY_HABIT_1_DONE, false);
-        String h2Name = prefs.getString(KEY_HABIT_2_NAME, "Study");
+        String h2Name = prefs.getString(KEY_HABIT_2_NAME, "");
         boolean h2Done = prefs.getBoolean(KEY_HABIT_2_DONE, false);
-        String h3Name = prefs.getString(KEY_HABIT_3_NAME, "Book listening");
+        String h3Name = prefs.getString(KEY_HABIT_3_NAME, "");
         boolean h3Done = prefs.getBoolean(KEY_HABIT_3_DONE, false);
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_4x2);
@@ -49,14 +49,24 @@ public class HabitWidget4x2Provider extends AppWidgetProvider {
         views.setTextColor(R.id.widget_4x2_check_1, h1Done ? Color.parseColor("#14B8A6") : Color.parseColor("#94A3B8"));
 
         // Habit 2
-        views.setTextViewText(R.id.widget_4x2_name_2, h2Name);
-        views.setTextViewText(R.id.widget_4x2_check_2, h2Done ? "✓" : "○");
-        views.setTextColor(R.id.widget_4x2_check_2, h2Done ? Color.parseColor("#14B8A6") : Color.parseColor("#94A3B8"));
+        if (h2Name != null && !h2Name.trim().isEmpty()) {
+            views.setViewVisibility(R.id.widget_4x2_row_2, android.view.View.VISIBLE);
+            views.setTextViewText(R.id.widget_4x2_name_2, h2Name);
+            views.setTextViewText(R.id.widget_4x2_check_2, h2Done ? "✓" : "○");
+            views.setTextColor(R.id.widget_4x2_check_2, h2Done ? Color.parseColor("#14B8A6") : Color.parseColor("#94A3B8"));
+        } else {
+            views.setViewVisibility(R.id.widget_4x2_row_2, android.view.View.GONE);
+        }
 
         // Habit 3
-        views.setTextViewText(R.id.widget_4x2_name_3, h3Name);
-        views.setTextViewText(R.id.widget_4x2_check_3, h3Done ? "✓" : "○");
-        views.setTextColor(R.id.widget_4x2_check_3, h3Done ? Color.parseColor("#14B8A6") : Color.parseColor("#94A3B8"));
+        if (h3Name != null && !h3Name.trim().isEmpty()) {
+            views.setViewVisibility(R.id.widget_4x2_row_3, android.view.View.VISIBLE);
+            views.setTextViewText(R.id.widget_4x2_name_3, h3Name);
+            views.setTextViewText(R.id.widget_4x2_check_3, h3Done ? "✓" : "○");
+            views.setTextColor(R.id.widget_4x2_check_3, h3Done ? Color.parseColor("#14B8A6") : Color.parseColor("#94A3B8"));
+        } else {
+            views.setViewVisibility(R.id.widget_4x2_row_3, android.view.View.GONE);
+        }
 
         // Theme styling
         if ("dark".equalsIgnoreCase(theme)) {

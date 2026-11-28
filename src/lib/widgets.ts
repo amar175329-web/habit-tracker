@@ -109,11 +109,11 @@ export function calculateWidgetPayload(params: {
     icn2x2,
     streak: String(currentStreak),
     theme: widgetTheme,
-    h1Name: h1 ? h1.name : "Workout",
+    h1Name: h1 ? h1.name : "Add your first habit",
     h1Done: isHabitDone(h1?.id),
-    h2Name: h2 ? h2.name : "Study",
+    h2Name: h2 ? h2.name : "",
     h2Done: isHabitDone(h2?.id),
-    h3Name: h3 ? h3.name : "Book listening",
+    h3Name: h3 ? h3.name : "",
     h3Done: isHabitDone(h3?.id),
   };
 }

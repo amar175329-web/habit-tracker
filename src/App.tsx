@@ -5,7 +5,7 @@ import { App as CapApp } from "@capacitor/app";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { ThemeProvider } from "./lib/theme";
 import { queryClient as qc } from "./lib/queryClient";
-import { initDatabase, purgeLegacyStorage, loadStarterHabits, db, type MoodLog } from "./lib/db";
+import { initDatabase, purgeLegacyStorage, db, type MoodLog } from "./lib/db";
 import { checkAndRestoreAutoBackup } from "./lib/autoBackup";
 import { BottomNav as BottomNavPrimitive } from "./components/primitives/BottomNav";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -99,14 +99,8 @@ export default function App() {
     // Clean up any legacy unconfirmed auto-seeded default mood logs
     db.mood_logs.filter((m: MoodLog) => !m.changeCount || m.changeCount === 0).delete().catch(() => {});
     initDatabase()
-      .then(async () => {
-        const restoreRes = await checkAndRestoreAutoBackup().catch(() => ({ restored: false }));
-        if (!restoreRes || !restoreRes.restored) {
-          const count = await db.habits.count();
-          if (count === 0) {
-            await loadStarterHabits().catch(() => {});
-          }
-        }
+      .then(() => {
+        checkAndRestoreAutoBackup().catch(() => {});
       })
       .catch(() => {});
 

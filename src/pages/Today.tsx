@@ -18,7 +18,6 @@ import {
   exportAllData,
   importAllData,
   setSetting,
-  loadStarterHabits,
   type Habit,
   type DailyOSExport,
 } from "../lib/db";
@@ -1757,7 +1756,7 @@ export default function Today() {
                         setModalConfig({
                           isOpen: true,
                           title: "No Device Backup Found",
-                          description: "No previous auto-backup found in Documents or Downloads on this device. You can tap 'Load starter habits' to load Workout, AI, Study, etc.",
+                          description: "No previous auto-backup found in Documents or Downloads on this device. Tap '+ Add habit' to start fresh or restore from a JSON file.",
                           confirmLabel: "Understood",
                           variant: "primary",
                           icon: "info",
@@ -1788,35 +1787,6 @@ export default function Today() {
                   }}
                 >
                   Restore from Device
-                </button>
-                <button
-                  type="button"
-                  data-testid="load-starter-habits-btn"
-                  onClick={async () => {
-                    const added = await loadStarterHabits();
-                    setModalConfig({
-                      isOpen: true,
-                      title: "Starter Habits Loaded",
-                      description: `Loaded ${added} starter habits (Workout, AI, Study, Book Listening, Video)!`,
-                      confirmLabel: "Great",
-                      variant: "primary",
-                      icon: "info",
-                    });
-                  }}
-                  style={{
-                    height: "42px",
-                    padding: "0 18px",
-                    borderRadius: "21px",
-                    border: "1px solid var(--pr)",
-                    background: "var(--tint)",
-                    color: "var(--prt)",
-                    fontFamily: "inherit",
-                    fontWeight: 800,
-                    fontSize: "13px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Load starter habits
                 </button>
               </div>
             </div>
