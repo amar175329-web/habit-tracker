@@ -81,11 +81,11 @@ function AppNavigation() {
         pointerEvents: "none",
         display: "flex",
         justifyContent: "center",
-        paddingTop: "32px",
-        background: "linear-gradient(to top, var(--bg) 75%, transparent 100%)",
+        paddingTop: "14px",
+        background: "linear-gradient(to top, var(--bg) 70%, transparent 100%)",
       }}
     >
-      <div style={{ width: "100%", maxWidth: "430px", padding: "0 18px calc(20px + env(safe-area-inset-bottom, 0px))", pointerEvents: "auto", boxSizing: "border-box" }}>
+      <div style={{ width: "100%", maxWidth: "430px", padding: "0 14px 10px", pointerEvents: "auto", boxSizing: "border-box" }}>
         <BottomNavPrimitive activeTab={currentTab} onChangeTab={handleTabChange} fixed={false} />
       </div>
     </div>
