@@ -443,6 +443,28 @@ public class MainActivity extends BridgeActivity {
                 }
 
                 @JavascriptInterface
+                public String pinWidget(final String size) {
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            android.appwidget.AppWidgetManager awm = android.appwidget.AppWidgetManager.getInstance(MainActivity.this);
+                            if (awm != null && awm.isRequestPinAppWidgetSupported()) {
+                                Class<?> providerClass = "4x2".equalsIgnoreCase(size)
+                                    ? HabitWidget4x2Provider.class
+                                    : HabitWidget2x2Provider.class;
+                                android.content.ComponentName provider = new android.content.ComponentName(MainActivity.this, providerClass);
+                                boolean requested = awm.requestPinAppWidget(provider, null, null);
+                                return requested ? "pinned" : "failed";
+                            }
+                            return "unsupported";
+                        }
+                        return "unsupported_sdk";
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Failed to pin widget", e);
+                        return "error";
+                    }
+                }
+
+                @JavascriptInterface
                 public void share(final String title, final String text, final String url) {
                     runOnUiThread(() -> {
                         try {

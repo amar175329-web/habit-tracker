@@ -7,6 +7,7 @@ import { useTheme } from "../lib/theme";
 import { ConfirmModal } from "../components/modals/ConfirmModal";
 import { LuxuryTimePickerModal } from "../components/modals/LuxuryTimePickerModal";
 import { formatTime12h } from "../components/sheets/HabitTimingSheet";
+import { requestPinHomeWidget } from "../lib/widgets";
 import {
   getReminderSettings,
   saveReminderSettings,
@@ -537,6 +538,92 @@ export default function Settings() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Home Screen Widgets 1-Tap Pin Card */}
+      <div
+        id="widgets"
+        style={{
+          background: "var(--card)",
+          border: "1px solid var(--ln)",
+          borderRadius: "26px",
+          padding: "16px 18px",
+          marginTop: "12px",
+        }}
+      >
+        <div style={{ fontSize: "11px", letterSpacing: ".14em", fontWeight: 700, color: "var(--mu)" }}>
+          HOME SCREEN WIDGETS
+        </div>
+        <div style={{ fontSize: "13px", color: "var(--mu)", marginTop: "4px", marginBottom: "14px", lineHeight: 1.4 }}>
+          1 click mein Home Screen par widget add karein (long-press karne ki zarurat nahi).
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+          <button
+            type="button"
+            data-testid="settings-pin-widget-2x2"
+            onClick={() => {
+              const res = requestPinHomeWidget("2x2");
+              setToastMessage(
+                res.ok
+                  ? "2×2 Widget popup open ho gaya — 'Add' tap karein!"
+                  : "Home Screen → Widgets → Habbitrack se 2×2 add karein."
+              );
+              setTimeout(() => setToastMessage(null), 3500);
+            }}
+            style={{
+              borderRadius: "18px",
+              border: "1px solid var(--pr)",
+              background: "var(--tint)",
+              color: "var(--prt)",
+              padding: "12px 10px",
+              fontFamily: "inherit",
+              fontWeight: 800,
+              fontSize: "13px",
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            <span style={{ fontSize: "18px" }}>🔥</span>
+            <span>+ Add 2×2 Widget</span>
+            <span style={{ fontSize: "11px", fontWeight: 600, opacity: 0.85 }}>Streak & Ring</span>
+          </button>
+
+          <button
+            type="button"
+            data-testid="settings-pin-widget-4x2"
+            onClick={() => {
+              const res = requestPinHomeWidget("4x2");
+              setToastMessage(
+                res.ok
+                  ? "4×2 Widget popup open ho gaya — 'Add' tap karein!"
+                  : "Home Screen → Widgets → Habbitrack se 4×2 add karein."
+              );
+              setTimeout(() => setToastMessage(null), 3500);
+            }}
+            style={{
+              borderRadius: "18px",
+              border: "none",
+              background: "var(--pr)",
+              color: "var(--on)",
+              padding: "12px 10px",
+              fontFamily: "inherit",
+              fontWeight: 800,
+              fontSize: "13px",
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            <span style={{ fontSize: "18px" }}>📋</span>
+            <span>+ Add 4×2 Widget</span>
+            <span style={{ fontSize: "11px", fontWeight: 600, opacity: 0.9 }}>Today's Top 3</span>
+          </button>
+        </div>
       </div>
 
       {/* Active Habits Management Card */}

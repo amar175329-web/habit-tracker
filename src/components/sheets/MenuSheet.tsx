@@ -1,6 +1,7 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../lib/theme";
+import { requestPinHomeWidget } from "../../lib/widgets";
 
 export interface MenuSheetProps {
   isOpen: boolean;
@@ -10,8 +11,22 @@ export interface MenuSheetProps {
 export function MenuSheet({ isOpen, onClose }: MenuSheetProps) {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const [widgetNotice, setWidgetNotice] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const handlePinWidget = (size: "2x2" | "4x2") => {
+    const res = requestPinHomeWidget(size);
+    if (res.ok) {
+      onClose();
+    } else if (res.status === "web_only") {
+      setWidgetNotice("Widgets Android APK mein add hote hain.");
+      setTimeout(() => setWidgetNotice(null), 3000);
+    } else {
+      setWidgetNotice("Launcher pin popup block kar raha hai — Home screen Widgets se add karein.");
+      setTimeout(() => setWidgetNotice(null), 3500);
+    }
+  };
 
   const itemStyle: CSSProperties = {
     display: "flex",
@@ -126,6 +141,74 @@ export function MenuSheet({ isOpen, onClose }: MenuSheetProps) {
           <span style={{ flex: 1 }}>Data & Backup</span>
           <span style={{ color: "var(--mu)", fontSize: "16px" }}>›</span>
         </button>
+
+        {/* 1-Tap Home Screen Widgets (2x2 & 4x2) */}
+        <div
+          style={{
+            background: "var(--bg)",
+            borderRadius: "18px",
+            padding: "12px 14px",
+            marginBottom: "8px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+            <span style={iconBoxStyle}>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                <rect x="14" y="14" width="7" height="7" rx="1.5" />
+              </svg>
+            </span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--tx)" }}>Add Home Screen Widget</div>
+              <div style={{ fontSize: "11.5px", color: "var(--mu)", fontWeight: 600 }}>1-tap add (no long-press needed)</div>
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+            <button
+              type="button"
+              data-testid="menu-pin-widget-2x2"
+              onClick={() => handlePinWidget("2x2")}
+              style={{
+                height: "38px",
+                borderRadius: "14px",
+                border: "1px solid var(--pr)",
+                background: "var(--tint)",
+                color: "var(--prt)",
+                fontWeight: 800,
+                fontSize: "12.5px",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              + Add 2×2 Widget
+            </button>
+            <button
+              type="button"
+              data-testid="menu-pin-widget-4x2"
+              onClick={() => handlePinWidget("4x2")}
+              style={{
+                height: "38px",
+                borderRadius: "14px",
+                border: "none",
+                background: "var(--pr)",
+                color: "var(--on)",
+                fontWeight: 800,
+                fontSize: "12.5px",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              + Add 4×2 Widget
+            </button>
+          </div>
+          {widgetNotice && (
+            <div style={{ fontSize: "11.5px", color: "var(--prt)", fontWeight: 700, marginTop: "8px" }}>
+              {widgetNotice}
+            </div>
+          )}
+        </div>
 
         {/* Settings */}
         <button type="button" onClick={() => handleNav("/settings")} style={itemStyle}>

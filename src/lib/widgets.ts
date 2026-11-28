@@ -130,3 +130,20 @@ export function updateNativeWidgets(payload: WidgetPayload): void {
     console.warn("Failed to notify native widgets:", e);
   }
 }
+
+/**
+ * 1-tap Android native Home Screen widget pin request (Android 8+ / API 26+).
+ * Opens Android's "Add to Home screen" popup directly without long-pressing launcher.
+ */
+export function requestPinHomeWidget(size: "2x2" | "4x2"): { ok: boolean; status: string } {
+  try {
+    if (typeof (window as any).AndroidTheme?.pinWidget === "function") {
+      const status = String((window as any).AndroidTheme.pinWidget(size) || "");
+      return { ok: status === "pinned", status };
+    }
+    return { ok: false, status: "web_only" };
+  } catch (e) {
+    console.warn("Failed to request pin widget:", e);
+    return { ok: false, status: "error" };
+  }
+}
