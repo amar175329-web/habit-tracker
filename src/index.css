@@ -15,6 +15,7 @@
    Light is default on :root. Dark mode is applied via html.dark
    ------------------------------------------------------------------------- */
 :root {
+  color-scheme: light;
   --bg: #F2F6F5;
   --card: #FFFFFF;
   --tx: #0E1F1E;
@@ -38,6 +39,7 @@
 }
 
 html.dark {
+  color-scheme: dark;
   --bg: #0B1112;
   --card: #121B1C;
   --tx: #EAF4F2;

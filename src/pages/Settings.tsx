@@ -5,6 +5,8 @@ import { clearAllData, useHabits, db, deleteHabit, restoreHabit } from "../lib/d
 import { getIconPath } from "../lib/icons";
 import { useTheme } from "../lib/theme";
 import { ConfirmModal } from "../components/modals/ConfirmModal";
+import { LuxuryTimePickerModal } from "../components/modals/LuxuryTimePickerModal";
+import { formatTime12h } from "../components/sheets/HabitTimingSheet";
 import {
   getReminderSettings,
   saveReminderSettings,
@@ -28,6 +30,7 @@ export default function Settings() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [reminders, setReminders] = useState<ReminderSettings>(() => getReminderSettings());
   const [permDenied, setPermDenied] = useState(false);
+  const [dailyTimePickerOpen, setDailyTimePickerOpen] = useState(false);
 
   useEffect(() => {
     LocalNotifications.checkPermissions()
@@ -334,22 +337,28 @@ export default function Settings() {
             {/* Daily Time Picker */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: "13.5px", fontWeight: 600 }}>Daily Reminder Time</span>
-              <input
-                type="time"
-                value={reminders.dailyTime}
-                onChange={(e) => handleUpdateReminder("dailyTime", e.target.value)}
+              <button
+                type="button"
+                data-testid="settings-daily-time-btn"
+                onClick={() => setDailyTimePickerOpen(true)}
                 style={{
                   background: "var(--bg)",
                   border: "1px solid var(--ln)",
-                  borderRadius: "12px",
-                  padding: "6px 10px",
+                  borderRadius: "14px",
+                  padding: "8px 14px",
                   color: "var(--tx)",
                   fontSize: "13.5px",
                   fontWeight: 700,
                   fontFamily: "var(--num)",
-                  outline: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  cursor: "pointer",
                 }}
-              />
+              >
+                <span>{formatTime12h(reminders.dailyTime) || "8:00 PM"}</span>
+                <span style={{ color: "var(--mu)", fontSize: "11px" }}>▾</span>
+              </button>
             </div>
 
             {/* Streak-at-risk (9:30 PM) */}
@@ -857,6 +866,14 @@ export default function Settings() {
           </div>
         </div>
       )}
+
+      <LuxuryTimePickerModal
+        isOpen={dailyTimePickerOpen}
+        value={reminders.dailyTime}
+        title="Daily Reminder Time"
+        onClose={() => setDailyTimePickerOpen(false)}
+        onConfirm={(hhmm) => handleUpdateReminder("dailyTime", hhmm)}
+      />
     </div>
   );
 }

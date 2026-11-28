@@ -113,6 +113,8 @@ export function HabitActionSheet({
           background: "var(--card)",
           borderRadius: "32px 32px 0 0",
           padding: "14px 18px 30px",
+          maxHeight: "88vh",
+          overflowY: "auto",
           borderTop: "1px solid var(--ln)",
           boxShadow: "0 -10px 40px rgba(0, 0, 0, 0.25)",
           zIndex: 61,
