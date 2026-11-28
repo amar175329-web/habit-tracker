@@ -12,6 +12,9 @@ export interface Habit {
   createdAt: string;
   archivedAt?: string;
   why?: string;
+  startTime?: string; // "HH:MM" e.g. "07:00"
+  endTime?: string; // "HH:MM" e.g. "07:30"
+  reminderTime?: string; // "HH:MM" e.g. "06:55"
 }
 
 export interface HabitLog {

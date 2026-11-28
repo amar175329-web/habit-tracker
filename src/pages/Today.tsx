@@ -55,6 +55,7 @@ import { StreakCelebrationSheet } from "../components/sheets/StreakCelebrationSh
 import { ConfirmModal } from "../components/modals/ConfirmModal";
 import { WelcomeBackModal } from "../components/modals/WelcomeBackModal";
 import { HabitWhySheet } from "../components/sheets/HabitWhySheet";
+import { HabitTimingSheet, formatHabitTimingSummary, formatTime12h } from "../components/sheets/HabitTimingSheet";
 import { WeeklyRecapCard } from "../components/cards/WeeklyRecapCard";
 import { useTheme } from "../lib/theme";
 import {
@@ -126,6 +127,8 @@ export default function Today() {
   const [welcomeBackOpen, setWelcomeBackOpen] = useState(false);
   const [whySheetOpen, setWhySheetOpen] = useState(false);
   const [selectedWhyHabit, setSelectedWhyHabit] = useState<Habit | null>(null);
+  const [timingSheetOpen, setTimingSheetOpen] = useState(false);
+  const [selectedTimingHabit, setSelectedTimingHabit] = useState<Habit | null>(null);
 
   const currentWeekStart = useMemo(() => weekStart(todayStr), [todayStr]);
   const unlockedPasses = useLiveQuery(
@@ -1857,6 +1860,11 @@ export default function Today() {
               const isDayFrozen = !isViewingToday && usedFreezeDates.includes(date);
               let subtitle = `${formatPoints(doneCount)} of ${h.goalDays} this week`;
               if (h.goalDays === 7) subtitle = "Daily habit";
+              if (h.startTime && h.endTime) {
+                subtitle = `${formatTime12h(h.startTime)} – ${formatTime12h(h.endTime)}`;
+              } else if (h.startTime) {
+                subtitle = `${formatTime12h(h.startTime)}`;
+              }
               if (isDayFrozen) subtitle = "Saved by Freeze ❄️";
 
               return (
@@ -2243,6 +2251,11 @@ export default function Today() {
           isExpanded={fullWidthHabits.has(activeMenuHabit.id)}
           onToggleWidth={() => handleToggleHabitWidth(activeMenuHabit.id)}
           onEdit={() => navigate(`/new-habit?edit=${activeMenuHabit.id}`)}
+          timingSummary={formatHabitTimingSummary(activeMenuHabit)}
+          onEditTiming={() => {
+            setSelectedTimingHabit(activeMenuHabit);
+            setTimingSheetOpen(true);
+          }}
           onEditWhy={() => {
             setSelectedWhyHabit(activeMenuHabit);
             setWhySheetOpen(true);
@@ -2260,6 +2273,18 @@ export default function Today() {
         onClose={() => setWhySheetOpen(false)}
         habit={selectedWhyHabit}
         onSaved={() => setCacheVersion((v) => v + 1)}
+      />
+
+      {/* Habit Timing & Custom Reminder Sheet (Start–End time & per-habit notification) */}
+      <HabitTimingSheet
+        isOpen={timingSheetOpen}
+        onClose={() => setTimingSheetOpen(false)}
+        habit={selectedTimingHabit}
+        onSaved={async () => {
+          setCacheVersion((v) => v + 1);
+          const freshHabits = await db.habits.filter((h) => h.isActive).toArray();
+          rescheduleRollingNotifications(freshHabits, allHabitLogs, currentStreak, todayStr);
+        }}
       />
 
       {/* Welcome Back Screen Modal (after 2+ missed days, no red) */}

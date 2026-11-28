@@ -9,6 +9,8 @@ export interface HabitActionSheetProps {
   isExpanded: boolean;
   onToggleWidth: () => void;
   onEdit: () => void;
+  onEditTiming?: () => void;
+  timingSummary?: string;
   onEditWhy?: () => void;
   onDelete: (purgeHistory: boolean) => void;
   currentStreak?: number;
@@ -25,6 +27,8 @@ export function HabitActionSheet({
   isExpanded,
   onToggleWidth,
   onEdit,
+  onEditTiming,
+  timingSummary,
   onEditWhy,
   onDelete,
   currentStreak = 0,
@@ -486,6 +490,35 @@ export function HabitActionSheet({
               </div>
               <span style={{ color: "var(--mu)", fontSize: "18px" }}>›</span>
             </button>
+
+            {/* Action 2a: Timing & Custom Reminder */}
+            {onEditTiming && (
+              <button
+                type="button"
+                data-testid="habit-action-timing-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onEditTiming();
+                  onClose();
+                }}
+                style={btnStyle}
+              >
+                <span style={iconCircleStyle}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: "14.5px" }}>Timing & Reminder</div>
+                  <div style={{ fontSize: "12px", color: timingSummary ? "var(--prt)" : "var(--mu)", fontWeight: timingSummary ? 700 : 500, marginTop: "2px" }}>
+                    {timingSummary || "Set start–end time & custom notification"}
+                  </div>
+                </div>
+                <span style={{ color: "var(--mu)", fontSize: "18px" }}>›</span>
+              </button>
+            )}
 
             {/* Action 2b: Edit Why Line ("Main ye kyun kar raha hoon") */}
             {onEditWhy && (

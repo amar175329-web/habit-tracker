@@ -412,15 +412,19 @@ export async function rescheduleRollingNotifications(
 
     // Filter habits scheduled for this day
     const dayLogs = habitLogs.filter((l) => l.date === dateStr);
+    const completedTodayCount =
+      offset === 0
+        ? activeHabits.filter((h) => dayLogs.some((l) => l.habitId === h.id && (l.state ?? 0) >= 1)).length
+        : 0;
     const allDone =
       offset === 0 &&
       activeHabits.length > 0 &&
-      activeHabits.every((h) => dayLogs.some((l) => l.habitId === h.id && (l.state ?? 0) >= 1));
+      completedTodayCount === activeHabits.length;
 
     // Never notify for days/habits already completed
     if (allDone) continue;
 
-    // 1. Daily Reminder (default 8:00 PM)
+    // 1. Daily Overall Evening Reminder (default 8:00 PM)
     const dailyNotifyDate = new Date(targetDate);
     dailyNotifyDate.setHours(isNaN(dailyHour) ? 20 : dailyHour, isNaN(dailyMinute) ? 0 : dailyMinute, 0, 0);
 
@@ -430,17 +434,27 @@ export async function rescheduleRollingNotifications(
         ? activeHabits.find((h) => h.why?.trim())
         : null;
 
-      const banner = pickNotificationBanner({
-        streak: currentStreak,
-        missedDays: 0,
-        allDoneToday: false,
-        habitWithWhy: habitWithWhy ? { name: habitWithWhy.name, why: habitWithWhy.why! } : null,
-      });
+      let title: string;
+      let body: string;
+
+      if (offset === 0 && completedTodayCount > 0 && completedTodayCount < activeHabits.length) {
+        title = `Aaj ${completedTodayCount}/${activeHabits.length} ho gaya`;
+        body = "Sirf 1 minute mein apna streak bacha sakte ho.";
+      } else {
+        const banner = pickNotificationBanner({
+          streak: currentStreak,
+          missedDays: 0,
+          allDoneToday: false,
+          habitWithWhy: habitWithWhy ? { name: habitWithWhy.name, why: habitWithWhy.why! } : null,
+        });
+        title = banner.title;
+        body = banner.body;
+      }
 
       candidateNotifications.push({
         id: (offset + 1) * 10 + 1,
-        title: banner.title,
-        body: banner.body,
+        title,
+        body,
         date: dailyNotifyDate,
       });
     }
@@ -462,8 +476,65 @@ export async function rescheduleRollingNotifications(
     }
   }
 
-  // Strict cap: max 2 notifications a day
-  const capped = capDailyNotifications(candidateNotifications, 2);
+  // Strict cap: max 2 global notifications a day
+  const cappedGlobal = capDailyNotifications(candidateNotifications, 2);
+
+  // 3. Per-Habit Custom Reminders (explicitly configured via 3-dot Timing & Reminder)
+  const perHabitNotifications: { id: number; title: string; body: string; date: Date }[] = [];
+  const format12 = (hhmm?: string) => {
+    if (!hhmm || !hhmm.includes(":")) return "";
+    const [hStr, mStr] = hhmm.split(":");
+    const h = Number(hStr);
+    const m = Number(mStr);
+    if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
+    const p = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(m).padStart(2, "0")} ${p}`;
+  };
+
+  for (let offset = 0; offset < 7; offset++) {
+    const targetDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + offset);
+    const yyyy = targetDate.getFullYear();
+    const mm = String(targetDate.getMonth() + 1).padStart(2, "0");
+    const dd = String(targetDate.getDate()).padStart(2, "0");
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    const dayLogs = habitLogs.filter((l) => l.date === dateStr);
+
+    activeHabits.forEach((habit, idx) => {
+      if (!habit.reminderTime || !habit.reminderTime.includes(":")) return;
+      // Never notify if this habit is already completed today
+      if (offset === 0 && dayLogs.some((l) => l.habitId === habit.id && (l.state ?? 0) >= 1)) {
+        return;
+      }
+      const [hHour, hMin] = habit.reminderTime.split(":").map(Number);
+      if (Number.isNaN(hHour) || Number.isNaN(hMin)) return;
+
+      const habitNotifyDate = new Date(targetDate);
+      habitNotifyDate.setHours(hHour, hMin, 0, 0);
+      if (habitNotifyDate.getTime() <= Date.now()) return;
+
+      const windowStr =
+        habit.startTime && habit.endTime
+          ? `${format12(habit.startTime)} – ${format12(habit.endTime)}`
+          : habit.startTime
+            ? `${format12(habit.startTime)}`
+            : "";
+
+      const whyPart = settings.showWhyLineEnabled && habit.why?.trim() ? ` "${habit.why.trim()}"` : "";
+      const bodyText = windowStr
+        ? `${windowStr} · Sirf shuru karo.${whyPart}`
+        : `Sirf 1 minute se shuru karo.${whyPart}`;
+
+      perHabitNotifications.push({
+        id: 5000 + offset * 50 + idx,
+        title: `${habit.name} ka time ho gaya`,
+        body: bodyText,
+        date: habitNotifyDate,
+      });
+    });
+  }
+
+  const capped = [...cappedGlobal, ...perHabitNotifications];
 
   try {
     const pending = await LocalNotifications.getPending();
